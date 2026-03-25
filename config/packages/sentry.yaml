@@ -1,0 +1,9 @@
+# https://docs.sentry.io/platforms/php/guides/symfony/
+# Sin SENTRY_DSN (o vacío) el SDK no envía eventos — útil en dev/test.
+sentry:
+    dsn: '%env(SENTRY_DSN)%'
+    options:
+        environment: '%kernel.environment%'
+        # Errores sí; APM/trazas desactivadas hasta que quieras muestreo explícito en Sentry
+        traces_sample_rate: 0
+        profiles_sample_rate: 0

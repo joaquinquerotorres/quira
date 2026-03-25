@@ -60,7 +60,7 @@ Documentación de Swagger: `http://localhost:8000/api/docs`
 | [docs/SETUP.md](docs/SETUP.md) | Configuración completa y variables de entorno |
 | [docs/FEATURES.md](docs/FEATURES.md) | Funcionalidades (auth, Stripe, IA, notificaciones, etc.) |
 | [docs/TESTING.md](docs/TESTING.md) | Guía de tests |
-| [docs/DEPLOY.md](docs/DEPLOY.md) | Deploy con GitHub Actions |
+| [docs/DEPLOY.md](docs/DEPLOY.md) | Deploy (Dockerfile FrankenPHP, Railway, variables) |
 
 ## Licencia
 

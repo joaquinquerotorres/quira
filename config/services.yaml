@@ -70,6 +70,20 @@ services:
         arguments:
             $inner: '@.inner'
 
+when@prod:
+    services:
+        app.monolog.sentry_handler:
+            class: Sentry\Monolog\Handler
+            arguments:
+                $hub: '@Sentry\State\HubInterface'
+                $level: !php/const Monolog\Logger::ERROR
+
+        app.monolog.sentry_breadcrumbs:
+            class: Sentry\Monolog\BreadcrumbHandler
+            arguments:
+                $hub: '@Sentry\State\HubInterface'
+                $level: !php/const Monolog\Logger::INFO
+
 when@test:
     imports:
         - { resource: services_test.yaml }

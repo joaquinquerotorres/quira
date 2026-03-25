@@ -32,13 +32,23 @@ when@test:
 when@prod:
     monolog:
         handlers:
+            sentry:
+                type: service
+                id: app.monolog.sentry_handler
+            sentry_breadcrumbs:
+                type: service
+                id: app.monolog.sentry_breadcrumbs
+                channels: ["!deprecation"]
             main:
                 type: fingers_crossed
                 action_level: error
-                handler: nested
+                handler: grouped
                 excluded_http_codes: [404, 405]
                 channels: ["!deprecation"]
                 buffer_size: 50 # How many messages should be saved? Prevent memory leaks
+            grouped:
+                type: group
+                members: [nested, sentry]
             nested:
                 type: stream
                 path: php://stderr

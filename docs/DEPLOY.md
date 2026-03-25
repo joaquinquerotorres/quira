@@ -1,105 +1,96 @@
-# Deploy con GitHub Actions
+# Despliegue
 
-El workflow de CI/CD incluye un job de deploy que se ejecuta al hacer push a `main`, tras pasar los tests.
+## Railway + Docker (esta API)
 
-## Requisitos
+El repo incluye un **`Dockerfile`** (FrankenPHP + PHP 8.4). El **CI en GitHub Actions** solo ejecuta tests (`.github/workflows/ci.yml`).
 
-- Servidor con PHP 8.4, MySQL y SSH
-- Usuario SSH con acceso al directorio de la aplicación
-- Clave SSH privada sin passphrase (o usa ssh-agent)
+### 1. Crear el servicio
 
-## Secrets en GitHub
+1. **New project** → **Deploy from GitHub** → repo y rama (p. ej. `main`).
+2. Railway detecta el **Dockerfile** y construye la imagen.
+3. Añade **MySQL** (plugin) y enlaza la variable `DATABASE_URL` que expone Railway al servicio de la API.
 
-Añade estos secrets en **Settings → Secrets and variables → Actions** (o en el environment `production`):
+### 2. Variables de entorno obligatorias (resumen)
 
-### Deploy (obligatorios)
+Define en el servicio las mismas claves que usarías en `.env.local` en un VPS: `APP_SECRET`, `APP_URL`, `FRONTEND_URL`, `DATABASE_URL`, `JWT_PASSPHRASE`, integraciones (`GEMINI_API_KEY`, Stripe, Twilio, Supabase, Firebase, etc.), `CORS_ALLOW_ORIGIN`, `SENTRY_DSN` si aplica.
 
-| Secret | Descripción |
-|--------|-------------|
-| `DEPLOY_HOST` | IP o hostname del servidor |
-| `DEPLOY_USER` | Usuario SSH |
-| `DEPLOY_PATH` | Ruta donde está la app (ej. `/var/www/quira`) |
-| `SSH_PRIVATE_KEY` | Clave privada SSH del deploy user |
+**Proxy / HTTPS (importante):** detrás del proxy de Railway, configura al menos:
 
-### Aplicación (producción)
+| Variable | Valor típico |
+|----------|----------------|
+| `SYMFONY_TRUSTED_PROXIES` | `REMOTE_ADDR` |
 
-| Secret | Descripción |
-|--------|-------------|
-| `APP_SECRET` | Cadena aleatoria |
-| `APP_URL` | URL de la API (ej. `https://api.quira.app`) |
-| `FRONTEND_URL` | URL del frontend para enlaces (ej. `https://quira.app`) |
-| `DATABASE_URL` | URL MySQL de producción |
-| `JWT_PASSPHRASE` | Frase para las claves JWT |
-| `MAILER_DSN` | DSN del mailer en producción |
-| `FIREBASE_CREDENTIALS_B64` | JSON de Firebase en base64 (recomendado) |
-| `TWILIO_ACCOUNT_SID` | |
-| `TWILIO_AUTH_TOKEN` | |
-| `TWILIO_WHATSAPP_FROM` | |
-| `TWILIO_SMS_FROM` | |
-| `GEMINI_API_KEY` | |
-| `STRIPE_SECRET_KEY` | Clave live de Stripe |
-| `STRIPE_WEBHOOK_SECRET` | Secret del webhook en producción |
-| `STRIPE_PRICE_SOLVER` | Price ID live SOLVER |
-| `STRIPE_PRICE_PRO` | Price ID live PRO |
-| `SUPABASE_URL` | |
-| `SUPABASE_SERVICE_ROLE_KEY` | |
-| `SUPABASE_BUCKET_AVATARS` | |
-| `SUPABASE_BUCKET_REQUESTS` | |
-| `CORS_ALLOW_ORIGIN` | (Opcional) Regex de orígenes permitidos |
+Symfony 8 ya lee por defecto `SYMFONY_TRUSTED_*` vía `framework.yaml` (ver referencia del bundle). Sin esto, URLs y esquemas (`https`) pueden salir mal.
 
-## Environment `production`
+### 3. Migraciones
 
-El job de deploy usa `environment: production`. Crea el environment en:
+Railway **no siempre** muestra **Release command** cuando el despliegue es solo por **Dockerfile**; solo ver **Custom start command** es normal. En este proyecto las migraciones se ejecutan en **`docker/entrypoint.sh`** al arrancar el contenedor (`doctrine:migrations:migrate` antes del `cache:warmup`). No hace falta configurarlas a mano en el panel si dejas el **start command vacío** (usa el `ENTRYPOINT` del Dockerfile).
 
-**Settings → Environments → New environment** → nombre: `production`
+Si en el futuro activas un **Release command** en Railway **y** mantienes el migrate en el entrypoint, las migraciones podrían ejecutarse dos veces por despliegue (la segunda suele ser no-op); en ese caso puede interesar quitar el `migrate` del entrypoint y dejar solo el release.
 
-Aquí puedes:
-- Añadir approval antes del deploy
-- Asignar secrets solo a este environment
+### 4. Arranque del contenedor
 
-## Preparación del servidor
+El **`docker/entrypoint.sh`**:
 
-1. PHP 8.4 con extensiones: ctype, iconv, intl, json, mbstring, pdo_mysql, openssl, curl, xml
-2. Composer (no obligatorio si despliegas con `vendor` incluido)
-3. MySQL accesible
-4. Directorio de deploy con permisos para `DEPLOY_USER`
-5. Clave pública del deploy user en `~/.ssh/authorized_keys` del servidor
+1. Genera el par JWT con Lexik si faltan (`lexik:jwt:generate-keypair --skip-if-exists`).
+2. Ejecuta `doctrine:migrations:migrate` en `prod`.
+3. Ejecuta `cache:warmup` en `prod`.
+4. Arranca **FrankenPHP** escuchando en **`PORT`** (Railway lo inyecta; por defecto el Dockerfile usa `8080`).
 
-## Flujo del deploy
+El **`Caddyfile`** sirve `public/` como document root (equivalente a Nginx + PHP-FPM).
 
-1. Tests pasan
-2. `composer install --no-dev`
-3. Generación de claves JWT
-4. Creación de `.env.local` con secrets
-5. Escritura de `config/secrets/firebase_credentials.json`
-6. rsync al servidor (excluye .git, .github, var/)
-7. SSH: `doctrine:migrations:migrate` y `cache:clear`
+### 5. JWT y despliegues
 
-## Cambiar la rama de deploy
+El sistema de archivos del contenedor es **efímero**. Si en cada despliegue **no** persistes `config/jwt/*.pem`, el entrypoint generará un par nuevo cuando falten y **invalidará** los tokens ya emitidos.
 
-Por defecto solo se despliega en push a `main`. Para usar otra rama, edita el `if` del job `deploy` en `.github/workflows/ci.yml`:
+Opciones recomendadas:
 
-```yaml
-if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-```
+- **Volumen** en Railway montado en `config/jwt` (misma ruta que en local), **o**
+- Inyectar los PEM como variables/secret y escribirlos en un script de arranque (avanzado; Lexik está configurado con rutas a ficheros).
 
-## Notas
+Mantén el mismo `JWT_PASSPHRASE` entre despliegues si reutilizas claves.
 
-- Las claves JWT se generan en cada deploy; usa el mismo `JWT_PASSPHRASE` siempre.
-- `FIREBASE_CREDENTIALS_B64`: crea el base64 así (macOS):
+### 6. Firebase u otros ficheros secretos
+
+Si `FIREBASE_CREDENTIALS` apunta a un path (p. ej. `config/secrets/firebase_credentials.json`), ese archivo debe existir en runtime: variable multilínea, base64 + decode en un script de inicio, o volumen. No lo subas al repositorio.
+
+### 7. Prueba local de la imagen
 
 ```bash
-base64 -i config/secrets/firebase_credentials.json | pbcopy
+docker build -t quira-api:local .
+docker run --rm -p 8080:8080 -e PORT=8080 -e APP_SECRET=changeme -e DATABASE_URL="mysql://..." quira-api:local
 ```
 
-- Ajusta `CORS_ALLOW_ORIGIN` para permitir el dominio de tu frontend (ej. `^https://(www\.)?quira\.app$`).
+(Ajusta el resto de variables que necesite `cache:warmup` y la app.)
 
-## Dominio y DNS (quira.app)
+---
 
-Recomendación:
-- Frontend en `https://quira.app`
-- API en `https://api.quira.app`
+## Qué **no** hace falta desde GitHub
 
-Pasos (a alto nivel):
-- **A/AAAA**: apunta `api.quira.app` a la IP del servidor (y `quira.app` al hosting del frontend).
-- **TLS/HTTPS**: en el servidor usa Let’s Encrypt (Nginx/Caddy). La API debe servir siempre por HTTPS.
+Secrets tipo `DEPLOY_HOST`, `SSH_PRIVATE_KEY`, `DEPLOY_PATH`, rsync ni SSH: eso era para un **VPS** desplegado desde Actions.
+
+---
+
+## Alternativa: VPS propio
+
+Mismas variables que en Railway, normalmente en `.env.local`. Tabla de referencia:
+
+| Variable | Uso |
+|----------|-----|
+| `APP_SECRET` | Obligatorio en prod |
+| `APP_URL` | URL pública de la API |
+| `FRONTEND_URL` | Enlaces (p. ej. recuperar contraseña) |
+| `DATABASE_URL` | MySQL |
+| `JWT_PASSPHRASE` | Frase del par de claves JWT |
+| `MAILER_DSN` | Correo |
+| Firebase / Twilio / Stripe / Supabase / `GEMINI_API_KEY` | Según funciones |
+| `CORS_ALLOW_ORIGIN` | Regex de orígenes permitidos |
+| `SENTRY_DSN` | (Opcional) [Sentry](https://sentry.io) |
+| `SYMFONY_TRUSTED_PROXIES` | Tras proxy/Ingress (p. ej. `REMOTE_ADDR`) |
+
+---
+
+## Dominio y DNS
+
+- Ajusta `CORS_ALLOW_ORIGIN` y `FRONTEND_URL` al dominio real del frontend.
+- En Railway, hasta añadir dominio propio suele usarse `*.up.railway.app`.

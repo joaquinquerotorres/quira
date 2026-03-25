@@ -1,0 +1,35 @@
+# Git / IDE
+.git
+.github
+.gitignore
+.idea
+.vscode
+
+# Dependencias y artefactos locales (se instalan en la imagen)
+/vendor
+/node_modules
+/var
+/public/bundles
+/public/assets
+/public/uploads
+/assets/vendor
+
+# Entorno y secretos (Railway inyecta variables)
+.env
+.env.*
+!.env
+!.env.local.example
+
+# Tests y tooling
+/tests
+/phpunit.dist.xml
+/phpunit.xml
+.phpunit.cache
+/bin/.phpunit.result.cache
+*.md
+docs/
+
+# Otros
+*.bak
+*.tmp
+.DS_Store

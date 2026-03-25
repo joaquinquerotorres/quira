@@ -20,4 +20,5 @@ return [
     League\FlysystemBundle\FlysystemBundle::class => ['all' => true],
     Doctrine\Bundle\FixturesBundle\DoctrineFixturesBundle::class => ['dev' => true, 'test' => true],
     Kreait\Firebase\Symfony\Bundle\FirebaseBundle::class => ['all' => true],
+    Sentry\SentryBundle\SentryBundle::class => ['all' => true],
 ];
