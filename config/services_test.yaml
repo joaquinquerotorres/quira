@@ -1,0 +1,4 @@
+services:
+    App\Service\StripeService:
+        class: App\Tests\TestDoubles\TestStripeService
+

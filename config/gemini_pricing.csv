@@ -1,0 +1,77 @@
+Categoria,Subcategoria,Zona,Precio_Min,Precio_Max,Unidad,Complejidad
+Fontanería,Sustitución de grifo monomando (Lavabo/Fregadero),Córdoba,3500,7500,Unidad,Baja
+Fontanería,Instalación de columna de ducha/Conjunto,Córdoba,5500,11000,Unidad,Media
+Fontanería,Reparación fuga en tubería de cobre (soldadura),Córdoba,6500,14000,Servicio,Media
+Fontanería,Reparación fuga en tubería de multicapa/PVC,Córdoba,5000,11000,Servicio,Media
+Fontanería,Desatasco manual de sifón/desagüe,Córdoba,4000,8000,Servicio,Baja
+Fontanería,Desatasco mecánico con máquina de presión,Andalucía,9000,18000,Servicio,Media
+Fontanería,Localización de fuga con cámara térmica/geófono,Andalucía,12000,35000,Servicio,Alta
+Fontanería,Sustitución de mecanismo de descarga cisterna,Córdoba,4500,9000,Servicio,Baja
+Fontanería,Instalación de termo eléctrico hasta 100L,Andalucía,12000,22000,Instalación,Media
+Fontanería,Sustitución de llave de escuadra o paso,Córdoba,2500,5500,Unidad,Baja
+Fontanería,Instalación de equipo de ósmosis (mano obra),Córdoba,6500,15000,Servicio,Media
+Fontanería,Instalación de descalcificador doméstico,Andalucía,15000,35000,Instalación,Alta
+Fontanería,Sustitución de bajante comunitaria (tramo metro),Andalucía,15000,45000,Metro,Alta
+Electricidad,Instalación de punto de luz/Lámpara,Córdoba,2500,5000,Unidad,Baja
+Electricidad,Sustitución de enchufe o interruptor,Córdoba,1200,3000,Unidad,Baja
+Electricidad,Instalación de ventilador de techo,Córdoba,4500,9500,Unidad,Media
+Electricidad,Sustitución de diferencial o térmico defectuoso,Córdoba,3500,7500,Unidad,Media
+Electricidad,Reforma de cuadro eléctrico (vivienda estándar),Andalucía,25000,55000,Instalación,Alta
+Electricidad,Boletín Eléctrico / Certificado CIE,Andalucía,9000,18000,Certificado,Media
+Electricidad,Instalación de videoportero (mano obra),Córdoba,12000,28000,Instalación,Alta
+Electricidad,Punto de recarga para coche eléctrico (Wallbox),España,45000,110000,Instalación,Alta
+Electricidad,Instalación de antena TV o toma adicional,Córdoba,5500,12000,Servicio,Media
+Electricidad,Detección y reparación de derivación/fuga,Córdoba,6000,18000,Servicio,Alta
+Electricidad,Instalación de domótica básica (Shelly/Sonoff),Córdoba,3500,8500,Dispositivo,Media
+Albañilería,Alicatado de paramentos (mano obra),Córdoba,2000,4500,m2,Media
+Albañilería,Solado con baldosa cerámica/gres,Córdoba,1800,4000,m2,Media
+Albañilería,Tabiquería de ladrillo hueco (sin enlucir),Córdoba,2500,5000,m2,Media
+Albañilería,Falso techo de Pladur (mano obra),Córdoba,1800,3500,m2,Media
+Albañilería,Enlucido de paredes con yeso/perlita,Córdoba,900,1800,m2,Baja
+Albañilería,Desescombro y transporte a punto limpio,Córdoba,1500,3500,m2,Baja
+Albañilería,Cambio de bañera por plato de ducha (obra),Andalucía,35000,75000,Servicio,Alta
+Albañilería,Impermeabilización de azotea/terraza,Andalucía,3800,9000,m2,Alta
+Albañilería,Reparación de humedades/filtraciones,Córdoba,5000,15000,Servicio,Alta
+Albañilería,Apertura y cierre de rozas (fontanería/elect),Córdoba,1200,2800,Metro,Media
+Climatización,Instalación Split 1x1 hasta 3000 frig,Andalucía,14000,22000,Instalación,Media
+Climatización,Instalación aire por conductos (mano obra),Andalucía,45000,95000,Instalación,Alta
+Climatización,Carga de gas refrigerante R32/R410A,Córdoba,8500,18000,Servicio,Media
+Climatización,Mantenimiento preventivo (limpieza/filtros),Córdoba,5500,9500,Servicio,Baja
+Climatización,Instalación de caldera de gas condensación,España,35000,70000,Instalación,Alta
+Climatización,Instalación de aerotermia (mano obra básica),España,150000,450000,Instalación,Alta
+Climatización,Limpieza y purgado de radiadores (vivienda),Córdoba,4500,9000,Servicio,Media
+Climatización,Instalación de estufa de pellets (salida humo),Andalucía,25000,55000,Instalación,Alta
+Pintura,Pintura plástica blanca lisa (2 manos),Córdoba,650,1100,m2,Baja
+Pintura,Pintura plástica color (2 manos),Córdoba,1000,1800,m2,Baja
+Pintura,Quitar gotelé y alisado (mano de obra),Córdoba,1400,3200,m2,Alta
+Pintura,Lacado de puertas en blanco (a pistola/unidad),Córdoba,7500,14000,Unidad,Alta
+Pintura,Tratamiento de madera exterior/Lasur,Andalucía,1500,3500,m2,Media
+Pintura,Pintura de fachada (pintura al silicato),Andalucía,1300,3800,m2,Media
+Pintura,Pintura de suelo epoxi (garajes),España,1800,4500,m2,Alta
+Pintura,Colocación de papel pintado (mano obra),Córdoba,1200,2800,m2,Media
+Jardinería,Mantenimiento básico (siega y soplado),Córdoba,3500,8000,Servicio,Baja
+Jardinería,Diseño e instalación riego automático,Andalucía,8000,25000,Servicio,Media
+Jardinería,Poda de palmeras o árboles en altura,Andalucía,7500,35000,Unidad,Alta
+Jardinería,Abonado y tratamiento fitosanitario,Córdoba,4500,12000,Servicio,Media
+Jardinería,Instalación de césped artificial (mano obra),Andalucía,2200,5500,m2,Media
+Jardinería,Limpieza de parcelas/Desbroce,Córdoba,150,500,m2,Baja
+Jardinería,Plantación de setos/Arbustos (mano obra),Córdoba,500,1500,Unidad,Baja
+Limpieza,Limpieza doméstica por horas,Córdoba,1100,1500,Hora,Baja
+Limpieza,Limpieza de cristales y persianas,Córdoba,1300,2500,Hora,Baja
+Limpieza,Limpieza fin de obra (profunda),Córdoba,14000,45000,Servicio,Alta
+Limpieza,Limpieza técnica de sofá (por plaza),Córdoba,3000,7500,Plaza,Media
+Limpieza,Limpieza de colchón (desinfección),Córdoba,4500,9500,Unidad,Media
+Limpieza,Limpieza de alfombras/moquetas,Córdoba,800,2000,m2,Media
+Limpieza,Tratamiento de abrillantado/pulido terrazo,Córdoba,500,1200,m2,Media
+Manitas,Sustitución de cinta de persiana,Córdoba,3500,6500,Unidad,Baja
+Manitas,Montaje de mueble tipo kit (pequeño),Córdoba,2500,5500,Unidad,Baja
+Manitas,Montaje de armario grande (3+ puertas),Córdoba,6500,16000,Unidad,Media
+Manitas,Instalación de soporte TV de gran formato,Córdoba,3500,7500,Unidad,Media
+Manitas,Colgar cortinas / estores / rieles,Córdoba,2500,5500,Unidad,Baja
+Manitas,Ajuste de puertas de paso/roces,Córdoba,3000,6000,Servicio,Baja
+Manitas,Sustitución de bombín de cerradura,Córdoba,3500,8500,Unidad,Media
+Manitas,Sellado de bañera/ducha con silicona,Córdoba,2500,5500,Servicio,Baja
+Manitas,Montaje de accesorios de baño (sin taladro),Córdoba,1500,3500,Unidad,Baja
+Manitas,Reparación de persiana atascada (lamas),Córdoba,4000,9000,Servicio,Media
+Manitas,Instalación de tendedero exterior,Córdoba,3500,7500,Unidad,Media
+Manitas,Sustitución de manivelas de puertas,Córdoba,1500,3500,Unidad,Baja

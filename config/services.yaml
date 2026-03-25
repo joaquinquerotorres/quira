@@ -1,0 +1,75 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+# See also https://symfony.com/doc/current/service_container/import.html
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+parameters:
+    requests_uploads_directory: '%kernel.project_dir%/public/uploads/requests'
+    # Si TWILIO_SMS_FROM está vacío o no existe, se usa modo sandbox (OTP solo en log)
+    env_default_twilio_sms_from: ''
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+
+    # makes classes in src/ available to be used as services
+    # this creates a service per class whose id is the fully-qualified class name
+    App\:
+        resource: '../src/'
+
+    # add more service definitions when explicit configuration is needed
+    # please note that last definitions always *replace* previous ones
+    App\Service\NotificationService:
+        arguments:
+            $twilioSid: '%env(TWILIO_ACCOUNT_SID)%'
+            $twilioToken: '%env(TWILIO_AUTH_TOKEN)%'
+            $twilioFrom: '%env(TWILIO_WHATSAPP_FROM)%'
+
+    App\Security\LoginSuccessHandler:
+        arguments:
+            $jwtSuccessHandler: '@lexik_jwt_authentication.handler.authentication_success'
+
+    App\Service\EmailVerificationService:
+        arguments:
+            $frontendUrl: '%env(FRONTEND_URL)%'
+
+    App\Service\PasswordResetService:
+        arguments:
+            $frontendUrl: '%env(FRONTEND_URL)%'
+
+    App\Service\PhoneVerificationService:
+        arguments:
+            $twilioSid: '%env(TWILIO_ACCOUNT_SID)%'
+            $twilioToken: '%env(TWILIO_AUTH_TOKEN)%'
+            $twilioSmsFrom: '%env(default:env_default_twilio_sms_from:TWILIO_SMS_FROM)%'
+
+    App\Service\StripeService:
+        arguments:
+            $secretKey: '%env(STRIPE_SECRET_KEY)%'
+            $priceSolver: '%env(STRIPE_PRICE_SOLVER)%'
+            $pricePro: '%env(STRIPE_PRICE_PRO)%'
+
+    App\Controller\StripeWebhookController:
+        arguments:
+            $webhookSecret: '%env(STRIPE_WEBHOOK_SECRET)%'
+
+    # Inyecta phoneNumber solo en request.assignedProfessional (no en bids)
+    App\Serializer\RequestAssignedProfessionalNormalizer:
+        decorates: api_platform.jsonld.normalizer.item
+        arguments:
+            $inner: '@.inner'
+
+    App\Serializer\RequestAssignedProfessionalNormalizerJson:
+        class: App\Serializer\RequestAssignedProfessionalNormalizer
+        decorates: api_platform.serializer.normalizer.item
+        arguments:
+            $inner: '@.inner'
+
+when@test:
+    imports:
+        - { resource: services_test.yaml }

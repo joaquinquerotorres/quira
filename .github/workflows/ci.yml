@@ -1,0 +1,182 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: quira_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u root -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: ctype, iconv, intl, json, mbstring, pdo_mysql, openssl, curl, xml
+          coverage: none
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: composer install --no-progress --prefer-dist
+
+      - name: Generate JWT keys
+        run: php bin/console lexik:jwt:generate-keypair --skip-if-exists
+        env:
+          JWT_PASSPHRASE: ''
+
+      - name: Create database
+        run: php bin/console doctrine:database:create --if-not-exists
+        env:
+          APP_ENV: test
+          APP_SECRET: ci-secret
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/quira_test?serverVersion=8.0&charset=utf8mb4
+
+      - name: Run migrations
+        run: php bin/console doctrine:migrations:migrate --no-interaction
+        env:
+          APP_ENV: test
+          APP_SECRET: ci-secret
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/quira_test?serverVersion=8.0&charset=utf8mb4
+
+      - name: Execute tests
+        run: php bin/phpunit
+        env:
+          APP_ENV: test
+          APP_SECRET: ci-secret
+          APP_DEBUG: 0
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/quira_test?serverVersion=8.0&charset=utf8mb4
+          MAILER_DSN: null://null
+          JWT_SECRET_KEY: ${{ github.workspace }}/config/jwt/private.pem
+          JWT_PUBLIC_KEY: ${{ github.workspace }}/config/jwt/public.pem
+          JWT_PASSPHRASE: ''
+          # Secrets vacíos para tests (no se usan en unit tests)
+          FIREBASE_CREDENTIALS: ''
+          TWILIO_ACCOUNT_SID: ''
+          TWILIO_AUTH_TOKEN: ''
+          GEMINI_API_KEY: ''
+          STRIPE_SECRET_KEY: sk_test_dummy
+          STRIPE_WEBHOOK_SECRET: whsec_dummy
+          STRIPE_PRICE_SOLVER: price_dummy
+          STRIPE_PRICE_PRO: price_dummy
+          SUPABASE_URL: ''
+          SUPABASE_SERVICE_ROLE_KEY: ''
+          SUPABASE_BUCKET_AVATARS: avatars
+          SUPABASE_BUCKET_REQUESTS: requests
+          APP_URL: http://localhost
+
+  deploy:
+    name: Deploy to production
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: ctype, iconv, intl, json, mbstring, pdo_mysql, openssl, curl, xml
+
+      - name: Install dependencies
+        run: composer install --no-progress --prefer-dist --no-dev
+
+      - name: Generate JWT keys
+        run: php bin/console lexik:jwt:generate-keypair --skip-if-exists
+        env:
+          JWT_PASSPHRASE: ${{ secrets.JWT_PASSPHRASE }}
+
+      - name: Create .env.local for production
+        run: |
+          cat << 'ENVFILE' > .env.local
+          APP_ENV=prod
+          APP_SECRET=${{ secrets.APP_SECRET }}
+          APP_URL=${{ secrets.APP_URL }}
+          FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          MAILER_DSN=${{ secrets.MAILER_DSN }}
+          JWT_PASSPHRASE=${{ secrets.JWT_PASSPHRASE }}
+          FIREBASE_CREDENTIALS=config/secrets/firebase_credentials.json
+          TWILIO_ACCOUNT_SID=${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN=${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_WHATSAPP_FROM=${{ secrets.TWILIO_WHATSAPP_FROM }}
+          TWILIO_SMS_FROM=${{ secrets.TWILIO_SMS_FROM }}
+          GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+          STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          STRIPE_PRICE_SOLVER=${{ secrets.STRIPE_PRICE_SOLVER }}
+          STRIPE_PRICE_PRO=${{ secrets.STRIPE_PRICE_PRO }}
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_BUCKET_AVATARS=${{ secrets.SUPABASE_BUCKET_AVATARS }}
+          SUPABASE_BUCKET_REQUESTS=${{ secrets.SUPABASE_BUCKET_REQUESTS }}
+          CORS_ALLOW_ORIGIN=${{ secrets.CORS_ALLOW_ORIGIN }}
+          ENVFILE
+
+      - name: Create Firebase credentials file
+        run: |
+          mkdir -p config/secrets
+          # Usar base64 para evitar problemas de comillas/saltos de línea en YAML.
+          echo '${{ secrets.FIREBASE_CREDENTIALS_B64 }}' | base64 --decode > config/secrets/firebase_credentials.json
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy via rsync
+        run: |
+          rsync -avz --delete \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='var/' \
+            --exclude='node_modules' \
+            --exclude='.env' \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            ./ ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}/
+
+      - name: Run post-deploy commands
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            "cd ${{ secrets.DEPLOY_PATH }} && \
+             php bin/console doctrine:migrations:migrate --no-interaction --env=prod && \
+             php bin/console cache:clear --env=prod && \
+             php bin/console cache:warmup --env=prod"

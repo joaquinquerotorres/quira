@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- https://phpunit.readthedocs.io/en/latest/configuration.html -->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         colors="true"
+         failOnDeprecation="true"
+         failOnNotice="true"
+         failOnWarning="true"
+         bootstrap="tests/bootstrap.php"
+         cacheDirectory=".phpunit.cache"
+>
+    <php>
+        <ini name="display_errors" value="1" />
+        <ini name="error_reporting" value="-1" />
+        <server name="APP_ENV" value="test" force="true" />
+        <server name="SHELL_VERBOSITY" value="-1" />
+        <!-- JWT keys for API tests (CI uses same paths). -->
+        <server name="JWT_SECRET_KEY" value="%kernel.project_dir%/config/jwt/private.pem" force="true" />
+        <server name="JWT_PUBLIC_KEY" value="%kernel.project_dir%/config/jwt/public.pem" force="true" />
+        <server name="JWT_PASSPHRASE" value="" force="true" />
+        <!-- External integrations disabled / faked in tests -->
+        <server name="TWILIO_ACCOUNT_SID" value="" force="true" />
+        <server name="TWILIO_AUTH_TOKEN" value="" force="true" />
+        <server name="TWILIO_SMS_FROM" value="" force="true" />
+        <server name="STRIPE_SECRET_KEY" value="sk_test_dummy" force="true" />
+        <server name="STRIPE_PRICE_SOLVER" value="price_dummy" force="true" />
+        <server name="STRIPE_PRICE_PRO" value="price_dummy" force="true" />
+    </php>
+
+    <testsuites>
+        <testsuite name="Project Test Suite">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+
+    <!-- Run tests excluding DB-dependent ones by default. Use: php bin/phpunit -g database -->
+    <groups>
+        <exclude>
+            <group>database</group>
+        </exclude>
+    </groups>
+
+    <source ignoreSuppressionOfDeprecations="true"
+            ignoreIndirectDeprecations="true"
+            restrictNotices="true"
+            restrictWarnings="true"
+    >
+        <include>
+            <directory>src</directory>
+        </include>
+
+        <deprecationTrigger>
+            <method>Doctrine\Deprecations\Deprecation::trigger</method>
+            <method>Doctrine\Deprecations\Deprecation::delegateTriggerToBackend</method>
+            <function>trigger_deprecation</function>
+        </deprecationTrigger>
+    </source>
+
+    <extensions>
+    </extensions>
+</phpunit>

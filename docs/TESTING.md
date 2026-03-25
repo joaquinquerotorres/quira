@@ -1,0 +1,104 @@
+# Guía de tests
+
+## Ejecución
+
+```bash
+# Todos los tests (excluye grupo database por defecto)
+php bin/phpunit
+
+# Solo los tests de API/contrato (requieren DB + JWT keys)
+php bin/phpunit tests/Api
+
+# Un archivo concreto
+php bin/phpunit tests/Dto/StripeCheckoutInputTest.php
+
+# Varios archivos
+php bin/phpunit tests/Dto/StripeCheckoutInputTest.php tests/Service/StripeCheckoutSessionHandlerTest.php tests/Controller/StripeCheckoutControllerTest.php
+
+# Incluir tests de base de datos
+php bin/phpunit --group database
+```
+
+## Estructura de tests
+
+| Directorio | Contenido |
+|------------|-----------|
+| tests/Controller/ | StripeCheckoutControllerTest, SocialLoginControllerTest |
+| tests/Api/ | Tests de contrato/E2E contra endpoints reales (`/api/*`) |
+| tests/State/ | BidProfessionalProcessor, BidAcceptanceProcessor, RequestClientProcessor, etc. |
+| tests/Service/ | StripeCheckoutSessionHandlerTest |
+| tests/Repository/ | BidRepositoryTest |
+| tests/Entity/ | UserTest, ProfessionalProfileTest, ReviewTest |
+| tests/Doctrine/ | CurrentUserExtensionTest |
+| tests/Security/ | LoginSuccessHandlerTest, RequestAddressVoterTest |
+| tests/Validator/ | CleanTextValidatorTest, NoContactInfoValidatorTest |
+| tests/Serializer/ | PointDenormalizerTest, RequestAssignedProfessionalNormalizerTest |
+| tests/Dto/ | PredictInputTest, StripeCheckoutInputTest |
+| tests/Enum/ | BidStatusTest, CategoryTest, RequestStatusTest, RiskLevelTest |
+
+## Configuración
+
+- `tests/bootstrap.php` - Carga .env y autoloader
+- `phpunit.dist.xml` - Config PHPUnit
+- Grupo `database` excluido por defecto (tests que requieren DB)
+- Para tests con DB: marcar con `#[Group('database')]` y ejecutar con `--group database`
+- JWT en `test`:
+  - `config/packages/lexik_jwt_authentication.yaml` lee `JWT_SECRET_KEY`, `JWT_PUBLIC_KEY` y `JWT_PASSPHRASE`.
+  - `phpunit.dist.xml` fuerza estos valores para `APP_ENV=test` (mismas rutas que CI), para que los tests que llaman endpoints protegidos puedan generar tokens.
+  - Las claves viven en `config/jwt/*.pem` y están gitignored. Si cambias el passphrase local o faltan, regénéralas con:
+
+```bash
+JWT_PASSPHRASE='' php bin/console lexik:jwt:generate-keypair --env=test --skip-if-exists
+```
+
+## Tests de API / contrato (end-to-end)
+
+Los tests en `tests/Api/` ejercitan endpoints reales (API Platform / controllers) y validan “contratos” críticos:
+
+- **Base**: `tests/Api/ApiTestCase.php`
+  - Limpia tablas entre tests (TRUNCATE) para evitar colisiones por claves únicas.
+  - Helpers de creación de dominio: `createClientUser`, `createProfessionalUser`, `createRequest`, `createBid`, `createVisitRequest`.
+  - Autenticación: genera JWT y lo envía como `Authorization: Bearer <token>` en cada request.
+
+- **RequestsContractTest**
+  - Verifica privacidad/serialización en `GET /api/requests/{id}` (teléfonos y `preciseAddress`).
+  - Nota: por el filtrado de `CurrentUserExtension`, un profesional ajeno sin bid/visita aceptada puede recibir 404 (esperado).
+
+- **CanBidTest**
+  - Verifica `GET /api/professionals/me/can-bid` y el cómputo del límite mensual (excluyendo únicamente retiradas: `REJECTED` en request `PENDING`).
+
+- **VisitRequestContractTest**
+  - Verifica el flujo de visita: solicitar visita, aceptar visita, y que tras la aceptación el pro puede ver `preciseAddress`.
+  - Verifica que se crean notificaciones (`VISIT_REQUEST_CREATED`, `VISIT_REQUEST_ACCEPTED`) cuando `notifyRequestActivity` está activado.
+
+- **PhoneVerificationApiTest**
+  - Verifica `POST /api/verify/phone/send` + `POST /api/verify/phone/confirm`, incluyendo el caso “mismo número en cliente y profesional” (al confirmar se verifican ambos perfiles).
+  - Verifica el caso `skipped: true` cuando el otro perfil ya tiene el mismo número verificado.
+
+- **StripeCancelSubscriptionApiTest**
+  - Verifica `POST /api/stripe/cancel-subscription` (marca `subscriptionCancelAtPeriodEnd` sin cambiar `paidThroughAt` ni roles).
+  - En `test` se usa un fake de Stripe para evitar red.
+
+## Tests de comandos
+
+- **CalibratePricingCommandTest**
+  - Ejecuta `app:calibrate-pricing` con datos en BD y valida que el CSV añade nuevas subcategorías con `Zona = Córdoba` y `Complejidad` derivada del riesgo predominante.
+
+## Tests de Stripe
+
+- StripeCheckoutInputTest: validación del DTO
+- StripeCheckoutControllerTest: controller con TestableStripeCheckoutController (mock de usuario)
+- StripeCheckoutSessionHandlerTest: lógica del webhook
+
+## Tests de serialización
+
+- **PointDenormalizerTest**: deserialización de puntos GeoJSON.
+- **RequestAssignedProfessionalNormalizerTest**: normalizer de Request (GET /api/requests/{id}):
+  - Inyecta `phoneNumber` en `assignedProfessional`; inyecta `avatar`, `rating`, `reviewCount` en el nodo `client`.
+  - Oculta `preciseAddress` cuando el usuario no tiene permiso (VIEW_PRECISE_ADDRESS); oculta `client.phoneNumber` cuando el usuario no es el pro asignado ni tiene visita aceptada.
+  - Tests de delegación: normalize, denormalize, supportsNormalization, supportsDenormalization, setSerializer, getSupportedTypes.
+
+## Notas
+
+- StripeService no es final para permitir mocks
+- Los tests del controller usan subclase TestableStripeCheckoutController que inyecta el usuario de prueba
