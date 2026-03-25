@@ -94,3 +94,9 @@ Mismas variables que en Railway, normalmente en `.env.local`. Tabla de referenci
 
 - Ajusta `CORS_ALLOW_ORIGIN` y `FRONTEND_URL` al dominio real del frontend.
 - En Railway, hasta añadir dominio propio suele usarse `*.up.railway.app`.
+
+### MySQL: `SQLSTATE[HY000] [2002] No such file or directory`
+
+Suele ocurrir cuando el host de la URL es `localhost`: en Linux, PHP/PDO intenta un **socket Unix** y en el contenedor no existe. El `docker/entrypoint.sh` sustituye `localhost` por `127.0.0.1` para forzar TCP.
+
+Si MySQL es **otro servicio** en Railway, **no** uses `localhost` (ni siquiera con ese truco): la API debe usar la URL interna del plugin MySQL, p. ej. `${{NombreDelServicio.MYSQL_URL}}` o `MYSQLHOST` + `MYSQLPORT` del mismo [proyecto](https://docs.railway.com/guides/mysql).
