@@ -55,6 +55,8 @@ done
 
 if ! php bin/console doctrine:query:sql "SELECT 1" --env=prod --no-interaction --no-ansi >/dev/null 2>&1; then
 	echo "ERROR: no se pudo conectar a la base de datos tras $DB_WAIT_RETRIES intentos. Revisa DATABASE_URL." >&2
+	echo "DEBUG: mostrando el error real de Doctrine (doctrine:query:sql -vvv):" >&2
+	php bin/console doctrine:query:sql "SELECT 1" --env=prod --no-interaction --no-ansi -vvv 1>&2 || true
 	exit 1
 fi
 
