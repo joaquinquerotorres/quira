@@ -8,7 +8,9 @@ nelmio_cors:
         max_age: 3600
     paths:
         '^/api/':
-            allow_origin: ['*']
+            # Apps nativas no aplican CORS; esto solo importa para navegadores.
+            # Evitamos '*' para no abrir la API a cualquier origen web por accidente.
+            allow_origin: ['%env(CORS_ALLOW_ORIGIN)%']
             allow_headers: ['Content-Type', 'Authorization']
             allow_methods: ['POST', 'PUT', 'GET', 'PATCH', 'DELETE', 'OPTIONS']
             max_age: 3600

@@ -95,4 +95,3 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ''
           SUPABASE_BUCKET_AVATARS: avatars
           SUPABASE_BUCKET_REQUESTS: requests
-          APP_URL: http://localhost

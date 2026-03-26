@@ -35,7 +35,7 @@ cp .env .env.local
 
 | Variable | Descripción |
 |----------|-------------|
-| `APP_URL` | URL base de la API (para enlaces de verificación) |
+| `FRONTEND_URL` | URL del frontend para enlaces de verificación y recuperación de contraseña |
 
 ### JWT
 

@@ -12,7 +12,7 @@ El repo incluye un **`Dockerfile`** (FrankenPHP + PHP 8.4). El **CI en GitHub Ac
 
 ### 2. Variables de entorno obligatorias (resumen)
 
-Define en el servicio las mismas claves que usarías en `.env.local` en un VPS: `APP_SECRET`, `APP_URL`, `FRONTEND_URL`, `DATABASE_URL`, `JWT_PASSPHRASE`, integraciones (`GEMINI_API_KEY`, Stripe, Twilio, Supabase, Firebase, etc.), `CORS_ALLOW_ORIGIN`, `SENTRY_DSN` si aplica.
+Define en el servicio las mismas claves que usarías en `.env.local` en un VPS: `APP_SECRET`, `FRONTEND_URL`, `DATABASE_URL`, `JWT_PASSPHRASE`, integraciones (`GEMINI_API_KEY`, Stripe, Twilio, Supabase, Firebase, etc.), `CORS_ALLOW_ORIGIN` (solo si hay web), `SENTRY_DSN` si aplica.
 
 **Proxy / HTTPS (importante):** detrás del proxy de Railway, configura al menos:
 
@@ -32,10 +32,11 @@ Si en el futuro activas un **Release command** en Railway **y** mantienes el mig
 
 El **`docker/entrypoint.sh`**:
 
-1. Genera el par JWT con Lexik si faltan (`lexik:jwt:generate-keypair --skip-if-exists`).
-2. Ejecuta `doctrine:migrations:migrate` en `prod`.
-3. Ejecuta `cache:warmup` en `prod`.
-4. Arranca **FrankenPHP** escuchando en **`PORT`** (Railway lo inyecta; por defecto el Dockerfile usa `8080`).
+1. Verifica claves JWT; si faltan, solo genera si `JWT_GENERATE_KEYS=1`.
+2. Espera a MySQL con retry (`doctrine:query:sql "SELECT 1"`).
+3. Ejecuta migraciones si `RUN_MIGRATIONS=1` (por defecto).
+4. Ejecuta `cache:warmup` en `prod`.
+5. Arranca **FrankenPHP** escuchando en **`PORT`**.
 
 El **`Caddyfile`** sirve `public/` como document root (equivalente a Nginx + PHP-FPM).
 
@@ -49,6 +50,15 @@ Opciones recomendadas:
 - Inyectar los PEM como variables/secret y escribirlos en un script de arranque (avanzado; Lexik está configurado con rutas a ficheros).
 
 Mantén el mismo `JWT_PASSPHRASE` entre despliegues si reutilizas claves.
+
+Variables útiles para Railway:
+
+| Variable | Uso |
+|----------|-----|
+| `JWT_GENERATE_KEYS` | `1` solo para el primer deploy si no hay volumen con `config/jwt` |
+| `RUN_MIGRATIONS` | `1` (default) ejecuta migraciones al boot; `0` las desactiva si ya las haces fuera |
+| `DB_WAIT_RETRIES` | Número de intentos de espera a MySQL (default 20) |
+| `DB_WAIT_SECONDS` | Segundos entre intentos (default 2) |
 
 ### 6. Firebase u otros ficheros secretos
 
@@ -78,7 +88,6 @@ Mismas variables que en Railway, normalmente en `.env.local`. Tabla de referenci
 | Variable | Uso |
 |----------|-----|
 | `APP_SECRET` | Obligatorio en prod |
-| `APP_URL` | URL pública de la API |
 | `FRONTEND_URL` | Enlaces (p. ej. recuperar contraseña) |
 | `DATABASE_URL` | MySQL |
 | `JWT_PASSPHRASE` | Frase del par de claves JWT |

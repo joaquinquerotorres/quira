@@ -11,11 +11,48 @@ fi
 # Sustituir por 127.0.0.1 fuerza TCP (solo aplica si MySQL escucha ahí; entre servicios Railway usa otro hostname y no toca esto).
 export DATABASE_URL=$(printf '%s' "$DATABASE_URL" | sed -e 's/@localhost:/@127.0.0.1:/g' -e 's|@localhost/|@127.0.0.1/|g')
 
-# Claves JWT: el volumen del contenedor es efímero; generar si faltan (JWT_PASSPHRASE en env)
-php bin/console lexik:jwt:generate-keypair --skip-if-exists --no-ansi
+# JWT keys:
+# - En producción NO queremos rotarlas accidentalmente.
+# - Si no hay volumen con /app/config/jwt, usa JWT_GENERATE_KEYS=1 solo para el primer deploy.
+JWT_SECRET_KEY_PATH="${JWT_SECRET_KEY:-/app/config/jwt/private.pem}"
+JWT_PUBLIC_KEY_PATH="${JWT_PUBLIC_KEY:-/app/config/jwt/public.pem}"
 
-# DB: Railway a menudo no ofrece "Release command" con Dockerfile; migraciones al arrancar
-php bin/console doctrine:migrations:migrate --no-interaction --env=prod --no-ansi
+if [ -f "$JWT_SECRET_KEY_PATH" ] && [ -f "$JWT_PUBLIC_KEY_PATH" ]; then
+	: "JWT keys present"
+else
+	if [ "${JWT_GENERATE_KEYS:-0}" = "1" ]; then
+		php bin/console lexik:jwt:generate-keypair --skip-if-exists --no-ansi
+	else
+		echo "ERROR: faltan claves JWT en $JWT_SECRET_KEY_PATH / $JWT_PUBLIC_KEY_PATH." >&2
+		echo "Solución: monta un volumen persistente en /app/config/jwt o fija JWT_GENERATE_KEYS=1 solo para el primer arranque." >&2
+		exit 1
+	fi
+fi
+
+# DB readiness + migraciones:
+# Railway puede tardar en exponer MySQL al arrancar. Hacemos retry/backoff.
+DB_WAIT_RETRIES="${DB_WAIT_RETRIES:-20}"
+DB_WAIT_SECONDS="${DB_WAIT_SECONDS:-2}"
+RUN_MIGRATIONS="${RUN_MIGRATIONS:-1}"
+
+i=1
+while [ "$i" -le "$DB_WAIT_RETRIES" ]; do
+	if php bin/console doctrine:query:sql "SELECT 1" --env=prod --no-interaction --no-ansi >/dev/null 2>&1; then
+		break
+	fi
+	echo "DB not ready (attempt $i/$DB_WAIT_RETRIES). Waiting ${DB_WAIT_SECONDS}s..." >&2
+	sleep "$DB_WAIT_SECONDS"
+	i=$((i+1))
+done
+
+if ! php bin/console doctrine:query:sql "SELECT 1" --env=prod --no-interaction --no-ansi >/dev/null 2>&1; then
+	echo "ERROR: no se pudo conectar a la base de datos tras $DB_WAIT_RETRIES intentos. Revisa DATABASE_URL." >&2
+	exit 1
+fi
+
+if [ "$RUN_MIGRATIONS" = "1" ]; then
+	php bin/console doctrine:migrations:migrate --no-interaction --env=prod --no-ansi
+fi
 
 php bin/console cache:warmup --env=prod --no-debug --no-ansi
 
