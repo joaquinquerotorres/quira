@@ -32,7 +32,7 @@ Si en el futuro activas un **Release command** en Railway **y** mantienes el mig
 
 El **`docker/entrypoint.sh`**:
 
-1. Verifica claves JWT; si faltan, solo genera si `JWT_GENERATE_KEYS=1`.
+1. Verifica claves JWT; por defecto, si faltan se generan (compatibilidad). Puedes exigir modo estricto con `JWT_ENFORCE_STATIC_KEYS=1`.
 2. Espera a MySQL con retry (`doctrine:query:sql "SELECT 1"`).
 3. Ejecuta migraciones si `RUN_MIGRATIONS=1` (por defecto).
 4. Ejecuta `cache:warmup` en `prod`.
@@ -55,7 +55,8 @@ Variables útiles para Railway:
 
 | Variable | Uso |
 |----------|-----|
-| `JWT_GENERATE_KEYS` | `1` solo para el primer deploy si no hay volumen con `config/jwt` |
+| `JWT_GENERATE_KEYS` | `1` (default) genera claves si faltan; `0` falla si no existen |
+| `JWT_ENFORCE_STATIC_KEYS` | `1` exige claves persistentes y no permite generación automática |
 | `RUN_MIGRATIONS` | `1` (default) ejecuta migraciones al boot; `0` las desactiva si ya las haces fuera |
 | `DB_WAIT_RETRIES` | Número de intentos de espera a MySQL (default 20) |
 | `DB_WAIT_SECONDS` | Segundos entre intentos (default 2) |

@@ -12,19 +12,27 @@ fi
 export DATABASE_URL=$(printf '%s' "$DATABASE_URL" | sed -e 's/@localhost:/@127.0.0.1:/g' -e 's|@localhost/|@127.0.0.1/|g')
 
 # JWT keys:
-# - En producción NO queremos rotarlas accidentalmente.
-# - Si no hay volumen con /app/config/jwt, usa JWT_GENERATE_KEYS=1 solo para el primer deploy.
+# - Modo por defecto: compatibilidad (si faltan, se generan) para no romper deploys.
+# - Modo estricto opcional: JWT_ENFORCE_STATIC_KEYS=1 para exigir claves persistentes.
 JWT_SECRET_KEY_PATH="${JWT_SECRET_KEY:-/app/config/jwt/private.pem}"
 JWT_PUBLIC_KEY_PATH="${JWT_PUBLIC_KEY:-/app/config/jwt/public.pem}"
+JWT_ENFORCE_STATIC_KEYS="${JWT_ENFORCE_STATIC_KEYS:-0}"
+JWT_GENERATE_KEYS="${JWT_GENERATE_KEYS:-1}"
 
 if [ -f "$JWT_SECRET_KEY_PATH" ] && [ -f "$JWT_PUBLIC_KEY_PATH" ]; then
 	: "JWT keys present"
 else
-	if [ "${JWT_GENERATE_KEYS:-0}" = "1" ]; then
+	if [ "$JWT_ENFORCE_STATIC_KEYS" = "1" ]; then
+		echo "ERROR: faltan claves JWT en $JWT_SECRET_KEY_PATH / $JWT_PUBLIC_KEY_PATH." >&2
+		echo "JWT_ENFORCE_STATIC_KEYS=1 requiere claves persistentes (volumen en /app/config/jwt o PEM inyectados)." >&2
+		exit 1
+	fi
+	if [ "$JWT_GENERATE_KEYS" = "1" ]; then
+		echo "WARN: JWT keys no encontradas; generando un nuevo par (esto invalida tokens previos si existían)." >&2
 		php bin/console lexik:jwt:generate-keypair --skip-if-exists --no-ansi
 	else
 		echo "ERROR: faltan claves JWT en $JWT_SECRET_KEY_PATH / $JWT_PUBLIC_KEY_PATH." >&2
-		echo "Solución: monta un volumen persistente en /app/config/jwt o fija JWT_GENERATE_KEYS=1 solo para el primer arranque." >&2
+		echo "Solución: activa JWT_GENERATE_KEYS=1 o monta un volumen persistente en /app/config/jwt." >&2
 		exit 1
 	fi
 fi
