@@ -39,13 +39,36 @@ fi
 
 # DB readiness + migraciones:
 # Railway puede tardar en exponer MySQL al arrancar. Hacemos retry/backoff.
+# Importante: no dependemos de comandos Doctrine para el readiness check (pueden no estar disponibles).
 DB_WAIT_RETRIES="${DB_WAIT_RETRIES:-20}"
 DB_WAIT_SECONDS="${DB_WAIT_SECONDS:-2}"
 RUN_MIGRATIONS="${RUN_MIGRATIONS:-1}"
 
 i=1
 while [ "$i" -le "$DB_WAIT_RETRIES" ]; do
-	if php bin/console doctrine:query:sql "SELECT 1" --env=prod --no-interaction --no-ansi >/dev/null 2>&1; then
+	if php -r '
+$url = getenv("DATABASE_URL") ?: "";
+if ($url === "") { fwrite(STDERR, "DATABASE_URL empty\n"); exit(2); }
+$parts = parse_url($url);
+if (!$parts || ($parts["scheme"] ?? "") !== "mysql") { fwrite(STDERR, "DATABASE_URL not mysql\n"); exit(2); }
+$host = $parts["host"] ?? "localhost";
+$port = (int)($parts["port"] ?? 3306);
+$user = $parts["user"] ?? "";
+$pass = $parts["pass"] ?? "";
+$db = ltrim($parts["path"] ?? "", "/");
+$dsn = "mysql:host={$host};port={$port};dbname={$db};charset=utf8mb4";
+try {
+    $pdo = new PDO($dsn, $user, $pass, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_TIMEOUT => 2,
+    ]);
+    $pdo->query("SELECT 1");
+    exit(0);
+} catch (Throwable $e) {
+    // Silencio: el bucle imprime el contador y reintenta.
+    exit(1);
+}
+' >/dev/null 2>&1; then
 		break
 	fi
 	echo "DB not ready (attempt $i/$DB_WAIT_RETRIES). Waiting ${DB_WAIT_SECONDS}s..." >&2
@@ -53,10 +76,28 @@ while [ "$i" -le "$DB_WAIT_RETRIES" ]; do
 	i=$((i+1))
 done
 
-if ! php bin/console doctrine:query:sql "SELECT 1" --env=prod --no-interaction --no-ansi >/dev/null 2>&1; then
-	echo "ERROR: no se pudo conectar a la base de datos tras $DB_WAIT_RETRIES intentos. Revisa DATABASE_URL." >&2
-	echo "DEBUG: mostrando el error real de Doctrine (doctrine:query:sql -vvv):" >&2
-	php bin/console doctrine:query:sql "SELECT 1" --env=prod --no-interaction --no-ansi -vvv 1>&2 || true
+if ! php -r '
+$url = getenv("DATABASE_URL") ?: "";
+$parts = parse_url($url);
+$host = $parts["host"] ?? "localhost";
+$port = (int)($parts["port"] ?? 3306);
+$user = $parts["user"] ?? "";
+$pass = $parts["pass"] ?? "";
+$db = ltrim($parts["path"] ?? "", "/");
+$dsn = "mysql:host={$host};port={$port};dbname={$db};charset=utf8mb4";
+try {
+    $pdo = new PDO($dsn, $user, $pass, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_TIMEOUT => 2,
+    ]);
+    $pdo->query("SELECT 1");
+    exit(0);
+} catch (Throwable $e) {
+    fwrite(STDERR, "ERROR: DB connect failed: " . $e->getMessage() . PHP_EOL);
+    exit(1);
+}
+' >/dev/null; then
+	echo "ERROR: no se pudo conectar a la base de datos tras $DB_WAIT_RETRIES intentos. Revisa DATABASE_URL/red/credenciales." >&2
 	exit 1
 fi
 
