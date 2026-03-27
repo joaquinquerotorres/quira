@@ -1,0 +1,132 @@
+name: Production DB Maintenance
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "Operation to execute on production DB"
+        required: true
+        type: choice
+        options:
+          - load_fixtures
+          - truncate_data
+      confirmation:
+        description: "Type EXACTLY LOAD_FIXTURES or TRUNCATE_DATA"
+        required: true
+        type: string
+
+jobs:
+  prod-db-maintenance:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+
+    steps:
+      - name: Validate manual confirmation
+        run: |
+          if [ "${{ github.event.inputs.operation }}" = "load_fixtures" ] && [ "${{ github.event.inputs.confirmation }}" != "LOAD_FIXTURES" ]; then
+            echo "Invalid confirmation for load_fixtures. Expected LOAD_FIXTURES."
+            exit 1
+          fi
+          if [ "${{ github.event.inputs.operation }}" = "truncate_data" ] && [ "${{ github.event.inputs.confirmation }}" != "TRUNCATE_DATA" ]; then
+            echo "Invalid confirmation for truncate_data. Expected TRUNCATE_DATA."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: ctype, iconv, intl, json, mbstring, pdo_mysql, openssl, curl, xml
+          coverage: none
+
+      - name: Install dependencies (dev needed for fixtures bundle)
+        run: composer install --no-progress --prefer-dist --no-interaction
+
+      - name: Generate JWT keys (if missing)
+        run: php bin/console lexik:jwt:generate-keypair --skip-if-exists --no-ansi
+        env:
+          JWT_PASSPHRASE: ${{ secrets.JWT_PASSPHRASE }}
+
+      - name: Load fixtures in production DB
+        if: github.event.inputs.operation == 'load_fixtures'
+        run: php bin/console doctrine:fixtures:load --no-interaction --env=prod --purge-with-truncate --no-ansi
+        env:
+          APP_ENV: prod
+          APP_DEBUG: 0
+          APP_SECRET: ${{ secrets.APP_SECRET }}
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          MAILER_DSN: ${{ secrets.MAILER_DSN }}
+          JWT_SECRET_KEY: ${{ github.workspace }}/config/jwt/private.pem
+          JWT_PUBLIC_KEY: ${{ github.workspace }}/config/jwt/public.pem
+          JWT_PASSPHRASE: ${{ secrets.JWT_PASSPHRASE }}
+          FIREBASE_CREDENTIALS: ${{ secrets.FIREBASE_CREDENTIALS }}
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_WHATSAPP_FROM: ${{ secrets.TWILIO_WHATSAPP_FROM }}
+          TWILIO_SMS_FROM: ${{ secrets.TWILIO_SMS_FROM }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          STRIPE_PRICE_SOLVER: ${{ secrets.STRIPE_PRICE_SOLVER }}
+          STRIPE_PRICE_PRO: ${{ secrets.STRIPE_PRICE_PRO }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_BUCKET_AVATARS: ${{ secrets.SUPABASE_BUCKET_AVATARS }}
+          SUPABASE_BUCKET_REQUESTS: ${{ secrets.SUPABASE_BUCKET_REQUESTS }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+          CORS_ALLOW_ORIGIN: ${{ secrets.CORS_ALLOW_ORIGIN }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          SYMFONY_TRUSTED_PROXIES: REMOTE_ADDR
+
+      - name: Truncate production DB tables (preserve migration metadata)
+        if: github.event.inputs.operation == 'truncate_data'
+        run: |
+          php -r '
+          $url = getenv("DATABASE_URL") ?: "";
+          if ($url === "") {
+              fwrite(STDERR, "DATABASE_URL is empty\n");
+              exit(1);
+          }
+          $parts = parse_url($url);
+          if (!$parts || ($parts["scheme"] ?? "") !== "mysql") {
+              fwrite(STDERR, "DATABASE_URL must use mysql:// scheme\n");
+              exit(1);
+          }
+          $host = $parts["host"] ?? "localhost";
+          $port = (int)($parts["port"] ?? 3306);
+          $user = $parts["user"] ?? "";
+          $pass = $parts["pass"] ?? "";
+          $db = ltrim($parts["path"] ?? "", "/");
+          if ($db === "") {
+              fwrite(STDERR, "Database name missing in DATABASE_URL\n");
+              exit(1);
+          }
+          $dsn = "mysql:host={$host};port={$port};dbname={$db};charset=utf8mb4";
+          $pdo = new PDO($dsn, $user, $pass, [
+              PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+          ]);
+
+          $preserve = ["doctrine_migration_versions"];
+          $stmt = $pdo->query("
+              SELECT table_name
+              FROM information_schema.tables
+              WHERE table_schema = DATABASE()
+                AND table_type = \"BASE TABLE\"
+          ");
+          $tables = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+          $pdo->exec("SET FOREIGN_KEY_CHECKS=0");
+          foreach ($tables as $table) {
+              if (in_array($table, $preserve, true)) {
+                  continue;
+              }
+              $pdo->exec("TRUNCATE TABLE `" . str_replace("`", "``", $table) . "`");
+          }
+          $pdo->exec("SET FOREIGN_KEY_CHECKS=1");
+          echo "Truncated " . (count($tables) - count($preserve)) . " tables (migration metadata preserved).\n";
+          '
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
