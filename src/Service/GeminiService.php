@@ -175,10 +175,13 @@ class GeminiService
         try {
             $rawJson = $this->requestGenerateContent($url, $payload);
             $cleanJson = str_replace(['```json', '```'], '', $rawJson);
+            $decoded = json_decode($cleanJson, true);
+            if (!is_array($decoded)) {
+                throw new \RuntimeException('Gemini devolvió contenido no JSON en diagnose()');
+            }
 
             $this->logger->info("✅ Predicción generada exitosamente por Gemini para la solicitud. Respuesta cruda: " . $rawJson);
-
-            return json_decode($cleanJson, true);
+            return $decoded;
         } catch (\Exception $e) {
             $this->logger->error("❌ Error al conectar con el servicio de IA: " . $e->getMessage());
             return [
@@ -245,9 +248,13 @@ class GeminiService
         try {
             $rawJson = $this->requestGenerateContent($url, $payload);
             $cleanJson = str_replace(['```json', '```'], '', $rawJson);
+            $decoded = json_decode($cleanJson, true);
+            if (!is_array($decoded) || !array_key_exists('is_safe', $decoded)) {
+                throw new \RuntimeException('Gemini devolvió contenido no JSON o incompleto en checkSafety()');
+            }
 
             $this->logger->info("✅ Predicción generada exitosamente por Gemini para verificación de seguridad. Respuesta cruda: " . $rawJson);
-            return json_decode($cleanJson, true);
+            return $decoded;
 
         } catch (\Exception $e) {
             $this->logger->error("❌ Error al conectar con el servicio de IA para verificación de seguridad: " . $e->getMessage());
