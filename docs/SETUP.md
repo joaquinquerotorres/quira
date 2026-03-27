@@ -76,6 +76,7 @@ Usado para: Auth (verificación de token social), notificaciones push (FCM).
 | Variable | Descripción |
 |----------|-------------|
 | `GEMINI_API_KEY` | API key de Google AI Studio |
+| `GEMINI_MODEL` | Modelo a usar (default `gemini-2.5-flash`). Si falla, el backend reintenta con `gemini-flash-latest`. |
 
 ### Supabase Storage
 

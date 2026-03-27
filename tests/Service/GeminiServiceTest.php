@@ -51,7 +51,7 @@ final class GeminiServiceTest extends TestCase
             ], JSON_THROW_ON_ERROR), ['http_code' => 200]);
         });
 
-        $service = new GeminiService('test-key', $mock, new NullLogger());
+        $service = new GeminiService('test-key', 'gemini-2.5-flash', $mock, new NullLogger());
 
         $result = $service->diagnose(
             description: 'hola',

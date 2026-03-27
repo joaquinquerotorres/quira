@@ -13,10 +13,13 @@ class GeminiService
     public function __construct(
         #[Autowire('%env(GEMINI_API_KEY)%')] 
         private string $apiKey,
+        #[Autowire('%env(default:models/gemini-2.5-flash:GEMINI_MODEL)%')]
+        private string $model,
         private readonly HttpClientInterface $client,
         private readonly LoggerInterface $logger
     ) {
         $this->apiKey = $apiKey;
+        $this->model = $this->normalizeModelName($this->model);
     }
 
     public function diagnose(?string $description, ?string $image, ?string $audio = null, ?string $video = null, ?string $location = null, ?string $cacheId = null): array
@@ -25,7 +28,7 @@ class GeminiService
         // En el futuro, el frontend podrá enviar otras ciudades/regiones de España en $location.
         $locationContext = $location ? trim($location) : 'Córdoba, Andalucía, España';
 
-        $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' . $this->apiKey;
+        $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . $this->model . ':generateContent?key=' . $this->apiKey;
         
         $instruction = match (true) {
             !empty($video) && !empty($description) => 
@@ -170,19 +173,11 @@ class GeminiService
         }
 
         try {
-            $response = $this->client->request('POST', $url, [
-                'json' => $payload,
-                'headers' => ['Content-Type' => 'application/json']
-            ]);
-
-            $data = $response->toArray();
-            
-            $rawJson = $data['candidates'][0]['content']['parts'][0]['text'] ?? '{}';
-
+            $rawJson = $this->requestGenerateContent($url, $payload);
             $cleanJson = str_replace(['```json', '```'], '', $rawJson);
-            
+
             $this->logger->info("✅ Predicción generada exitosamente por Gemini para la solicitud. Respuesta cruda: " . $rawJson);
-            
+
             return json_decode($cleanJson, true);
         } catch (\Exception $e) {
             $this->logger->error("❌ Error al conectar con el servicio de IA: " . $e->getMessage());
@@ -202,7 +197,7 @@ class GeminiService
 
     public function checkSafety(?string $title, ?string $description, ?string $image = null, ?string $audio = null, ?string $video = null): array
     {
-        $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' . $this->apiKey;
+        $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . $this->model . ':generateContent?key=' . $this->apiKey;
         
         $systemPrompt = <<<PROMPT
             Actúa como el sistema de seguridad 'Sentinel' de la App Quira.
@@ -248,16 +243,10 @@ class GeminiService
         ];
 
         try {
-            $response = $this->client->request('POST', $url, [
-                'json' => $payload,
-                'headers' => ['Content-Type' => 'application/json']
-            ]);
-
-            $data = $response->toArray();
-            $rawJson = $data['candidates'][0]['content']['parts'][0]['text'] ?? '{}';
+            $rawJson = $this->requestGenerateContent($url, $payload);
             $cleanJson = str_replace(['```json', '```'], '', $rawJson);
-            
-            $this->logger->info("✅ Predicción generada exitosamente por Gemini para la solicitud. Respuesta cruda: " . $rawJson);
+
+            $this->logger->info("✅ Predicción generada exitosamente por Gemini para verificación de seguridad. Respuesta cruda: " . $rawJson);
             return json_decode($cleanJson, true);
 
         } catch (\Exception $e) {
@@ -316,7 +305,7 @@ class GeminiService
         
          try {
             $payload = [
-                "model" => "models/gemini-2.5-flash",
+                "model" => "models/" . $this->model,
                 "displayName" => "Quira Knowledge Base",
                 "contents" => [
                     ["parts" => [["text" => $staticContext]], "role" => "user"]
@@ -359,5 +348,45 @@ class GeminiService
             'mime_type' => $mimeType,
             'data' => $data,
         ];
+    }
+
+    private function requestGenerateContent(string $url, array $payload): string
+    {
+        try {
+            $response = $this->client->request('POST', $url, [
+                'json' => $payload,
+                'headers' => ['Content-Type' => 'application/json'],
+            ]);
+
+            $data = $response->toArray();
+            return (string) ($data['candidates'][0]['content']['parts'][0]['text'] ?? '{}');
+        } catch (\Throwable $e) {
+            $fallbackModel = 'gemini-flash-latest';
+            if ($this->model !== $fallbackModel) {
+                $fallbackUrl = preg_replace('#/models/[^:]+:generateContent\\?key=#', '/models/' . $fallbackModel . ':generateContent?key=', $url);
+                if (is_string($fallbackUrl)) {
+                    $this->logger->warning("⚠️ Fallback a modelo {$fallbackModel} por error con {$this->model}: " . $e->getMessage());
+                    $response = $this->client->request('POST', $fallbackUrl, [
+                        'json' => $payload,
+                        'headers' => ['Content-Type' => 'application/json'],
+                    ]);
+                    $data = $response->toArray();
+                    return (string) ($data['candidates'][0]['content']['parts'][0]['text'] ?? '{}');
+                }
+            }
+            throw $e;
+        }
+    }
+
+    private function normalizeModelName(string $model): string
+    {
+        $model = trim($model);
+        if ($model === '') {
+            return 'gemini-2.5-flash';
+        }
+        if (str_starts_with($model, 'models/')) {
+            return substr($model, strlen('models/'));
+        }
+        return $model;
     }
 }
