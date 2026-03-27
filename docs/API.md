@@ -77,6 +77,11 @@ Autenticación: Bearer JWT en header Authorization
 
 ### Predict (IA)
 - POST `/api/predict` - Diagnóstico con Gemini (body: description, image, audio, video, location opcional)
+  - `image`, `audio`, `video` pueden enviarse como **Data URL** (`data:<mime>;base64,<data>`) o base64 “crudo”.
+  - Mimes recomendados:
+    - `image/jpeg`
+    - `audio/mpeg` (si envías `audio/mp3` se normaliza)
+    - `video/mp4`
   - Respuesta típica:
     - `title`, `description`, `summary_text`
     - `category` (PLUMBING, ELECTRICITY, etc.)

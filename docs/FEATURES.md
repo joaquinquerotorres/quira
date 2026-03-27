@@ -46,7 +46,7 @@
 ### Funcionalidad
 - Diagnóstico preliminar del problema descrito
 - Comprobación de seguridad (fraude de contacto, contenido ofensivo)
-- Caché de contexto (GeminiCache) para tablas de precios y reglas
+- Caché de contexto (GeminiCache) para tablas de precios y reglas (si falla la creación, la predicción sigue funcionando)
 
 ### Tabla de precios (CSV) y Córdoba
 

@@ -138,28 +138,19 @@ class GeminiService
 
         if (!empty($video)) {
             $parts[] = [
-                'inline_data' => [
-                    'mime_type' => 'video/mp4',
-                    'data' => preg_replace('#^data:video/[^;]+;base64,#', '', $video)
-                ]
+                'inline_data' => $this->toInlineData($video, 'video/mp4')
             ];
         }
 
         if (!empty($image)) {
             $parts[] = [
-                'inline_data' => [
-                    'mime_type' => 'image/jpeg',
-                    'data' => preg_replace('#^data:image/[^;]+;base64,#', '', $image)
-                ]
+                'inline_data' => $this->toInlineData($image, 'image/jpeg')
             ];
         }
 
         if (!empty($audio)) {
             $parts[] = [
-                'inline_data' => [
-                    'mime_type' => 'audio/mp3', 
-                    'data' => preg_replace('#^data:audio/[^;]+;base64,#', '', $audio)
-                ]
+                'inline_data' => $this->toInlineData($audio, 'audio/mpeg')
             ];
         }
 
@@ -169,12 +160,14 @@ class GeminiService
                     'parts' => $parts
                 ]
             ],
-            'cachedContent' => $cacheId,
             'generationConfig' => [
-                'response_mime_type' => 'application/json',
+                'responseMimeType' => 'application/json',
                 'temperature' => 0.2,
             ]
         ];
+        if (!empty($cacheId)) {
+            $payload['cachedContent'] = $cacheId;
+        }
 
         try {
             $response = $this->client->request('POST', $url, [
@@ -237,19 +230,19 @@ class GeminiService
         $parts = [['text' => $systemPrompt]];
 
         if (!empty($video)) {
-            $parts[] = ['inline_data' => ['mime_type' => 'video/mp4', 'data' => preg_replace('#^data:video/[^;]+;base64,#', '', $video)]];
+            $parts[] = ['inline_data' => $this->toInlineData($video, 'video/mp4')];
         }
         if (!empty($image)) {
-            $parts[] = ['inline_data' => ['mime_type' => 'image/jpeg', 'data' => preg_replace('#^data:image/[^;]+;base64,#', '', $image)]];
+            $parts[] = ['inline_data' => $this->toInlineData($image, 'image/jpeg')];
         }
         if (!empty($audio)) {
-            $parts[] = ['inline_data' => ['mime_type' => 'audio/mp3', 'data' => preg_replace('#^data:audio/[^;]+;base64,#', '', $audio)]];
+            $parts[] = ['inline_data' => $this->toInlineData($audio, 'audio/mpeg')];
         }
 
         $payload = [
             'contents' => [['parts' => $parts]],
             'generationConfig' => [
-                'response_mime_type' => 'application/json',
+                'responseMimeType' => 'application/json',
                 'temperature' => 0.0, 
             ]
         ];
@@ -340,5 +333,31 @@ class GeminiService
             $this->logger->error("❌ Error al crear la cache en Gemini: " . $e->getMessage());
             return null;
         }
+    }
+
+    /**
+     * Convierte un Data URL (data:<mime>;base64,<data>) o base64 "crudo" en inline_data para Gemini.
+     * Mantiene el mime_type real cuando viene en el Data URL para evitar rechazos por mismatch.
+     *
+     * @return array{mime_type: string, data: string}
+     */
+    private function toInlineData(string $dataUrlOrBase64, string $fallbackMimeType): array
+    {
+        $mimeType = $fallbackMimeType;
+        $data = $dataUrlOrBase64;
+
+        if (preg_match('#^data:([^;]+);base64,#', $dataUrlOrBase64, $m) === 1) {
+            $mimeType = trim($m[1]);
+            $data = preg_replace('#^data:[^;]+;base64,#', '', $dataUrlOrBase64);
+        }
+
+        // Normalizaciones comunes
+        if ($mimeType === 'audio/mp3') $mimeType = 'audio/mpeg';
+        if ($mimeType === 'audio/m4a') $mimeType = 'audio/mp4';
+
+        return [
+            'mime_type' => $mimeType,
+            'data' => $data,
+        ];
     }
 }
