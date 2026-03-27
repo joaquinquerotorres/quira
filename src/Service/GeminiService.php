@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Service;
 
 use Psr\Log\LoggerInterface;
-use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class GeminiService
 {
@@ -153,20 +154,21 @@ class GeminiService
 
         if (!empty($audio)) {
             $parts[] = [
-                'inline_data' => $this->toInlineData($audio, 'audio/mpeg')
+                'inline_data' => $this->toInlineData($audio, 'audio/mp3', true),
             ];
         }
 
         $payload = [
             'contents' => [
                 [
-                    'parts' => $parts
-                ]
+                    'role' => 'user',
+                    'parts' => $parts,
+                ],
             ],
             'generationConfig' => [
                 'responseMimeType' => 'application/json',
                 'temperature' => 0.2,
-            ]
+            ],
         ];
         if (!empty($cacheId)) {
             $payload['cachedContent'] = $cacheId;
@@ -234,15 +236,20 @@ class GeminiService
             $parts[] = ['inline_data' => $this->toInlineData($image, 'image/jpeg')];
         }
         if (!empty($audio)) {
-            $parts[] = ['inline_data' => $this->toInlineData($audio, 'audio/mpeg')];
+            $parts[] = ['inline_data' => $this->toInlineData($audio, 'audio/mp3', true)];
         }
 
         $payload = [
-            'contents' => [['parts' => $parts]],
+            'contents' => [
+                [
+                    'role' => 'user',
+                    'parts' => $parts,
+                ],
+            ],
             'generationConfig' => [
                 'responseMimeType' => 'application/json',
-                'temperature' => 0.0, 
-            ]
+                'temperature' => 0.0,
+            ],
         ];
 
         try {
@@ -335,9 +342,12 @@ class GeminiService
      * Convierte un Data URL (data:<mime>;base64,<data>) o base64 "crudo" en inline_data para Gemini.
      * Mantiene el mime_type real cuando viene en el Data URL para evitar rechazos por mismatch.
      *
+     * Para audio ($isAudio): detecta el formato por cabecera (WebM, MP3, WAV, M4A…). Si el cliente
+     * envía base64 sin prefijo o declara audio/mpeg pero el binario es WebM, la API devolvía 400.
+     *
      * @return array{mime_type: string, data: string}
      */
-    private function toInlineData(string $dataUrlOrBase64, string $fallbackMimeType): array
+    private function toInlineData(string $dataUrlOrBase64, string $fallbackMimeType, bool $isAudio = false): array
     {
         $mimeType = $fallbackMimeType;
         $data = $dataUrlOrBase64;
@@ -347,14 +357,130 @@ class GeminiService
             $data = preg_replace('#^data:[^;]+;base64,#', '', $dataUrlOrBase64);
         }
 
-        // Normalizaciones comunes
-        if ($mimeType === 'audio/mp3') $mimeType = 'audio/mpeg';
-        if ($mimeType === 'audio/m4a') $mimeType = 'audio/mp4';
+        $data = $this->normalizeBase64Payload($data);
+
+        if ($isAudio) {
+            $mimeType = $this->resolveAudioMimeType($mimeType, $data);
+        } else {
+            if ($mimeType === 'audio/mp3') {
+                $mimeType = 'audio/mpeg';
+            }
+            if ($mimeType === 'audio/m4a') {
+                $mimeType = 'audio/mp4';
+            }
+        }
 
         return [
             'mime_type' => $mimeType,
             'data' => $data,
         ];
+    }
+
+    private function normalizeBase64Payload(string $base64): string
+    {
+        $base64 = preg_replace('/\s+/', '', $base64) ?? '';
+        $pad = strlen($base64) % 4;
+        if ($pad > 0) {
+            $base64 .= str_repeat('=', 4 - $pad);
+        }
+
+        return $base64;
+    }
+
+    /**
+     * Ajusta MIME de audio al binario y a los nombres que documenta Gemini (p. ej. audio/mp3).
+     *
+     * @see https://ai.google.dev/gemini-api/docs/audio
+     */
+    private function resolveAudioMimeType(string $declaredMime, string $base64Payload): string
+    {
+        $binary = base64_decode($base64Payload, true);
+        if ($binary === false || strlen($binary) < 4) {
+            return $this->normalizeAudioMimeForGemini($declaredMime);
+        }
+
+        $sniffed = $this->sniffAudioMimeFromBinary($binary);
+        if ($sniffed !== null && $this->shouldPreferSniffedAudioMime($declaredMime, $sniffed)) {
+            return $this->normalizeAudioMimeForGemini($sniffed);
+        }
+
+        return $this->normalizeAudioMimeForGemini($declaredMime);
+    }
+
+    private function shouldPreferSniffedAudioMime(string $declaredMime, string $sniffed): bool
+    {
+        $d = strtolower(trim($declaredMime));
+        if ($d === '' || $d === 'application/octet-stream') {
+            return true;
+        }
+        if (in_array($d, ['audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/m4a', 'audio/x-m4a', 'audio/x-mpeg'], true)) {
+            return true;
+        }
+        // Declarado como MPEG pero el binario es WebM (p. ej. cliente envía tipo genérico incorrecto).
+        if (str_contains($d, 'mpeg') && $sniffed === 'audio/webm') {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function normalizeAudioMimeForGemini(string $mimeType): string
+    {
+        return match (strtolower(trim($mimeType))) {
+            'audio/mpeg', 'audio/x-mpeg' => 'audio/mp3',
+            'audio/mp3' => 'audio/mp3',
+            'audio/m4a', 'audio/x-m4a' => 'audio/mp4',
+            default => $mimeType,
+        };
+    }
+
+    private function sniffAudioMimeFromBinary(string $b): ?string
+    {
+        $len = strlen($b);
+        if ($len < 4) {
+            return null;
+        }
+
+        // WebM / Matroska (EBML)
+        if ($b[0] === "\x1a" && $b[1] === 'E' && $b[2] === "\xdf" && $b[3] === "\xa3") {
+            return 'audio/webm';
+        }
+
+        if ($len >= 12 && str_starts_with($b, 'RIFF') && substr($b, 8, 4) === 'WAVE') {
+            return 'audio/wav';
+        }
+
+        if ($len >= 12 && str_starts_with($b, 'FORM') && substr($b, 8, 4) === 'AIFF') {
+            return 'audio/aiff';
+        }
+
+        if (str_starts_with($b, 'OggS')) {
+            return 'audio/ogg';
+        }
+
+        if (str_starts_with($b, 'fLaC')) {
+            return 'audio/flac';
+        }
+
+        if (str_starts_with($b, 'ID3')) {
+            return 'audio/mp3';
+        }
+
+        $b0 = \ord($b[0]);
+        $b1 = \ord($b[1]);
+        if (($b0 & 0xFF) === 0xFF && (($b1 & 0xE0) === 0xE0)) {
+            return 'audio/mp3';
+        }
+
+        if ($len >= 2 && ($b0 & 0xFF) === 0xFF && (($b1 & 0xF6) === 0xF0)) {
+            return 'audio/aac';
+        }
+
+        if ($len >= 12 && substr($b, 4, 4) === 'ftyp') {
+            return 'audio/mp4';
+        }
+
+        return null;
     }
 
     private function requestGenerateContent(string $url, array $payload): string
@@ -368,7 +494,13 @@ class GeminiService
             $data = $response->toArray();
             return (string) ($data['candidates'][0]['content']['parts'][0]['text'] ?? '{}');
         } catch (\Throwable $e) {
-            $fallbackModel = 'gemini-flash-latest';
+            if ($e instanceof HttpExceptionInterface) {
+                try {
+                    $this->logger->warning('Gemini API error body: ' . $e->getResponse()->getContent(false));
+                } catch (\Throwable) {
+                }
+            }
+            $fallbackModel = 'gemini-2.0-flash';
             if ($this->model !== $fallbackModel) {
                 $fallbackUrl = preg_replace('#/models/[^:]+:generateContent\\?key=#', '/models/' . $fallbackModel . ':generateContent?key=', $url);
                 if (is_string($fallbackUrl)) {
