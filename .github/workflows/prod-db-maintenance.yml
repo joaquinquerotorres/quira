@@ -52,9 +52,10 @@ jobs:
 
       - name: Load fixtures in production DB
         if: github.event.inputs.operation == 'load_fixtures'
-        run: php bin/console doctrine:fixtures:load --no-interaction --env=prod --purge-with-truncate --no-ansi
+        run: php bin/console doctrine:fixtures:load --no-interaction --env=dev --purge-with-truncate --no-ansi
         env:
-          APP_ENV: prod
+          # DoctrineFixturesBundle está habilitado en dev/test (config/bundles.php)
+          APP_ENV: dev
           APP_DEBUG: 0
           APP_SECRET: ${{ secrets.APP_SECRET }}
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
