@@ -50,7 +50,7 @@ jobs:
           restore-keys: ${{ runner.os }}-composer-
 
       - name: Install dependencies
-        run: composer install --no-progress --prefer-dist
+        run: composer install --no-progress --prefer-dist --no-scripts
 
       - name: Generate JWT keys
         run: php bin/console lexik:jwt:generate-keypair --skip-if-exists

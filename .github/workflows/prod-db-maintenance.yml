@@ -43,7 +43,7 @@ jobs:
           coverage: none
 
       - name: Install dependencies (dev needed for fixtures bundle)
-        run: composer install --no-progress --prefer-dist --no-interaction
+        run: composer install --no-progress --prefer-dist --no-interaction --no-scripts
 
       - name: Validate PROD_DATABASE_URL and test DB connectivity
         run: |
