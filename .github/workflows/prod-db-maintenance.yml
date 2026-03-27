@@ -45,6 +45,49 @@ jobs:
       - name: Install dependencies (dev needed for fixtures bundle)
         run: composer install --no-progress --prefer-dist --no-interaction
 
+      - name: Validate PROD_DATABASE_URL and test DB connectivity
+        run: |
+          php -r '
+          $url = getenv("DATABASE_URL") ?: "";
+          if ($url === "") {
+              fwrite(STDERR, "PROD_DATABASE_URL is empty.\n");
+              exit(1);
+          }
+          $parts = parse_url($url);
+          if (!$parts || ($parts["scheme"] ?? "") !== "mysql") {
+              fwrite(STDERR, "PROD_DATABASE_URL must use mysql:// scheme.\n");
+              exit(1);
+          }
+          $host = $parts["host"] ?? "";
+          $port = (int)($parts["port"] ?? 3306);
+          $user = $parts["user"] ?? "";
+          $pass = $parts["pass"] ?? "";
+          $db = ltrim($parts["path"] ?? "", "/");
+          if ($host === "" || $db === "") {
+              fwrite(STDERR, "PROD_DATABASE_URL missing host or db name.\n");
+              exit(1);
+          }
+          if (in_array($host, ["localhost", "127.0.0.1", "mysql.railway.internal"], true)) {
+              fwrite(STDERR, "Host \"$host\" is not valid for GitHub runner. Use a PUBLIC Railway TCP proxy URL for PROD_DATABASE_URL.\n");
+              exit(1);
+          }
+
+          $dsn = "mysql:host={$host};port={$port};dbname={$db};charset=utf8mb4";
+          try {
+              $pdo = new PDO($dsn, $user, $pass, [
+                  PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                  PDO::ATTR_TIMEOUT => 5,
+              ]);
+              $pdo->query("SELECT 1");
+              echo "DB connectivity OK from GitHub runner: {$host}:{$port}/{$db}\n";
+          } catch (Throwable $e) {
+              fwrite(STDERR, "DB connectivity failed from GitHub runner: " . $e->getMessage() . "\n");
+              exit(1);
+          }
+          '
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+
       - name: Generate JWT keys (if missing)
         run: php bin/console lexik:jwt:generate-keypair --skip-if-exists --no-ansi
         env:
@@ -52,7 +95,7 @@ jobs:
 
       - name: Load fixtures in production DB
         if: github.event.inputs.operation == 'load_fixtures'
-        run: php bin/console doctrine:fixtures:load --no-interaction --env=dev --purge-with-truncate --no-ansi
+        run: php bin/console doctrine:fixtures:load --no-interaction --env=dev --no-ansi
         env:
           # DoctrineFixturesBundle está habilitado en dev/test (config/bundles.php)
           APP_ENV: dev
