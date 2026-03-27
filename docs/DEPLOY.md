@@ -63,7 +63,14 @@ Variables útiles para Railway:
 
 ### 6. Firebase u otros ficheros secretos
 
-Si `FIREBASE_CREDENTIALS` apunta a un path (p. ej. `config/secrets/firebase_credentials.json`), ese archivo debe existir en runtime: variable multilínea, base64 + decode en un script de inicio, o volumen. No lo subas al repositorio.
+Si `FIREBASE_CREDENTIALS` apunta a un path (p. ej. `config/secrets/firebase_credentials.json`), ese archivo debe existir en runtime.
+
+Este proyecto soporta dos opciones:
+
+- Definir `FIREBASE_CREDENTIALS_B64` (contenido JSON en base64): el `entrypoint` lo decodifica automáticamente a la ruta de `FIREBASE_CREDENTIALS`.
+- Montar un volumen/archivo en la ruta configurada.
+
+No subas ese JSON al repositorio.
 
 ### 7. Prueba local de la imagen
 

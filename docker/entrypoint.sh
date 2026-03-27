@@ -11,6 +11,20 @@ fi
 # Sustituir por 127.0.0.1 fuerza TCP (solo aplica si MySQL escucha ahí; entre servicios Railway usa otro hostname y no toca esto).
 export DATABASE_URL=$(printf '%s' "$DATABASE_URL" | sed -e 's/@localhost:/@127.0.0.1:/g' -e 's|@localhost/|@127.0.0.1/|g')
 
+# Firebase credentials file (optional):
+# If FIREBASE_CREDENTIALS_B64 is present, write JSON to FIREBASE_CREDENTIALS path.
+if [ -n "${FIREBASE_CREDENTIALS_B64:-}" ]; then
+	FIREBASE_CREDENTIALS_PATH="${FIREBASE_CREDENTIALS:-config/secrets/firebase_credentials.json}"
+	mkdir -p "$(dirname "/app/$FIREBASE_CREDENTIALS_PATH")"
+	if printf '%s' "$FIREBASE_CREDENTIALS_B64" | base64 --decode > "/app/$FIREBASE_CREDENTIALS_PATH" 2>/dev/null; then
+		:
+	else
+		# GNU coreutils usa --decode; algunas imágenes aceptan -d.
+		printf '%s' "$FIREBASE_CREDENTIALS_B64" | base64 -d > "/app/$FIREBASE_CREDENTIALS_PATH"
+	fi
+	chmod 600 "/app/$FIREBASE_CREDENTIALS_PATH" || true
+fi
+
 # JWT keys:
 # - Modo por defecto: compatibilidad (si faltan, se generan) para no romper deploys.
 # - Modo estricto opcional: JWT_ENFORCE_STATIC_KEYS=1 para exigir claves persistentes.
