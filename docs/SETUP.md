@@ -163,3 +163,21 @@ stripe listen --forward-to localhost:8000/api/stripe/webhook
 ```
 
 Usa el webhook secret que muestra el comando en `STRIPE_WEBHOOK_SECRET`.
+
+### Producción / Dashboard
+
+En el endpoint `https://TU_API/api/stripe/webhook` suscribe al menos:
+
+`checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.paused`, `customer.subscription.resumed`, `invoice.paid`, `invoice.payment_failed`, `invoice.payment_succeeded`, `invoice.updated`.
+
+Los eventos se registran como procesados (tabla `stripe_webhook_event`) para **idempotencia** ante reintentos de Stripe.
+
+### Reconciliación
+
+Si hubo caídas de red, 5xx o `STRIPE_WEBHOOK_SECRET` incorrecto durante un tiempo:
+
+```bash
+php bin/console stripe:reconcile-subscriptions
+# o un solo usuario:
+php bin/console stripe:reconcile-subscriptions --user-id=42
+```

@@ -1,0 +1,15 @@
+includes:
+    - vendor/phpstan/phpstan-symfony/extension.neon
+    - vendor/phpstan/phpstan-symfony/rules.neon
+    - vendor/phpstan/phpstan-doctrine/extension.neon
+    - phpstan-baseline.neon
+
+parameters:
+    level: 5
+    paths:
+        - src
+    symfony:
+        # Alineado con CI: mismo entorno que PHPUnit (test + caché tras warmup)
+        containerXmlPath: var/cache/test/App_KernelTestDebugContainer.xml
+    doctrine:
+        objectManagerLoader: %currentWorkingDirectory%/tests/phpstan/object-manager.php

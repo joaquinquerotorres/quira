@@ -71,7 +71,39 @@ jobs:
           APP_SECRET: ci-secret
           DATABASE_URL: mysql://root:root@127.0.0.1:3306/quira_test?serverVersion=8.0&charset=utf8mb4
 
-      - name: Execute tests
+      - name: PHPStan
+        run: |
+          php bin/console cache:warmup --env=test
+          composer phpstan
+        env:
+          APP_ENV: test
+          APP_SECRET: ci-secret
+          APP_DEBUG: 0
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/quira_test?serverVersion=8.0&charset=utf8mb4
+          MAILER_DSN: null://null
+          JWT_SECRET_KEY: ${{ github.workspace }}/config/jwt/private.pem
+          JWT_PUBLIC_KEY: ${{ github.workspace }}/config/jwt/public.pem
+          JWT_PASSPHRASE: ''
+          FIREBASE_CREDENTIALS: ''
+          TWILIO_ACCOUNT_SID: ''
+          TWILIO_AUTH_TOKEN: ''
+          GEMINI_API_KEY: ''
+          GEMINI_MODEL: gemini-2.5-flash
+          STRIPE_SECRET_KEY: sk_test_dummy
+          STRIPE_WEBHOOK_SECRET: whsec_dummy
+          STRIPE_PRICE_SOLVER: price_dummy
+          STRIPE_PRICE_PRO: price_dummy
+          SENTRY_DSN: ''
+          SUPABASE_URL: ''
+          SUPABASE_SERVICE_ROLE_KEY: ''
+          SUPABASE_BUCKET_AVATARS: avatars
+          SUPABASE_BUCKET_REQUESTS: requests
+          NOTIFICATIONS_PRO: PUSH
+          NOTIFICATIONS_SOLVER: PUSH
+          NOTIFICATIONS_FREE: EMAIL
+          NOTIFICATIONS_CLIENT: PUSH
+
+      - name: Execute tests (unit, sin grupo database)
         run: php bin/phpunit
         env:
           APP_ENV: test
@@ -87,6 +119,7 @@ jobs:
           TWILIO_ACCOUNT_SID: ''
           TWILIO_AUTH_TOKEN: ''
           GEMINI_API_KEY: ''
+          GEMINI_MODEL: gemini-2.5-flash
           STRIPE_SECRET_KEY: sk_test_dummy
           STRIPE_WEBHOOK_SECRET: whsec_dummy
           STRIPE_PRICE_SOLVER: price_dummy
@@ -95,3 +128,36 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ''
           SUPABASE_BUCKET_AVATARS: avatars
           SUPABASE_BUCKET_REQUESTS: requests
+          NOTIFICATIONS_PRO: PUSH
+          NOTIFICATIONS_SOLVER: PUSH
+          NOTIFICATIONS_FREE: EMAIL
+          NOTIFICATIONS_CLIENT: PUSH
+
+      - name: Execute tests (integración con base de datos)
+        run: php bin/phpunit --group database
+        env:
+          APP_ENV: test
+          APP_SECRET: ci-secret
+          APP_DEBUG: 0
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/quira_test?serverVersion=8.0&charset=utf8mb4
+          MAILER_DSN: null://null
+          JWT_SECRET_KEY: ${{ github.workspace }}/config/jwt/private.pem
+          JWT_PUBLIC_KEY: ${{ github.workspace }}/config/jwt/public.pem
+          JWT_PASSPHRASE: ''
+          FIREBASE_CREDENTIALS: ''
+          TWILIO_ACCOUNT_SID: ''
+          TWILIO_AUTH_TOKEN: ''
+          GEMINI_API_KEY: ''
+          GEMINI_MODEL: gemini-2.5-flash
+          STRIPE_SECRET_KEY: sk_test_dummy
+          STRIPE_WEBHOOK_SECRET: whsec_dummy
+          STRIPE_PRICE_SOLVER: price_dummy
+          STRIPE_PRICE_PRO: price_dummy
+          SUPABASE_URL: ''
+          SUPABASE_SERVICE_ROLE_KEY: ''
+          SUPABASE_BUCKET_AVATARS: avatars
+          SUPABASE_BUCKET_REQUESTS: requests
+          NOTIFICATIONS_PRO: PUSH
+          NOTIFICATIONS_SOLVER: PUSH
+          NOTIFICATIONS_FREE: EMAIL
+          NOTIFICATIONS_CLIENT: PUSH

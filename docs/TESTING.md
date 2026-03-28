@@ -1,5 +1,16 @@
 # Guía de tests
 
+## Análisis estático (PHPStan)
+
+Nivel **5**, extensiones **Symfony** + **Doctrine**. Requiere el XML del contenedor en entorno **test** (mismo que PHPUnit):
+
+```bash
+APP_ENV=test php bin/console cache:warmup --env=test
+composer phpstan
+```
+
+Regenerar baseline (solo cuando se asumen deuda técnica a propósito): `composer phpstan:baseline`.
+
 ## Ejecución
 
 ```bash
@@ -66,8 +77,10 @@ Los tests en `tests/Api/` ejercitan endpoints reales (API Platform / controllers
 
 - **CanBidTest**
   - Verifica `GET /api/professionals/me/can-bid` y el cómputo del límite mensual (excluyendo únicamente retiradas: `REJECTED` en request `PENDING`).
+  - Incluye **`testCanBidFalseWhenRoleProButPaidThroughExpired`**: `ROLE_PRO` con `paidThroughAt` en el pasado se trata como plan efectivo FREE para el límite mensual.
 
 - **VisitRequestContractTest**
+  - El profesional debe tener **`paidThroughAt` futuro** (suscripción activa); sin eso `POST .../visit-request` responde **403**.
   - Verifica el flujo de visita: solicitar visita, aceptar visita, y que tras la aceptación el pro puede ver `preciseAddress`.
   - Verifica que se crean notificaciones (`VISIT_REQUEST_CREATED`, `VISIT_REQUEST_ACCEPTED`) cuando `notifyRequestActivity` está activado.
 
@@ -88,7 +101,12 @@ Los tests en `tests/Api/` ejercitan endpoints reales (API Platform / controllers
 
 - StripeCheckoutInputTest: validación del DTO
 - StripeCheckoutControllerTest: controller con TestableStripeCheckoutController (mock de usuario)
-- StripeCheckoutSessionHandlerTest: lógica del webhook
+- StripeCheckoutSessionHandlerTest: lógica del webhook `checkout.session.completed`
+- La reconciliación **`stripe:reconcile-subscriptions`** no tiene test automatizado dedicado; usar en operaciones o tras incidencias de webhooks (ver `docs/API.md`).
+
+## Tests de State / procesadores
+
+- **BidProfessionalProcessorTest**: reglas de negocio (HIGH, límite mensual, teléfono) vía **`ValidationException`** coherente con el **422** de API Platform.
 
 ## Tests de serialización
 

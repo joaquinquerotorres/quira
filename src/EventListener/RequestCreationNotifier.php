@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\EventListener;
 
 use App\Entity\Request;
+use App\Enum\NotificationAudience;
 use App\Repository\ProfessionalProfileRepository;
-use App\Service\NotificationService; // 1. Importamos tu servicio
+use App\Service\NotificationService;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsEntityListener;
 use Doctrine\ORM\Events;
 use Doctrine\Persistence\Event\LifecycleEventArgs;
@@ -62,6 +63,7 @@ final class RequestCreationNotifier
                     $prefix . $title,
                     $prefix . "Hola {$proProfile->getFullName()}, hay un nuevo trabajo de {$category} cerca de ti por {$price}. ¡Echa un vistazo!",
                     'NEW_REQUEST',
+                    NotificationAudience::Professional,
                     $request->getId()
                 );
             } catch (\Throwable $e) {

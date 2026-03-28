@@ -26,6 +26,9 @@
         <server name="STRIPE_SECRET_KEY" value="sk_test_dummy" force="true" />
         <server name="STRIPE_PRICE_SOLVER" value="price_dummy" force="true" />
         <server name="STRIPE_PRICE_PRO" value="price_dummy" force="true" />
+        <server name="STRIPE_WEBHOOK_SECRET" value="whsec_dummy" force="true" />
+        <server name="GEMINI_API_KEY" value="" force="true" />
+        <server name="GEMINI_MODEL" value="gemini-2.5-flash" force="true" />
     </php>
 
     <testsuites>
@@ -34,7 +37,7 @@
         </testsuite>
     </testsuites>
 
-    <!-- Run tests excluding DB-dependent ones by default. Use: php bin/phpunit -g database -->
+    <!-- Sin MySQL por defecto. Integración: levantar DB (compose), migraciones test, ejecutar PHPUnit con group database -->
     <groups>
         <exclude>
             <group>database</group>

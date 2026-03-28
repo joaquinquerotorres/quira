@@ -7,17 +7,22 @@ namespace App\State;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\State\ProcessorInterface;
+use ApiPlatform\Validator\Exception\ValidationException;
 use App\Entity\Bid;
 use App\Entity\Request;
 use App\Entity\User;
 use App\Enum\BidStatus;
 use App\Enum\RequestStatus;
+use App\Enum\RiskLevel;
 use App\Repository\BidRepository;
+use App\Service\ProfessionalSubscriptionService;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\Validator\ConstraintViolation;
+use Symfony\Component\Validator\ConstraintViolationList;
 
 final class BidProfessionalProcessor implements ProcessorInterface
 {
@@ -30,7 +35,8 @@ final class BidProfessionalProcessor implements ProcessorInterface
         private readonly ProcessorInterface $persistProcessor,
         private readonly LoggerInterface $logger,
         private readonly Security $security,
-        private readonly BidRepository $bidRepository
+        private readonly BidRepository $bidRepository,
+        private readonly ProfessionalSubscriptionService $subscriptionService,
     ) {
     }
 
@@ -102,11 +108,22 @@ final class BidProfessionalProcessor implements ProcessorInterface
                 );
             }
 
-            if (in_array('ROLE_FREE', $user->getRoles(), true)) {
+            if ($this->subscriptionService->isSubjectToFreeProfessionalLimits($user)) {
+                if ($request->getRiskLevel() === RiskLevel::HIGH) {
+                    $this->logger->warning("Usuario sin suscripción activa {$user->getUserIdentifier()} intentó pujar en solicitud HIGH.");
+                    $this->throwBidValidation(
+                        'riskLevel',
+                        'Las solicitudes de riesgo alto requieren un plan de pago activo. Renueva tu suscripción para pujar en este tipo de trabajos.',
+                        'BID_HIGH_REQUIRES_PAID_SUBSCRIPTION'
+                    );
+                }
+
                 if (!$this->bidRepository->canProfessionalBidThisMonth($user)) {
-                    $this->logger->warning("Usuario FREE {$user->getUserIdentifier()} intentó pujar habiendo alcanzado el límite mensual.");
-                    throw new BadRequestHttpException(
-                        'Has alcanzado el límite de ' . BidRepository::BIDS_MONTHLY_LIMIT_FREE . ' pujas este mes. Actualiza tu plan para seguir pujando.'
+                    $this->logger->warning("Usuario con límites FREE {$user->getUserIdentifier()} intentó pujar habiendo alcanzado el límite mensual.");
+                    $this->throwBidValidation(
+                        'monthlyBidLimit',
+                        'Has alcanzado el límite de ' . BidRepository::BIDS_MONTHLY_LIMIT_FREE . ' pujas este mes. Actualiza tu plan para seguir pujando.',
+                        'BID_MONTHLY_LIMIT_EXCEEDED'
                     );
                 }
             }
@@ -117,5 +134,13 @@ final class BidProfessionalProcessor implements ProcessorInterface
         }
 
         return $this->persistProcessor->process($data, $operation, $uriVariables, $context);
+    }
+
+    private function throwBidValidation(string $propertyPath, string $message, string $code): never
+    {
+        $violations = new ConstraintViolationList([
+            new ConstraintViolation($message, null, [], null, $propertyPath, null, null, $code),
+        ]);
+        throw new ValidationException($violations);
     }
 }

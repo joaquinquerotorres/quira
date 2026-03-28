@@ -9,8 +9,9 @@ use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
-use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Patch;
+use ApiPlatform\Metadata\Post;
+use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use App\Enum\BidStatus;
 use App\Entity\VisitRequest;
 use App\Repository\BidRepository;
@@ -32,7 +33,13 @@ use Symfony\Component\Validator\Constraints as Assert;
         new Post(
             processor: BidProfessionalProcessor::class,
             denormalizationContext: ['groups' => ['bid:write']],
-            normalizationContext: ['groups' => ['bid:read']]
+            normalizationContext: ['groups' => ['bid:read']],
+            openapi: new OpenApiOperation(
+                summary: 'Crear puja',
+                description: '422: violations[] + hydra:description (JSON-LD) o Problem+JSON. Códigos estables: '
+                    . 'BID_HIGH_REQUIRES_PAID_SUBSCRIPTION (propertyPath riskLevel, HIGH sin paidThroughAt vigente); '
+                    . 'BID_MONTHLY_LIMIT_EXCEEDED (propertyPath monthlyBidLimit). El cliente puede mostrar message tal cual.',
+            ),
         ),
         new Patch(
             name: 'accept_bid',

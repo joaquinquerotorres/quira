@@ -38,4 +38,24 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         $this->getEntityManager()->persist($user);
         $this->getEntityManager()->flush();
     }
+
+    public function findOneByStripeCustomerId(string $stripeCustomerId): ?User
+    {
+        return $this->findOneBy(['stripeCustomerId' => $stripeCustomerId]);
+    }
+
+    /**
+     * Usuarios con customer de Stripe (reconciliación batch).
+     *
+     * @return iterable<int, User>
+     */
+    public function iterateUsersWithStripeCustomer(): iterable
+    {
+        return $this->createQueryBuilder('u')
+            ->where('u.stripeCustomerId IS NOT NULL')
+            ->andWhere('u.stripeCustomerId != :empty')
+            ->setParameter('empty', '')
+            ->getQuery()
+            ->toIterable();
+    }
 }

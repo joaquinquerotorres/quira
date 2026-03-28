@@ -12,6 +12,7 @@ use App\Enum\RequestStatus;
 use App\Enum\RiskLevel;
 use App\Repository\RequestRepository;
 use App\Repository\VisitRequestRepository;
+use App\Service\ProfessionalSubscriptionService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -27,11 +28,12 @@ final class VisitRequestController extends AbstractController
         private readonly EntityManagerInterface $em,
         private readonly RequestRepository $requestRepository,
         private readonly VisitRequestRepository $visitRequestRepository,
+        private readonly ProfessionalSubscriptionService $subscriptionService,
     ) {
     }
 
     #[Route('/requests/{id}/visit-request', name: 'api_request_visit_request', methods: ['POST'])]
-    #[IsGranted('ROLE_PRO')]
+    #[IsGranted('ROLE_PROFESSIONAL')]
     public function createVisitRequest(int $id, HttpRequest $request): JsonResponse
     {
         /** @var \App\Entity\User|null $user */
@@ -40,9 +42,20 @@ final class VisitRequestController extends AbstractController
             return new JsonResponse(['message' => 'No autenticado.'], Response::HTTP_UNAUTHORIZED);
         }
 
+        if (!in_array('ROLE_PRO', $user->getRoles(), true)) {
+            return new JsonResponse(['message' => 'Solo el plan PRO puede solicitar visitas de valoración.'], Response::HTTP_FORBIDDEN);
+        }
+
         $proProfile = $user->getProfessionalProfile();
         if ($proProfile === null) {
             return new JsonResponse(['message' => 'Debes tener un perfil profesional para solicitar una visita.'], Response::HTTP_FORBIDDEN);
+        }
+
+        if (!$this->subscriptionService->hasActivePaidSubscription($proProfile)) {
+            return new JsonResponse(
+                ['message' => 'Necesitas una suscripción PRO activa para solicitar visitas de valoración.'],
+                Response::HTTP_FORBIDDEN
+            );
         }
 
         $serviceRequest = $this->requestRepository->find($id);

@@ -25,6 +25,7 @@ Quira es una API REST construida con **Symfony 8** y **API Platform** que permit
 | Storage | Supabase Storage, Firebase Storage |
 | Notificaciones | Twilio (WhatsApp, SMS), Firebase Cloud Messaging |
 | Tests | PHPUnit 12 |
+| Análisis estático | PHPStan 2 (nivel 5, Symfony + Doctrine) |
 
 ## Inicio rápido
 
@@ -50,6 +51,16 @@ symfony serve
 ```
 
 Documentación de Swagger: `http://localhost:8000/api/docs`
+
+### Contrato suscripción (profesional)
+
+La **fuente de verdad operativa** del plan de pago es `professionalProfile.paidThroughAt` (ISO 8601 en JSON, anidado bajo el usuario en `GET /api/users/{id}` con grupos `user:read`), no solo `ROLE_PRO` / `ROLE_SOLVER`.
+
+- **Vigente:** `paidThroughAt != null` y fecha **estrictamente posterior** a “ahora” → límites y permisos de plan de pago.
+- **`paidThroughAt === null`:** el backend trata como **sin periodo de pago conocido** (mismo comportamiento que caducado para límites y HIGH).
+- **`subscriptionCancelAtPeriodEnd`:** refleja `cancel_at_period_end` en Stripe (cancelación al final del periodo ya programada).
+
+Tras Checkout, el webhook actualiza la BD; si el redirect llega antes que el webhook, se puede llamar `POST /api/stripe/sync-subscription` (JWT) y luego refrescar el usuario. Reconciliación batch: `php bin/console stripe:reconcile-subscriptions`.
 
 ## Documentación
 

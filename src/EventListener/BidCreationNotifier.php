@@ -6,6 +6,7 @@ namespace App\EventListener;
 
 use App\Entity\Bid;
 use App\Enum\BidStatus;
+use App\Enum\NotificationAudience;
 use App\Service\NotificationService;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsEntityListener;
 use Doctrine\ORM\Events;
@@ -74,6 +75,7 @@ final class BidCreationNotifier
                     $request->getTitle()
                 ),
                 'BID_RECEIVED',
+                NotificationAudience::Client,
                 $request->getId()
             );
         } catch (\Exception $e) {

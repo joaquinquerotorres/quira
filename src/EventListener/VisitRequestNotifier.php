@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\EventListener;
 
 use App\Entity\VisitRequest;
-use App\Enum\RiskLevel;
+use App\Enum\NotificationAudience;
 use App\Service\NotificationService;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsEntityListener;
 use Doctrine\ORM\Events;
@@ -70,6 +70,7 @@ final class VisitRequestNotifier
                 'Nueva solicitud de visita',
                 $body,
                 'VISIT_REQUEST_CREATED',
+                NotificationAudience::Client,
                 $request->getId()
             );
         } catch (\Throwable $e) {
@@ -134,6 +135,7 @@ final class VisitRequestNotifier
                 $title,
                 $body,
                 $type,
+                NotificationAudience::Professional,
                 $request->getId()
             );
         } catch (\Throwable $e) {

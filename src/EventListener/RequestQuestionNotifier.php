@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\EventListener;
 
 use App\Entity\RequestQuestion;
+use App\Enum\NotificationAudience;
 use App\Service\NotificationService;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsEntityListener;
 use Doctrine\ORM\Events;
@@ -61,6 +62,7 @@ final class RequestQuestionNotifier
                     $questionText
                 ),
                 'QUESTION_RECEIVED',
+                NotificationAudience::Client,
                 $request->getId()
             );
         } catch (\Exception $e) {
@@ -104,6 +106,7 @@ final class RequestQuestionNotifier
                     $answerText
                 ),
                 'ANSWER_RECEIVED',
+                NotificationAudience::Professional,
                 $request->getId()
             );
         } catch (\Exception $e) {

@@ -16,10 +16,11 @@
 ### Roles
 - ROLE_USER - Usuario base
 - ROLE_PROFESSIONAL - Tiene perfil profesional
-- ROLE_FREE - Profesional gratuito (límite de bids/mes)
-- ROLE_SOLVER - Suscripción SOLVER
-- ROLE_PRO - Suscripción PRO
+- ROLE_FREE - Marcador de faceta profesional gratuita (onboarding / marketing)
+- ROLE_SOLVER / ROLE_PRO - Marcadores de tier contratado (pueden persistir aunque el pago haya caducado)
 - ROLE_ADMIN
+
+**Permisos operativos (pujas, HIGH, visitas PRO, límite mensual):** el servidor usa **`professionalProfile.paidThroughAt`** (y la lógica en `ProfessionalSubscriptionService`), no solo el rol. Suscripción de pago **vigente** = `paidThroughAt` no nulo y **posterior a ahora**. `paidThroughAt === null` se trata como sin periodo de pago conocido (mismas restricciones que caducado para esas reglas).
 
 ## Stripe (suscripciones)
 
@@ -29,14 +30,20 @@
 
 ### Flujo
 1. Cliente llama POST `/api/stripe/checkout-session` con tier y professionalProfileId
-2. Backend crea/recupera Stripe Customer y sesión Checkout
+2. Backend crea/recupera Stripe Customer (persiste `stripe_customer_id` en `User`) y sesión Checkout (`subscription_data.metadata` con perfil y tier)
 3. Usuario paga en Stripe
-4. Webhook `checkout.session.completed` actualiza paidThroughAt y roles
+4. Webhooks actualizan **`paidThroughAt`** (fin de periodo / trial según Stripe) y **`subscriptionCancelAtPeriodEnd`**; `checkout.session.completed` también asigna roles (PRO/SOLVER) vía `StripeCheckoutSessionHandler`
 
-### Webhook
-- Ruta pública `/api/stripe/webhook`
-- Verificación de firma con STRIPE_WEBHOOK_SECRET
-- StripeCheckoutSessionHandler procesa el evento
+Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Productos / Precios), no en este backend.
+
+### Webhooks
+- Ruta pública `/api/stripe/webhook`; verificación de firma con `STRIPE_WEBHOOK_SECRET`
+- **`StripeWebhookProcessor`**: tipos suscritos incluyen `checkout.session.completed`, `customer.subscription.*` (created/updated/deleted/paused/resumed), `invoice.paid`, `invoice.payment_failed`, `invoice.payment_succeeded`, `invoice.updated`
+- **Idempotencia:** tabla `stripe_webhook_event` (un `evt_*` solo cuenta como procesado con éxito una vez); logs estructurados (`stripe.webhook.*`)
+
+### Cliente tras Checkout
+- POST `/api/stripe/sync-subscription` (JWT): fuerza lectura desde Stripe si el redirect llega antes que el webhook
+- Operaciones: `php bin/console stripe:reconcile-subscriptions` (`--user-id=` opcional) para recuperar desajustes por webhooks perdidos
 
 ## IA (Gemini)
 
@@ -75,10 +82,17 @@
 
 ## Notificaciones
 
-### Canales
-- WhatsApp (Twilio)
-- Push (Firebase Cloud Messaging)
-- Email (Symfony Mailer)
+### Canales (variables de entorno)
+- Valores **`PUSH`**, **`EMAIL`** o **`WHATSAPP`** (mayúsculas o minúsculas):
+  - `NOTIFICATIONS_PRO` — envíos en **faceta profesional** cuando el usuario tiene `ROLE_PRO`.
+  - `NOTIFICATIONS_SOLVER` — faceta profesional con `ROLE_SOLVER`.
+  - `NOTIFICATIONS_FREE` — faceta profesional con `ROLE_FREE` (o `ProfessionalProfile` sin esos tres roles, caso raro).
+  - `NOTIFICATIONS_CLIENT` — envíos en **faceta cliente** (ofertas recibidas en *sus* solicitudes, visitas a *su* pedido, dudas de pros sobre *su* request, reseña recibida como cliente, etc.).
+- Un mismo `User` puede ser cliente y profesional: el **evento** pasa `NotificationAudience::Client` o `::Professional` a `NotificationService::send()`, así un Free recibe **email** por `NOTIFICATIONS_FREE` cuando actúa como pro y **push** por `NOTIFICATIONS_CLIENT` cuando la notificación es sobre su actividad como cliente.
+
+### Preferencias por perfil (base de datos)
+- `ClientProfile`: `notifyRequestActivity`, `notifyBidActivity`, `notifyReviews` — los listeners comprueban estos flags **antes** de llamar al servicio (no se han eliminado).
+- `ProfessionalProfile`: los mismos tres campos, usados según el tipo de aviso (nuevas solicitudes, aceptación de oferta, visitas, respuestas en Q&A, reseñas como pro).
 
 ### Eventos que disparan notificaciones
 - Nueva bid en una request del cliente
@@ -90,8 +104,8 @@
 - Visita aceptada/rechazada (cliente → profesional que la solicitó)
 
 ### NotificationService
-- Decide canal según preferencias del usuario
-- Usa FCM token para push
+- Elige canal según `NotificationAudience` + roles (faceta pro) o `NOTIFICATIONS_CLIENT` (faceta cliente).
+- FCM para push; Twilio solo si el canal configurado es WhatsApp (nunca como fallback).
 
 ## Verificación
 
@@ -114,16 +128,20 @@
   - POST `/api/verify/phone/confirm` con body `{"code": "123456", "profile": "client" | "professional"}`:
     - Valida el OTP y marca `verifiedPhone` en el/los perfiles cuyo teléfono coincida tras normalización.
 
-## Límites ROLE_FREE
+## Límites y reglas de pujas (plan efectivo FREE)
 
-- Profesionales sin suscripción tienen límite de bids por mes
-- GET /api/professionals/me/can-bid devuelve si puede pujar
+- Aplica a quien **no** tiene suscripción activa según `paidThroughAt` (incluye `ROLE_FREE`, `ROLE_PRO`/`ROLE_SOLVER` con pago caducado o `paidThroughAt` null)
+- Límite de **3 pujas por mes calendario** (conteo en `BidRepository`; excluye el patrón “retirada”: `REJECTED` con request aún `PENDING`)
+- **HIGH:** no se puede crear nueva puja sin suscripción activa; quien ya tiene puja `PENDING`/`ACCEPTED` o es el asignado sigue pudiendo ver el hilo según filtros de API
+- POST `/api/bids` devuelve **422** con `violations[]` y códigos estables (`BID_HIGH_REQUIRES_PAID_SUBSCRIPTION`, `BID_MONTHLY_LIMIT_EXCEEDED`) para el cliente
+- GET `/api/professionals/me/can-bid` → `canBidThisMonth` coherente con el plan efectivo (no solo `ROLE_FREE`)
 
 ## Filtrado de datos
 
 ### CurrentUserExtension
-- Request: solo las del cliente o donde el usuario tiene bids
-- Bid: solo las del profesional o de requests del cliente
+- **Request (colección):** según query (`is_market`, `my_jobs`, cliente, etc.); en mercado, profesionales sin suscripción activa no ven solicitudes **HIGH** salvo excepción (puja propia PENDING/ACCEPTED o asignado)
+- **Request (ítem):** cliente, asignado, visita aceptada, puja propia activa (PENDING/ACCEPTED), o PENDING no-HIGH (no se expone HIGH “vacía” a terceros)
+- **Bid:** del profesional o de requests del cliente según contexto (`my_bids`, etc.)
 
 ### RequestAddressVoter
 - Campo `preciseAddress` solo visible para:

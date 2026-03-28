@@ -37,6 +37,8 @@ final class VisitRequestContractTest extends ApiTestCase
         );
         $proProfile = $pro->getProfessionalProfile();
         $this->assertNotNull($proProfile);
+        $proProfile->setPaidThroughAt(new \DateTimeImmutable('+1 year'));
+        $this->em->flush();
 
         $request = $this->createRequest(
             clientProfile: $clientProfile,

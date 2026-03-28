@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\Entity\User;
 use App\Repository\BidRepository;
+use App\Service\ProfessionalSubscriptionService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -17,7 +18,8 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class CanBidController extends AbstractController
 {
     public function __construct(
-        private readonly BidRepository $bidRepository
+        private readonly BidRepository $bidRepository,
+        private readonly ProfessionalSubscriptionService $subscriptionService,
     ) {
     }
 
@@ -31,7 +33,7 @@ class CanBidController extends AbstractController
             return new JsonResponse(['canBidThisMonth' => false], 200);
         }
 
-        if (!in_array('ROLE_FREE', $user->getRoles(), true)) {
+        if (!$this->subscriptionService->isSubjectToFreeProfessionalLimits($user)) {
             return new JsonResponse(['canBidThisMonth' => true], 200);
         }
 

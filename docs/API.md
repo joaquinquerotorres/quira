@@ -14,6 +14,7 @@ Autenticación: Bearer JWT en header Authorization
 
 ### User
 - GET/POST /api/users, GET/PUT/PATCH/DELETE /api/users/{id}
+- En **`user:read`**, el nodo **`professionalProfile`** (si existe) incluye **`paidThroughAt`** (ISO 8601 o null) y **`subscriptionCancelAtPeriodEnd`** (boolean). Son la fuente de verdad para saber si la suscripción está vigente en el cliente; los roles `ROLE_PRO` / `ROLE_SOLVER` pueden persistir tras caducar el pago.
 
 ### ClientProfile
 - GET/PATCH/PUT /api/client_profiles/{id}
@@ -44,6 +45,10 @@ Autenticación: Bearer JWT en header Authorization
 ### Bid
 - GET/POST /api/bids, GET/PATCH /api/bids/{id}
 - PATCH /api/bids/{id}/accept - Aceptar oferta
+- **POST /api/bids** puede responder **422** con `violations[]` y **`code`** estable para el cliente:
+  - `BID_HIGH_REQUIRES_PAID_SUBSCRIPTION` — solicitud HIGH sin suscripción activa (`paidThroughAt`)
+  - `BID_MONTHLY_LIMIT_EXCEEDED` — límite mensual del plan efectivo FREE alcanzado
+  - Otros errores de validación (teléfono no verificado, etc.) siguen el mismo formato de violaciones.
 - Campos principales:
   - `priceQuote` (int, céntimos)
   - `comment` (texto opcional)
@@ -70,10 +75,13 @@ Autenticación: Bearer JWT en header Authorization
 
 ### Stripe
 - POST `/api/stripe/checkout-session` - Crea sesión Checkout (body: tier, professionalProfileId, successUrl, cancelUrl)
-- POST `/api/stripe/webhook` - Webhook Stripe (sin auth)
+- POST `/api/stripe/webhook` - Webhook Stripe (sin auth). Idempotente por `evt_*`; eventos que sincronizan periodo: `checkout.session.completed`, `customer.subscription.*` (created/updated/deleted/paused/resumed), `invoice.paid`, `invoice.payment_failed`, `invoice.payment_succeeded`, `invoice.updated`. En el Dashboard deben estar suscritos (ver `docs/SETUP.md`).
+- POST `/api/stripe/sync-subscription` - **JWT**. Tras el redirect de Checkout, si el webhook aún no actualizó la BD, fuerza lectura desde Stripe y devuelve `paidThroughAt` + `subscriptionCancelAtPeriodEnd` actualizados (el cliente puede llamar antes de `GET /users/{id}`).
 - POST `/api/stripe/cancel-subscription` - Programa la cancelación al final de periodo en Stripe (cancel_at_period_end=true) para el `professionalProfileId` indicado.  
   - No cambia roles ni `paidThroughAt` inmediatamente.
   - Actualiza el flag `subscriptionCancelAtPeriodEnd` en el perfil profesional y en la respuesta de usuario (`user:read`).
+
+**Reconciliación (operaciones / cron):** `php bin/console stripe:reconcile-subscriptions` (opción `--user-id=` para uno solo). Compara suscripciones en Stripe con la BD por si faltó un webhook.
 
 ### Predict (IA)
 - POST `/api/predict` - Diagnóstico con Gemini (body: description, image, audio, video, location opcional)
@@ -93,7 +101,7 @@ Autenticación: Bearer JWT en header Authorization
 ### Visitas de valoración
 
 - POST `/api/requests/{id}/visit-request`
-  - Solo usuarios con `ROLE_PRO` (suscripción PRO activa) y con `ProfessionalProfile` asociado.
+  - Solo usuarios con `ROLE_PRO`, suscripción **activa** (`paidThroughAt` futuro) y `ProfessionalProfile` asociado.
   - Solo se permiten visitas para solicitudes con `riskLevel = HIGH` y estado `PENDING`.
   - Crea (o reutiliza si ya existe) una `VisitRequest` con `status = PENDING` para la `Request` indicada y el profesional autenticado.
   - Body opcional: `{"note": "Texto opcional del profesional sobre la visita"}`.
@@ -139,7 +147,7 @@ Autenticación: Bearer JWT en header Authorization
 - POST /api/users/avatar - Subir avatar directo
 
 ### Otros
-- GET /api/professionals/me/can-bid - ¿Puede pujar? (límite ROLE_FREE)
+- GET /api/professionals/me/can-bid - ¿Puede pujar? (límite mensual si plan efectivo FREE según `paidThroughAt`)
 
 ## Rutas públicas
 

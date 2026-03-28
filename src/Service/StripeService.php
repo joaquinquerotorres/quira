@@ -68,6 +68,12 @@ class StripeService
                 'professionalProfileId' => (string) $profile->getId(),
                 'tier' => $tier,
             ],
+            'subscription_data' => [
+                'metadata' => [
+                    'professionalProfileId' => (string) $profile->getId(),
+                    'tier' => $tier,
+                ],
+            ],
             'success_url' => $successUrl,
             'cancel_url' => $cancelUrl,
         ]);
@@ -85,6 +91,16 @@ class StripeService
             $sessionId,
             ['expand' => ['subscription']]
         );
+    }
+
+    /**
+     * @throws ApiErrorException
+     */
+    public function retrieveSubscription(string $subscriptionId): Subscription
+    {
+        $client = new StripeClient($this->secretKey);
+
+        return $client->subscriptions->retrieve($subscriptionId);
     }
 
     /**
@@ -108,5 +124,24 @@ class StripeService
                 'cancel_at_period_end' => true,
             ]);
         }
+    }
+
+    /**
+     * Todas las suscripciones del cliente (cualquier estado), para reconciliación.
+     *
+     * @return \Iterator<int, Subscription>
+     *
+     * @throws ApiErrorException
+     */
+    public function listAllSubscriptionsForCustomer(string $customerId): \Iterator
+    {
+        $client = new StripeClient($this->secretKey);
+        $collection = $client->subscriptions->all([
+            'customer' => $customerId,
+            'status' => 'all',
+            'limit' => 100,
+        ]);
+
+        return $collection->autoPagingIterator();
     }
 }

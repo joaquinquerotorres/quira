@@ -169,5 +169,47 @@ final class CanBidTest extends ApiTestCase
         $this->assertArrayHasKey('canBidThisMonth', $data);
         $this->assertFalse($data['canBidThisMonth']);
     }
+
+    public function testCanBidFalseWhenRoleProButPaidThroughExpired(): void
+    {
+        $pro = $this->createProfessionalUser(
+            email: 'pro-canbid-expired@test.com',
+            roles: ['ROLE_PROFESSIONAL', 'ROLE_PRO'],
+            phoneNumber: null,
+            verifiedPhone: false,
+            notifyRequestActivity: false,
+        );
+        $pro->getProfessionalProfile()?->setPaidThroughAt(new \DateTimeImmutable('-1 day'));
+        $this->em->flush();
+
+        $client = $this->createClientUser(
+            email: 'client-canbid-expired@test.com',
+            phoneNumber: null,
+            verifiedPhone: false,
+            notifyRequestActivity: false,
+        );
+        $clientProfile = $client->getClientProfile();
+
+        for ($i = 0; $i < 3; $i++) {
+            $request = $this->createRequest(
+                clientProfile: $clientProfile,
+                status: RequestStatus::PENDING,
+                riskLevel: RiskLevel::LOW,
+            );
+
+            $this->createBid(
+                request: $request,
+                professionalUser: $pro,
+                status: BidStatus::PENDING,
+                priceQuote: 2000 + ($i * 100),
+            );
+        }
+
+        $this->browser->request('GET', '/api/professionals/me/can-bid', [], [], $this->authHeaders($pro));
+        $this->assertResponseStatusCodeSame(200);
+
+        $data = $this->decodeJsonResponse($this->browser->getResponse()->getContent());
+        $this->assertFalse($data['canBidThisMonth']);
+    }
 }
 

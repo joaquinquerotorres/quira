@@ -1,0 +1,181 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getClientProfile\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: src/Controller/VerificationController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getProfessionalProfile\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: src/Controller/VerificationController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:isVerifiedEmail\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Controller/VerificationController.php
+
+		-
+			message: '#^Parameter \#1 \$user of method App\\Service\\EmailVerificationService\:\:sendVerificationEmail\(\) expects App\\Entity\\User, Symfony\\Component\\Security\\Core\\User\\UserInterface\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Controller/VerificationController.php
+
+		-
+			message: '#^Parameter \#2 \$user of method App\\Service\\PhoneVerificationService\:\:sendOtp\(\) expects App\\Entity\\User, Symfony\\Component\\Security\\Core\\User\\UserInterface\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Controller/VerificationController.php
+
+		-
+			message: '#^Parameter \#3 \$user of method App\\Service\\PhoneVerificationService\:\:verifyOtp\(\) expects App\\Entity\\User, Symfony\\Component\\Security\\Core\\User\\UserInterface\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Controller/VerificationController.php
+
+		-
+			message: '#^Comparison operation "\>" between int\<1, max\> and 0 is always true\.$#'
+			identifier: greater.alwaysTrue
+			count: 1
+			path: src/DataFixtures/AppFixtures.php
+
+		-
+			message: '#^Call to function method_exists\(\) with App\\Entity\\Review and ''getAuthorDisplayName'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Entity/ProfessionalProfile.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type App\\Entity\\ProfessionalProfile\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/EventListener/BidCreationNotifier.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type App\\Entity\\Request\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/EventListener/BidCreationNotifier.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between App\\Enum\\RiskLevel and ''HIGH'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: src/EventListener/RequestCreationNotifier.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type App\\Entity\\Request\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: src/EventListener/ReviewCreationNotifier.php
+
+		-
+			message: '#^PHPDoc tag @implements contains generic type Symfony\\Component\\Security\\Core\\User\\PasswordUpgraderInterface\<App\\Entity\\User\> but interface Symfony\\Component\\Security\\Core\\User\\PasswordUpgraderInterface is not generic\.$#'
+			identifier: generics.notGeneric
+			count: 1
+			path: src/Repository/UserRepository.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<string, bool\|null\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Serializer/RequestAssignedProfessionalNormalizer.php
+
+		-
+			message: '#^Comparison operation "\>\=" between int\<4, max\> and 2 is always true\.$#'
+			identifier: greaterOrEqual.alwaysTrue
+			count: 1
+			path: src/Service/GeminiService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and false will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: src/Service/MediaService.php
+
+		-
+			message: '#^Result of \|\| is always true\.$#'
+			identifier: booleanOr.alwaysTrue
+			count: 1
+			path: src/Service/PhoneVerificationService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between \*NEVER\* and string will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: src/Service/PhoneVerificationService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between null and null will always evaluate to true\.$#'
+			identifier: identical.alwaysTrue
+			count: 1
+			path: src/Service/PhoneVerificationService.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: src/Service/PhoneVerificationService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Service/StripeWebhookProcessor.php
+
+		-
+			message: '#^Constant App\\Service\\SupabaseUploadTicketService\:\:TICKET_EXPIRES_IN is unused\.$#'
+			identifier: classConstant.unused
+			count: 1
+			path: src/Service/SupabaseUploadTicketService.php
+
+		-
+			message: '#^Match arm comparison between ''video'' and ''video'' is always true\.$#'
+			identifier: match.alwaysTrue
+			count: 1
+			path: src/Service/SupabaseUploadTicketService.php
+
+		-
+			message: '#^Call to method getClientProfile\(\) on an unknown class App\\State\\User\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/State/BidAcceptanceProcessor.php
+
+		-
+			message: '#^Call to method getUserIdentifier\(\) on an unknown class App\\State\\User\.$#'
+			identifier: class.notFound
+			count: 2
+			path: src/State/BidAcceptanceProcessor.php
+
+		-
+			message: '#^PHPDoc tag @var for variable \$user contains unknown class App\\State\\User\.$#'
+			identifier: class.notFound
+			count: 2
+			path: src/State/BidAcceptanceProcessor.php
+
+		-
+			message: '#^PHPDoc tag @var with type App\\State\\User\|null is not subtype of native type Symfony\\Component\\Security\\Core\\User\\UserInterface\|null\.$#'
+			identifier: varTag.nativeType
+			count: 2
+			path: src/State/BidAcceptanceProcessor.php
+
+		-
+			message: '#^If condition is always true\.$#'
+			identifier: if.alwaysTrue
+			count: 1
+			path: src/State/RequestQuestionProcessor.php
+
+		-
+			message: '#^Parameter \#1 \$author of method App\\Entity\\RequestQuestion\:\:setAuthor\(\) expects App\\Entity\\User\|null, Symfony\\Component\\Security\\Core\\User\\UserInterface given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/State/RequestQuestionProcessor.php
+
+		-
+			message: '#^Parameter \#2 \$author of method App\\State\\ReviewProcessor\:\:recalculateTargetRating\(\) expects App\\Entity\\User\|null, Symfony\\Component\\Security\\Core\\User\\UserInterface given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/State/ReviewProcessor.php

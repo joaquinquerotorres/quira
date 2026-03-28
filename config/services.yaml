@@ -10,6 +10,8 @@ parameters:
     requests_uploads_directory: '%kernel.project_dir%/public/uploads/requests'
     # Si TWILIO_SMS_FROM está vacío o no existe, se usa modo sandbox (OTP solo en log)
     env_default_twilio_sms_from: ''
+    # Valor por defecto si GEMINI_MODEL no está definido (%env(default:PARAM:ENV)% exige un nombre de parámetro)
+    env_default_gemini_model: 'gemini-2.5-flash'
 
 services:
     # default configuration for services in *this* file
@@ -29,6 +31,10 @@ services:
             $twilioSid: '%env(TWILIO_ACCOUNT_SID)%'
             $twilioToken: '%env(TWILIO_AUTH_TOKEN)%'
             $twilioFrom: '%env(TWILIO_WHATSAPP_FROM)%'
+            $notificationsPro: '%env(NOTIFICATIONS_PRO)%'
+            $notificationsSolver: '%env(NOTIFICATIONS_SOLVER)%'
+            $notificationsFree: '%env(NOTIFICATIONS_FREE)%'
+            $notificationsClient: '%env(NOTIFICATIONS_CLIENT)%'
 
     App\Security\LoginSuccessHandler:
         arguments:

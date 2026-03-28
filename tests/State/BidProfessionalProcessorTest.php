@@ -9,8 +9,11 @@ use App\Entity\ClientProfile;
 use App\Entity\ProfessionalProfile;
 use App\Entity\Request;
 use App\Entity\User;
+use ApiPlatform\Validator\Exception\ValidationException;
 use App\Enum\RequestStatus;
+use App\Enum\RiskLevel;
 use App\Repository\BidRepository;
+use App\Service\ProfessionalSubscriptionService;
 use App\State\BidProfessionalProcessor;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -69,7 +72,7 @@ final class BidProfessionalProcessorTest extends TestCase
 
         $bidRepo = $this->createMock(BidRepository::class);
         $bidRepo->method('canProfessionalBidThisMonth')->willReturn(true);
-        $processor = new BidProfessionalProcessor($persistProcessor, $this->logger, $security, $bidRepo);
+        $processor = $this->createBidProcessor($persistProcessor, $security, $bidRepo);
         $op = $this->createPostOperation();
 
         $result = $processor->process($bid, $op);
@@ -104,7 +107,7 @@ final class BidProfessionalProcessorTest extends TestCase
         $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
         $bidRepo = $this->createMock(BidRepository::class);
 
-        $processor = new BidProfessionalProcessor($persistProcessor, $this->logger, $security, $bidRepo);
+        $processor = $this->createBidProcessor($persistProcessor, $security, $bidRepo);
         $op = $this->createPostOperation();
 
         $this->expectException(AccessDeniedHttpException::class);
@@ -125,6 +128,8 @@ final class BidProfessionalProcessorTest extends TestCase
         $proUser->setEmail('pro@test.com');
         $proProfile = new ProfessionalProfile();
         $proProfile->setFullName('Pro');
+        $proProfile->setPhoneNumber('+34600000000');
+        $proProfile->setVerifiedPhone(true);
         $proProfile->setUser($proUser);
         $proUser->setProfessionalProfile($proProfile);
 
@@ -145,7 +150,7 @@ final class BidProfessionalProcessorTest extends TestCase
         $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
         $bidRepo = $this->createMock(BidRepository::class);
 
-        $processor = new BidProfessionalProcessor($persistProcessor, $this->logger, $security, $bidRepo);
+        $processor = $this->createBidProcessor($persistProcessor, $security, $bidRepo);
         $op = $this->createPostOperation();
 
         $this->expectException(BadRequestHttpException::class);
@@ -183,7 +188,7 @@ final class BidProfessionalProcessorTest extends TestCase
         $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
         $bidRepo = $this->createMock(BidRepository::class);
 
-        $processor = new BidProfessionalProcessor($persistProcessor, $this->logger, $security, $bidRepo);
+        $processor = $this->createBidProcessor($persistProcessor, $security, $bidRepo);
         $op = $this->createPostOperation();
 
         $this->expectException(AccessDeniedHttpException::class);
@@ -226,7 +231,7 @@ final class BidProfessionalProcessorTest extends TestCase
         $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
         $bidRepo = $this->createMock(BidRepository::class);
 
-        $processor = new BidProfessionalProcessor($persistProcessor, $this->logger, $security, $bidRepo);
+        $processor = $this->createBidProcessor($persistProcessor, $security, $bidRepo);
         $op = $this->createPostOperation();
 
         $this->expectException(AccessDeniedHttpException::class);
@@ -269,7 +274,7 @@ final class BidProfessionalProcessorTest extends TestCase
         $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
         $bidRepo = $this->createMock(BidRepository::class);
 
-        $processor = new BidProfessionalProcessor($persistProcessor, $this->logger, $security, $bidRepo);
+        $processor = $this->createBidProcessor($persistProcessor, $security, $bidRepo);
         $op = $this->createPostOperation();
 
         $this->expectException(AccessDeniedHttpException::class);
@@ -313,12 +318,69 @@ final class BidProfessionalProcessorTest extends TestCase
         $bidRepo = $this->createMock(BidRepository::class);
         $bidRepo->method('canProfessionalBidThisMonth')->willReturn(false);
 
-        $processor = new BidProfessionalProcessor($persistProcessor, $this->logger, $security, $bidRepo);
+        $processor = $this->createBidProcessor($persistProcessor, $security, $bidRepo);
         $op = $this->createPostOperation();
 
-        $this->expectException(BadRequestHttpException::class);
-        $this->expectExceptionMessage('Has alcanzado el límite de 3 pujas este mes');
+        $this->expectException(ValidationException::class);
         $processor->process($bid, $op);
+    }
+
+    public function testThrowsWhenNoActiveSubscriptionOnHighRiskRequest(): void
+    {
+        $clientUser = new User();
+        $clientUser->setEmail('client@test.com');
+        $clientProfile = new ClientProfile();
+        $clientProfile->setFullName('Cliente');
+        $clientProfile->setUser($clientUser);
+        $clientUser->setClientProfile($clientProfile);
+
+        $proUser = new User();
+        $proUser->setEmail('pro@test.com');
+        $proUser->setRoles(['ROLE_USER', 'ROLE_PROFESSIONAL', 'ROLE_SOLVER']);
+        $proProfile = new ProfessionalProfile();
+        $proProfile->setFullName('Pro');
+        $proProfile->setPhoneNumber('+34600000000');
+        $proProfile->setVerifiedPhone(true);
+        $proProfile->setUser($proUser);
+        $proUser->setProfessionalProfile($proProfile);
+
+        $request = new Request();
+        $request->setTitle('Test request title');
+        $request->setAddress('Calle Test');
+        $request->setPriceAmount(100);
+        $request->setClient($clientProfile);
+        $request->setStatus(RequestStatus::PENDING);
+        $request->setRiskLevel(RiskLevel::HIGH);
+
+        $bid = new Bid();
+        $bid->setRequest($request);
+        $bid->setPriceQuote(80);
+
+        $security = $this->createMock(Security::class);
+        $security->method('getUser')->willReturn($proUser);
+        $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
+        $bidRepo = $this->createMock(BidRepository::class);
+
+        $processor = $this->createBidProcessor($persistProcessor, $security, $bidRepo);
+        $op = $this->createPostOperation();
+
+        $this->expectException(ValidationException::class);
+        $processor->process($bid, $op);
+    }
+
+    private function createBidProcessor(
+        \ApiPlatform\State\ProcessorInterface $persistProcessor,
+        Security $security,
+        BidRepository $bidRepo,
+        ?ProfessionalSubscriptionService $subscriptionService = null,
+    ): BidProfessionalProcessor {
+        return new BidProfessionalProcessor(
+            $persistProcessor,
+            $this->logger,
+            $security,
+            $bidRepo,
+            $subscriptionService ?? new ProfessionalSubscriptionService(),
+        );
     }
 
     private function createPostOperation(): \ApiPlatform\Metadata\Post

@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Service\StripeCheckoutSessionHandler;
-use Stripe\Event;
+use App\Service\StripeWebhookProcessor;
 use Stripe\Exception\SignatureVerificationException;
 use Stripe\Webhook;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -19,7 +18,7 @@ class StripeWebhookController extends AbstractController
 {
     public function __construct(
         private readonly string $webhookSecret,
-        private readonly StripeCheckoutSessionHandler $sessionHandler,
+        private readonly StripeWebhookProcessor $webhookProcessor,
     ) {
     }
 
@@ -37,14 +36,8 @@ class StripeWebhookController extends AbstractController
             return new Response('Invalid signature', Response::HTTP_BAD_REQUEST);
         }
 
-        if ($event->type !== Event::CHECKOUT_SESSION_COMPLETED) {
-            return new Response('Unhandled event type', Response::HTTP_OK);
-        }
-
-        $session = $event->data->object;
-
         try {
-            $this->sessionHandler->handleCompletedSession($session);
+            $this->webhookProcessor->process($event);
         } catch (\InvalidArgumentException $e) {
             return new Response($e->getMessage(), Response::HTTP_BAD_REQUEST);
         }

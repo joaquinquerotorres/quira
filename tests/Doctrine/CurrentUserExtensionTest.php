@@ -6,6 +6,7 @@ namespace App\Tests\Doctrine;
 
 use App\Doctrine\CurrentUserExtension;
 use App\Entity\Bid;
+use App\Service\ProfessionalSubscriptionService;
 use App\Entity\ClientProfile;
 use App\Entity\ProfessionalProfile;
 use App\Entity\Request;
@@ -35,7 +36,7 @@ final class CurrentUserExtensionTest extends KernelTestCase
 
         $requestStack = new RequestStack();
 
-        $extension = new CurrentUserExtension($security, $requestStack);
+        $extension = new CurrentUserExtension($security, $requestStack, new ProfessionalSubscriptionService());
 
         $qb = $em->createQueryBuilder()
             ->select('b')
@@ -65,7 +66,7 @@ final class CurrentUserExtensionTest extends KernelTestCase
 
         $requestStack = new RequestStack();
 
-        $extension = new CurrentUserExtension($security, $requestStack);
+        $extension = new CurrentUserExtension($security, $requestStack, new ProfessionalSubscriptionService());
 
         $qb = $em->createQueryBuilder()
             ->select('r')

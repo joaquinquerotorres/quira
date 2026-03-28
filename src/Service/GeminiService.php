@@ -14,7 +14,7 @@ class GeminiService
     public function __construct(
         #[Autowire('%env(GEMINI_API_KEY)%')] 
         private string $apiKey,
-        #[Autowire('%env(default:models/gemini-2.5-flash:GEMINI_MODEL)%')]
+        #[Autowire('%env(default:env_default_gemini_model:GEMINI_MODEL)%')]
         private string $model,
         private readonly HttpClientInterface $client,
         private readonly LoggerInterface $logger

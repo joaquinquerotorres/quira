@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\EventListener;
 
 use App\Entity\Review;
+use App\Enum\NotificationAudience;
 use App\Service\NotificationService;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsEntityListener;
 use Doctrine\ORM\Events;
@@ -42,6 +43,7 @@ final class ReviewCreationNotifier
                     $request?->getTitle() ?? 'Servicio realizado'
                 ),
                 'REVIEW_RECEIVED',
+                NotificationAudience::Professional,
                 $request?->getId()
             );
         }
@@ -56,6 +58,7 @@ final class ReviewCreationNotifier
                     $author->getProfessionalProfile()->getFullName()
                 ),
                 'REVIEW_RECEIVED',
+                NotificationAudience::Client,
                 $request?->getId()
             );
         }

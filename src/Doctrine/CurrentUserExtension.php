@@ -12,7 +12,10 @@ use App\Entity\Bid;
 use App\Entity\Request;
 use App\Entity\User;
 use App\Entity\VisitRequest;
+use App\Enum\BidStatus;
 use App\Enum\RequestStatus;
+use App\Enum\RiskLevel;
+use App\Service\ProfessionalSubscriptionService;
 use Doctrine\ORM\QueryBuilder;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -22,6 +25,7 @@ final class CurrentUserExtension implements QueryCollectionExtensionInterface, Q
     public function __construct(
         private readonly Security $security,
         private readonly RequestStack $requestStack,
+        private readonly ProfessionalSubscriptionService $subscriptionService,
     ) {
     }
 
@@ -113,7 +117,16 @@ final class CurrentUserExtension implements QueryCollectionExtensionInterface, Q
                 $queryBuilder
                     ->leftJoin(sprintf('%s.client', $rootAlias), 'req_client')
                     ->leftJoin(sprintf('%s.assignedProfessional', $rootAlias), 'req_pro')
-                    ->leftJoin(sprintf('%s.bids', $rootAlias), $bidAlias, 'WITH', sprintf('%s.professional = :current_user', $bidAlias))
+                    ->leftJoin(
+                        sprintf('%s.bids', $rootAlias),
+                        $bidAlias,
+                        'WITH',
+                        sprintf(
+                            '%s.professional = :current_user AND %s.status IN (:bid_item_active_statuses)',
+                            $bidAlias,
+                            $bidAlias
+                        )
+                    )
                     ->leftJoin(
                         sprintf('%s.visitRequests', $rootAlias),
                         $visitAlias,
@@ -124,7 +137,11 @@ final class CurrentUserExtension implements QueryCollectionExtensionInterface, Q
                         $queryBuilder->expr()->orX(
                             'req_client.user = :current_user',
                             'req_pro.user = :current_user',
-                            sprintf('%s.status = :status_pending', $rootAlias),
+                            sprintf(
+                                '(%s.status = :status_pending AND %s.riskLevel != :risk_high_item)',
+                                $rootAlias,
+                                $rootAlias
+                            ),
                             sprintf('%s.id IS NOT NULL', $bidAlias),
                             sprintf('%s.id IS NOT NULL', $visitAlias)
                         )
@@ -132,7 +149,9 @@ final class CurrentUserExtension implements QueryCollectionExtensionInterface, Q
                     ->setParameter('current_user', $user)
                     ->setParameter('current_pro_profile', $proProfile)
                     ->setParameter('visit_accepted', VisitRequest::STATUS_ACCEPTED)
-                    ->setParameter('status_pending', RequestStatus::PENDING->value);
+                    ->setParameter('status_pending', RequestStatus::PENDING->value)
+                    ->setParameter('risk_high_item', RiskLevel::HIGH)
+                    ->setParameter('bid_item_active_statuses', [BidStatus::PENDING, BidStatus::ACCEPTED]);
                 return;
             }
 
@@ -191,6 +210,25 @@ final class CurrentUserExtension implements QueryCollectionExtensionInterface, Q
                     ->join(sprintf('%s.client', $rootAlias), 'mkt_client')
                     ->andWhere('mkt_client.user != :current_user')
                     ->setParameter('current_user', $user);
+
+                if (!$this->subscriptionService->hasActivePaidSubscription($proProfile)) {
+                    $highExceptionDql = sprintf(
+                        'EXISTS (SELECT 1 FROM %s bid_high WHERE bid_high.request = %s AND bid_high.professional = :current_user AND bid_high.status IN (:bid_statuses_high_exception))',
+                        Bid::class,
+                        $rootAlias
+                    );
+                    $queryBuilder
+                        ->andWhere(
+                            $queryBuilder->expr()->orX(
+                                sprintf('%s.riskLevel != :risk_level_high', $rootAlias),
+                                sprintf('%s.assignedProfessional = :current_pro_profile', $rootAlias),
+                                $highExceptionDql
+                            )
+                        )
+                        ->setParameter('risk_level_high', RiskLevel::HIGH)
+                        ->setParameter('current_pro_profile', $proProfile)
+                        ->setParameter('bid_statuses_high_exception', [BidStatus::PENDING, BidStatus::ACCEPTED]);
+                }
 
             } elseif ($httpRequest && $httpRequest->query->get('my_jobs') === 'true') {
                  $queryBuilder
