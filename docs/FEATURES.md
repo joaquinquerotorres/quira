@@ -48,7 +48,7 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
 ## IA (Gemini)
 
 ### Endpoint
-- POST `/api/predict` con description (texto) y opcionalmente image, audio, video
+- POST `/api/predict` con description (texto) y opcionalmente image, audio, video (payload grande en JSON; en prod el Docker aplica `docker/php/zz-quira.ini` para tiempos y `post_max_size`; clientes móviles necesitan timeout largo en esta llamada)
 
 ### Funcionalidad
 - Diagnóstico preliminar del problema descrito

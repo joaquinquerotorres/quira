@@ -85,6 +85,7 @@ Autenticación: Bearer JWT en header Authorization
 
 ### Predict (IA)
 - POST `/api/predict` - Diagnóstico con Gemini (body: description, image, audio, video, location opcional)
+  - El body puede ser **muy grande** (vídeo en base64). En **móvil / 4G** la subida tarda; el cliente debe usar **timeout HTTP generoso** (p. ej. ≥ 120 s). En producción Docker, los límites PHP ampliados están en `docker/php/zz-quira.ini` (ver `docs/DEPLOY.md`).
   - `image`, `audio`, `video` pueden enviarse como **Data URL** (`data:<mime>;base64,<data>`) o base64 “crudo”.
   - Mimes recomendados:
     - `image/jpeg`

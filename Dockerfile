@@ -31,6 +31,9 @@ RUN install-php-extensions \
     zip \
     opcache
 
+# Límites para POST /api/predict con vídeo/audio en JSON (subidas lentas móvil / 4G)
+COPY docker/php/zz-quira.ini $PHP_INI_DIR/conf.d/zz-quira.ini
+
 COPY --from=vendor /app/vendor ./vendor
 COPY . .
 

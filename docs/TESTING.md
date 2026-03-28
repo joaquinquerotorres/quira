@@ -118,5 +118,6 @@ Los tests en `tests/Api/` ejercitan endpoints reales (API Platform / controllers
 
 ## Notas
 
+- PHPUnit y `symfony serve` usan el **php.ini del entorno local**, no `docker/php/zz-quira.ini` (solo la imagen Docker de producción). Los tests de `PredictInput` no ejercitan subidas multi‑megabyte ni timeouts de red.
 - StripeService no es final para permitir mocks
 - Los tests del controller usan subclase TestableStripeCheckoutController que inyecta el usuario de prueba

@@ -40,6 +40,14 @@ El **`docker/entrypoint.sh`**:
 
 El **`Caddyfile`** sirve `public/` como document root (equivalente a Nginx + PHP-FPM).
 
+#### PHP: cuerpos grandes y `/api/predict`
+
+La imagen copia **`docker/php/zz-quira.ini`** a `$PHP_INI_DIR/conf.d/` (FrankenPHP usa ese PHP). Ajusta **`max_execution_time`**, **`max_input_time`**, **`post_max_size`** y **`memory_limit`** para JSON con **vídeo/audio en base64**: en redes lentas (p. ej. 4G) la subida del body puede superar el **30 s por defecto de PHP** mientras Symfony lee `php://input`, antes de llegar al controlador.
+
+**Clientes (app móvil / axios):** en esta ruta conviene un **timeout HTTP alto** (p. ej. 120–300 s), alineado con el tiempo de subida + respuesta de Gemini.
+
+**Proxy:** si delante del contenedor hay un **timeout de request** más bajo (panel de Railway u otro), la petición puede cortarse aunque PHP permita más; revisa la capa externa si siguen apareciendo `ERR_NETWORK` o cortes sin respuesta.
+
 ### 5. JWT y despliegues
 
 El sistema de archivos del contenedor es **efímero**. Si en cada despliegue **no** persistes `config/jwt/*.pem`, el entrypoint generará un par nuevo cuando falten y **invalidará** los tokens ya emitidos.
