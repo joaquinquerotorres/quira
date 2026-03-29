@@ -105,5 +105,33 @@ final class RequestsContractTest extends ApiTestCase
         $this->assertArrayHasKey('preciseAddress', $data3);
         $this->assertSame('Avenida de Libia - 53', $data3['preciseAddress']);
     }
+
+    public function testGetRequestExposesClientOriginalDescription(): void
+    {
+        $client = $this->createClientUser(
+            email: 'client-original-desc@test.com',
+            phoneNumber: '+34600000003',
+            verifiedPhone: true,
+            notifyRequestActivity: false,
+        );
+        $clientProfile = $client->getClientProfile();
+        $this->assertNotNull($clientProfile);
+
+        $request = $this->createRequest(
+            clientProfile: $clientProfile,
+            status: RequestStatus::PENDING,
+            riskLevel: RiskLevel::LOW,
+            title: 'Arreglo urgente de prueba',
+        );
+        $request->setClientOriginalDescription('Lo que escribió el cliente antes de la IA');
+        $this->em->flush();
+
+        $this->browser->request('GET', '/api/requests/'.$request->getId(), [], [], $this->authHeaders($client));
+        $this->assertResponseStatusCodeSame(200);
+
+        $data = $this->decodeJsonResponse($this->browser->getResponse()->getContent());
+        $this->assertArrayHasKey('clientOriginalDescription', $data);
+        $this->assertSame('Lo que escribió el cliente antes de la IA', $data['clientOriginalDescription']);
+    }
 }
 

@@ -39,7 +39,7 @@ php bin/phpunit --group database
 | tests/State/ | BidProfessionalProcessor, BidAcceptanceProcessor, RequestClientProcessor, etc. |
 | tests/Service/ | StripeCheckoutSessionHandlerTest |
 | tests/Repository/ | BidRepositoryTest |
-| tests/Entity/ | UserTest, ProfessionalProfileTest, ReviewTest |
+| tests/Entity/ | UserTest, ProfessionalProfileTest, ReviewTest, RequestClientOriginalDescriptionValidationTest |
 | tests/Doctrine/ | CurrentUserExtensionTest |
 | tests/Security/ | LoginSuccessHandlerTest, RequestAddressVoterTest |
 | tests/Validator/ | CleanTextValidatorTest, NoContactInfoValidatorTest |
@@ -53,6 +53,7 @@ php bin/phpunit --group database
 - `phpunit.dist.xml` - Config PHPUnit
 - Grupo `database` excluido por defecto (tests que requieren DB)
 - Para tests con DB: marcar con `#[Group('database')]` y ejecutar con `--group database`
+- Tras traer cambios que incluyan **migraciones Doctrine**, aplicar el esquema en `test` (misma base que usa PHPUnit): `APP_ENV=test php bin/console doctrine:migrations:migrate --no-interaction`. Sin esto, los tests que persisten entidades pueden fallar con columnas desconocidas.
 - JWT en `test`:
   - `config/packages/lexik_jwt_authentication.yaml` lee `JWT_SECRET_KEY`, `JWT_PUBLIC_KEY` y `JWT_PASSPHRASE`.
   - `phpunit.dist.xml` fuerza estos valores para `APP_ENV=test` (mismas rutas que CI), para que los tests que llaman endpoints protegidos puedan generar tokens.
@@ -73,6 +74,7 @@ Los tests en `tests/Api/` ejercitan endpoints reales (API Platform / controllers
 
 - **RequestsContractTest**
   - Verifica privacidad/serialización en `GET /api/requests/{id}` (teléfonos y `preciseAddress`).
+  - Verifica que `clientOriginalDescription` aparece en la respuesta JSON cuando está persistido.
   - Nota: por el filtrado de `CurrentUserExtension`, un profesional ajeno sin bid/visita aceptada puede recibir 404 (esperado).
 
 - **CanBidTest**

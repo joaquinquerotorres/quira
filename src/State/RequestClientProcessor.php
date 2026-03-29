@@ -95,9 +95,14 @@ final class RequestClientProcessor implements ProcessorInterface
                 $data->setVideoUrl($publicUrl);
             }
 
+            $textForSafety = $data->getDescription() ?? '';
+            if ($textForSafety === '') {
+                $textForSafety = $data->getClientOriginalDescription() ?? '';
+            }
+
             $securityCheck = $this->geminiService->checkSafety(
                 title: $data->getTitle() ?? '',
-                description: $data->getDescription() ?? '',
+                description: $textForSafety,
                 image: $data->photoBase64,
                 audio: $data->audioBase64,
                 video: $data->videoBase64

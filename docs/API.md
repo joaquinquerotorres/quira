@@ -28,6 +28,8 @@ Autenticación: Bearer JWT en header Authorization
 - GET/POST /api/requests, GET/PATCH /api/requests/{id}
 - Filtros: is_market, my_requests, my_jobs, my_bids, history
 - Campos relevantes:
+  - `description`: texto refinado / mostrado como descripción del trabajo (puede venir del flujo con IA).
+  - `clientOriginalDescription` (opcional, nullable): texto libre que el cliente escribió **antes** de refinar con `/api/predict` u otra edición; se persiste para trazabilidad. Máximo **5000** caracteres (mismo límite que `description` en POST `/api/predict`). Lectura y escritura en los mismos grupos que `description`. Si no hay `description` pero sí `clientOriginalDescription` (y/o audio/vídeo), la validación “debe explicar el problema” sigue cumpliéndose. En la creación de solicitud, la comprobación de seguridad (IA) usa `description` si viene informada; si está vacía, usa `clientOriginalDescription`.
   - `photoUrl`, `audioUrl`, `videoUrl`: media principal de la solicitud.
   - `extraPhotoUrls[]`, `extraAudioUrls[]`, `extraVideoUrls[]`: arrays opcionales de URLs de media adicional (máx. 3 elementos en total, gestionados por el frontend).
   - `desiredExecutionTime`: disponibilidad preferida para realizar el trabajo (sin fecha exacta). Valores permitidos:

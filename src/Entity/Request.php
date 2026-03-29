@@ -82,6 +82,14 @@ class Request
     #[NoContactInfo]
     private ?string $description = null;
 
+    /** Texto original del cliente antes de refinar con IA; mismo límite que POST /api/predict (description). */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[Groups(['request:read', 'request:write'])]
+    #[Assert\Length(max: 5000)]
+    #[CleanText]
+    #[NoContactInfo]
+    private ?string $clientOriginalDescription = null;
+
     #[ORM\Column(nullable: true)]
     #[Groups(['request:read', 'request:write'])]
     #[Assert\NotNull(message: "El precio es obligatorio.")]
@@ -229,6 +237,18 @@ class Request
     public function setDescription(?string $description): self
     {
         $this->description = $description;
+
+        return $this;
+    }
+
+    public function getClientOriginalDescription(): ?string
+    {
+        return $this->clientOriginalDescription;
+    }
+
+    public function setClientOriginalDescription(?string $clientOriginalDescription): self
+    {
+        $this->clientOriginalDescription = $clientOriginalDescription;
 
         return $this;
     }
@@ -533,10 +553,10 @@ class Request
     public function validateDescriptionOrMedia(ExecutionContextInterface $context): void
     {
         
-        $hasText = !empty($this->description);
+        $hasText = !empty($this->description) || !empty($this->clientOriginalDescription);
         $hasAudio = !empty($this->audioBase64) || !empty($this->audioUrl);
         $hasVideo = !empty($this->videoBase64) || !empty($this->videoUrl);
-        
+
         if (!$hasText && !$hasAudio && !$hasVideo) {
             $context->buildViolation('Debe explicar el problema: escriba una descripción, grabe un audio o suba un video.')
                 ->atPath('description')

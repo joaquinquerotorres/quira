@@ -9,6 +9,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 class PredictInput
 {
     public function __construct(
+        // Máximo alineado con Request::$clientOriginalDescription
         #[Assert\Length(max: 5000)]
         public readonly ?string $description = null,
 

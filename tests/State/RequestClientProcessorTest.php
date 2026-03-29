@@ -112,6 +112,53 @@ final class RequestClientProcessorTest extends TestCase
         $this->assertSame('Contenido inapropiado', $result->getModerationReason());
     }
 
+    public function testCheckSafetyUsesClientOriginalDescriptionWhenDescriptionEmpty(): void
+    {
+        $user = new User();
+        $user->setEmail('client@test.com');
+        $clientProfile = new ClientProfile();
+        $clientProfile->setFullName('Cliente');
+        $clientProfile->setPhoneNumber('+34600000000');
+        $clientProfile->setUser($user);
+        $user->setClientProfile($clientProfile);
+        $clientProfile->setVerifiedPhone(true);
+
+        $request = new Request();
+        $request->setTitle('Reparar algo');
+        $request->setDescription(null);
+        $request->setClientOriginalDescription('Texto solo en original');
+        $request->setAddress('Calle Test 1');
+        $request->setPriceAmount(100);
+
+        $this->geminiService
+            ->expects($this->once())
+            ->method('checkSafety')
+            ->with(
+                'Reparar algo',
+                'Texto solo en original',
+                null,
+                null,
+                null
+            )
+            ->willReturn(['is_safe' => true]);
+
+        $security = $this->createMock(Security::class);
+        $security->method('getUser')->willReturn($user);
+
+        $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
+        $persistProcessor->method('process')->willReturnCallback(fn($data) => $data);
+
+        $processor = new RequestClientProcessor(
+            $persistProcessor,
+            $this->logger,
+            $security,
+            $this->mediaService,
+            $this->geminiService
+        );
+
+        $processor->process($request, new \ApiPlatform\Metadata\Post());
+    }
+
     public function testSavesMediaWhenBase64Provided(): void
     {
         $user = new User();
