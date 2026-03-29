@@ -8,7 +8,7 @@
 - Refresh con POST `/api/token/refresh` y body `{"refresh_token": "..."}`
 
 ### Login social (Firebase)
-- POST `/api/social/login` con body `{"firebaseToken": "..."}`
+- POST `/api/social/login` con body `{"token": "<Firebase ID token>"}` (campo **`token`**, ID token devuelto por el SDK de Firebase tras Google/Apple)
 - Verifica token con Firebase Admin SDK
 - Crea usuario si no existe (firebaseUid, email)
 - Devuelve JWT y refresh_token

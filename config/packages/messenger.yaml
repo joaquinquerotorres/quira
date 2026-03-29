@@ -25,7 +25,15 @@ framework:
             # Route your messages to the transports
             # 'App\Message\YourMessage': async
 
+# En prod no hay worker de Messenger en el entrypoint: si SendEmailMessage va a async,
+# los correos quedan en la cola y nunca se envían (verificación, reset password, etc.).
 when@dev:
+    framework:
+        messenger:
+            routing:
+                Symfony\Component\Mailer\Messenger\SendEmailMessage: sync
+
+when@prod:
     framework:
         messenger:
             routing:

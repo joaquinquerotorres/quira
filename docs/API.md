@@ -8,7 +8,7 @@ Autenticación: Bearer JWT en header Authorization
 
 - POST /api/login_check - Login email/password
 - POST /api/token/refresh - Renovar JWT
-- POST /api/social/login - Login social Firebase
+- POST /api/social/login — body JSON `{"token":"..."}`: ID token de Firebase (SDK tras login Google/Apple). Sin `token` → 400; token inválido → 401.
 
 ## Recursos API Platform
 

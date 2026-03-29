@@ -126,6 +126,10 @@ Errores frecuentes que provocan *The mailer DSN must contain a scheme* o fallos 
 
 El remitente (p. ej. `no-reply@…`) debe estar verificado en Brevo.
 
+### Correo transaccional y Messenger
+
+En **`APP_ENV=prod`**, Symfony Mailer envía el correo **en la misma petición** (transporte `sync`). Así no hace falta un proceso aparte `messenger:consume`: antes, con `SendEmailMessage` en cola **async** y sin worker, los correos de verificación o recuperación de contraseña podían quedarse en la tabla `messenger_messages` y no llegar nunca. Si en el futuro escalas con un worker dedicado, puedes volver a enrutar solo el mailer a `async` en `config/packages/messenger.yaml`.
+
 ---
 
 ## Dominio y DNS
