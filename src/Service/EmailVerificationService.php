@@ -10,6 +10,7 @@ use App\Entity\VerificationToken;
 use App\Repository\VerificationTokenRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
 
@@ -20,6 +21,8 @@ class EmailVerificationService
         private readonly MailerInterface $mailer,
         private readonly LoggerInterface $logger,
         private readonly EmailBranding $emailBranding,
+        #[Autowire('%env(MAILER_DSN)%')]
+        private readonly string $mailerDsn,
         private readonly string $frontendUrl
     ) {
     }
@@ -48,7 +51,10 @@ class EmailVerificationService
 
         try {
             $this->mailer->send($email);
-            $this->logger->info("Email de verificación enviado a {$user->getUserIdentifier()}");
+            if (str_starts_with($this->mailerDsn, 'null://')) {
+                $this->logger->warning('Email de verificación: MAILER_DSN es null:// — no se envía correo real. Define MAILER_DSN (p. ej. Brevo) en el servidor.');
+            }
+            $this->logger->info("Email de verificación procesado para {$user->getUserIdentifier()}");
         } catch (\Throwable $e) {
             $this->logger->error("Error enviando email de verificación: " . $e->getMessage());
             throw $e;

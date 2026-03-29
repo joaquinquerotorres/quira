@@ -63,6 +63,7 @@ final class EmailVerificationServiceTest extends TestCase
             $mailer,
             $logger,
             new EmailBranding('https://cdn.example.com/logo.png'),
+            'smtp://localhost',
             'https://frontend.example.com'
         );
 

@@ -128,7 +128,7 @@ El remitente (p. ej. `no-reply@…`) debe estar verificado en Brevo.
 
 ### Correo transaccional y Messenger
 
-En **`APP_ENV=prod`**, Symfony Mailer envía el correo **en la misma petición** (transporte `sync`). Así no hace falta un proceso aparte `messenger:consume`: antes, con `SendEmailMessage` en cola **async** y sin worker, los correos de verificación o recuperación de contraseña podían quedarse en la tabla `messenger_messages` y no llegar nunca. Si en el futuro escalas con un worker dedicado, puedes volver a enrutar solo el mailer a `async` en `config/packages/messenger.yaml`.
+`SendEmailMessage` va siempre al transporte **`sync`** (misma petición HTTP). Así no depende de `APP_ENV` ni de un worker: antes, con **async** y sin `messenger:consume`, los correos podían acumularse en `messenger_messages` **sin error visible**. Comprueba en Railway que **`MAILER_DSN`** no sea el valor por defecto del repo (`null://null`): en ese caso el envío “termina bien” pero **no sale ningún correo**; revisa logs (advertencia explícita) o el panel de Brevo.
 
 ---
 

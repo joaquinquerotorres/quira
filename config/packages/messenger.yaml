@@ -18,23 +18,11 @@ framework:
             messenger.bus.default: []
 
         routing:
-            Symfony\Component\Mailer\Messenger\SendEmailMessage: async
+            # Siempre sync: sin worker, async deja los correos en messenger_messages sin error visible.
+            # when@prod / when@dev no cubren APP_ENV=production u otros; mejor no depender del entorno.
+            Symfony\Component\Mailer\Messenger\SendEmailMessage: sync
             Symfony\Component\Notifier\Message\ChatMessage: async
             Symfony\Component\Notifier\Message\SmsMessage: async
 
             # Route your messages to the transports
             # 'App\Message\YourMessage': async
-
-# En prod no hay worker de Messenger en el entrypoint: si SendEmailMessage va a async,
-# los correos quedan en la cola y nunca se envían (verificación, reset password, etc.).
-when@dev:
-    framework:
-        messenger:
-            routing:
-                Symfony\Component\Mailer\Messenger\SendEmailMessage: sync
-
-when@prod:
-    framework:
-        messenger:
-            routing:
-                Symfony\Component\Mailer\Messenger\SendEmailMessage: sync

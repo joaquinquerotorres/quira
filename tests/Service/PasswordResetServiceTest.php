@@ -47,6 +47,7 @@ final class PasswordResetServiceTest extends TestCase
             $hasher,
             $logger,
             new EmailBranding('https://cdn.example.com/logo.png'),
+            'smtp://localhost',
             'http://frontend.test'
         );
 
@@ -108,6 +109,7 @@ final class PasswordResetServiceTest extends TestCase
             $hasher,
             $logger,
             new EmailBranding('https://cdn.example.com/logo.png'),
+            'smtp://localhost',
             'http://frontend.test'
         );
 
@@ -140,6 +142,7 @@ final class PasswordResetServiceTest extends TestCase
             $hasher,
             $logger,
             new EmailBranding('https://cdn.example.com/logo.png'),
+            'smtp://localhost',
             'http://frontend.test'
         );
 
@@ -189,6 +192,7 @@ final class PasswordResetServiceTest extends TestCase
             $hasher,
             $logger,
             new EmailBranding('https://cdn.example.com/logo.png'),
+            'smtp://localhost',
             'http://frontend.test'
         );
 

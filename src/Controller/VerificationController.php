@@ -139,12 +139,10 @@ class VerificationController extends AbstractController
                 'message' => 'Código enviado por SMS.',
             ]);
         } catch (\Throwable $e) {
-            if (($_ENV['APP_ENV'] ?? 'prod') === 'dev') {
-                $this->logger->warning('SMS OTP fallido: {message}', [
-                    'message' => $e->getMessage(),
-                    'exception' => $e,
-                ]);
-            }
+            $this->logger->error('SMS OTP fallido', [
+                'message' => $e->getMessage(),
+                'exception' => $e,
+            ]);
             return new JsonResponse([
                 'success' => false,
                 'message' => 'Error al enviar el SMS. Verifica el número e inténtalo de nuevo.',

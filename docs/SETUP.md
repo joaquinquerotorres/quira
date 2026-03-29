@@ -60,7 +60,7 @@ Usado para: Auth (verificación de token social), notificaciones push (FCM).
 | `TWILIO_ACCOUNT_SID` | SID de cuenta Twilio |
 | `TWILIO_AUTH_TOKEN` | Token de autenticación |
 | `TWILIO_WHATSAPP_FROM` | Número/WhatsApp Business para WhatsApp |
-| `TWILIO_SMS_FROM` | Número para SMS (OTP). Si está vacío en dev, PhoneVerificationService entra en modo sandbox: no se llama a Twilio y los códigos OTP se registran en el log (y en consola) para poder probar sin coste. |
+| `TWILIO_SMS_FROM` | Número **SMS** de Twilio (E.164, p. ej. `+1xxx`), no el remitente de WhatsApp. En **cuenta trial** solo puedes enviar a números verificados en la consola Twilio. Si está vacío: modo sandbox (OTP solo en logs, sin llamada a la API). Si `/api/verify/phone/send` devuelve 500, revisa credenciales en Railway y el mensaje de error de Twilio en los logs del servidor. |
 
 ### Stripe
 
