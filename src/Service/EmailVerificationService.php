@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Mail\EmailBranding;
 use App\Entity\User;
 use App\Entity\VerificationToken;
 use App\Repository\VerificationTokenRepository;
@@ -18,6 +19,7 @@ class EmailVerificationService
         private readonly EntityManagerInterface $em,
         private readonly MailerInterface $mailer,
         private readonly LoggerInterface $logger,
+        private readonly EmailBranding $emailBranding,
         private readonly string $frontendUrl
     ) {
     }
@@ -42,7 +44,7 @@ class EmailVerificationService
             ->from('no-reply@quira.app')
             ->to($user->getUserIdentifier())
             ->subject('Verifica tu correo electrónico - Quira')
-            ->html($this->buildEmailBody($confirmUrl));
+            ->html($this->buildEmailBody($confirmUrl, $this->emailBranding->headerLogoImgTag()));
 
         try {
             $this->mailer->send($email);
@@ -53,7 +55,7 @@ class EmailVerificationService
         }
     }
 
-    private function buildEmailBody(string $confirmUrl): string
+    private function buildEmailBody(string $confirmUrl, string $logo): string
     {
         return <<<HTML
         <!DOCTYPE html>
@@ -70,7 +72,7 @@ class EmailVerificationService
                         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:480px;background-color:#ffffff;border-radius:16px;border:1px solid #e2e8f0;box-shadow:0 10px 30px rgba(15,23,42,0.05);overflow:hidden;">
                             <tr>
                                 <td style="background-color:#a09ce2;padding:32px;text-align:center;color:#ffffff;">
-                                    <img src="https://jeofdevvotlovkjfbizv.supabase.co/storage/v1/object/public/quira/quira_logo.png" alt="Quira" width="160" height="auto" style="display:block;margin:0 auto;max-width:160px;height:auto;">
+                                    {$logo}
                                     <p style="margin:12px 0 0;font-size:14px;color:rgba(255,255,255,0.9);">Conectando clientes y profesionales</p>
                                 </td>
                             </tr>

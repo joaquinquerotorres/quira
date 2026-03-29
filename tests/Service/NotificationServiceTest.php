@@ -6,6 +6,7 @@ namespace App\Tests\Service;
 
 use App\Entity\User;
 use App\Enum\NotificationAudience;
+use App\Mail\EmailBranding;
 use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Kreait\Firebase\Contract\Messaging;
@@ -166,6 +167,7 @@ final class NotificationServiceTest extends TestCase
             $mailer,
             $messaging,
             new NullLogger(),
+            new EmailBranding('https://cdn.example.com/logo.png'),
             '',
             '',
             '',

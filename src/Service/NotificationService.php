@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Mail\EmailBranding;
 use App\Entity\Notification;
 use App\Entity\User;
 use App\Enum\NotificationAudience;
@@ -34,6 +35,7 @@ final class NotificationService
         private readonly MailerInterface $mailer,
         private readonly Messaging $messaging,
         private readonly LoggerInterface $logger,
+        private readonly EmailBranding $emailBranding,
         private readonly string $twilioSid,
         private readonly string $twilioToken,
         private readonly string $twilioFrom,
@@ -183,11 +185,19 @@ final class NotificationService
     private function sendEmail(User $recipient, string $subject, string $body): bool
     {
         try {
+            $logo = $this->emailBranding->headerLogoImgTag();
+            $safeBody = htmlspecialchars($body, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $html = '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"></head>'
+                .'<body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;background:#f4f6f9;">'
+                .'<div style="max-width:480px;margin:0 auto;background:#fff;border-radius:12px;padding:24px;border:1px solid #e2e8f0;">'
+                .'<div style="text-align:center;margin-bottom:16px;">'.$logo.'</div>'
+                .'<p style="margin:0;font-size:16px;color:#1f2937;line-height:1.5;">'.$safeBody.'</p>'
+                .'</div></body></html>';
             $email = (new Email())
                 ->from('no-reply@quira.app')
                 ->to($recipient->getUserIdentifier())
                 ->subject($subject)
-                ->html("<p>$body</p>");
+                ->html($html);
 
             $this->mailer->send($email);
             return true;

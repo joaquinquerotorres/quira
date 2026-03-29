@@ -6,6 +6,7 @@ namespace App\Tests\Service;
 
 use App\Entity\User;
 use App\Entity\VerificationToken;
+use App\Mail\EmailBranding;
 use App\Repository\VerificationTokenRepository;
 use App\Service\EmailVerificationService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -61,6 +62,7 @@ final class EmailVerificationServiceTest extends TestCase
             $em,
             $mailer,
             $logger,
+            new EmailBranding('https://cdn.example.com/logo.png'),
             'https://frontend.example.com'
         );
 

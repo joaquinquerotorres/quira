@@ -6,6 +6,7 @@ namespace App\Tests\Service;
 
 use App\Entity\User;
 use App\Entity\VerificationToken;
+use App\Mail\EmailBranding;
 use App\Repository\UserRepository;
 use App\Repository\VerificationTokenRepository;
 use App\Service\PasswordResetService;
@@ -45,6 +46,7 @@ final class PasswordResetServiceTest extends TestCase
             $mailer,
             $hasher,
             $logger,
+            new EmailBranding('https://cdn.example.com/logo.png'),
             'http://frontend.test'
         );
 
@@ -105,6 +107,7 @@ final class PasswordResetServiceTest extends TestCase
             $mailer,
             $hasher,
             $logger,
+            new EmailBranding('https://cdn.example.com/logo.png'),
             'http://frontend.test'
         );
 
@@ -136,6 +139,7 @@ final class PasswordResetServiceTest extends TestCase
             $mailer,
             $hasher,
             $logger,
+            new EmailBranding('https://cdn.example.com/logo.png'),
             'http://frontend.test'
         );
 
@@ -184,6 +188,7 @@ final class PasswordResetServiceTest extends TestCase
             $mailer,
             $hasher,
             $logger,
+            new EmailBranding('https://cdn.example.com/logo.png'),
             'http://frontend.test'
         );
 

@@ -12,6 +12,8 @@ parameters:
     env_default_twilio_sms_from: ''
     # Valor por defecto si GEMINI_MODEL no está definido (%env(default:PARAM:ENV)% exige un nombre de parámetro)
     env_default_gemini_model: 'gemini-2.5-flash'
+    # Default = quira_logo.png (bucket público quira en Supabase)
+    env_default_email_logo_url: 'https://jeofdevvotlovkjfbizv.supabase.co/storage/v1/object/public/quira/quira_logo.png'
 
 services:
     # default configuration for services in *this* file
@@ -39,6 +41,10 @@ services:
     App\Security\LoginSuccessHandler:
         arguments:
             $jwtSuccessHandler: '@lexik_jwt_authentication.handler.authentication_success'
+
+    App\Mail\EmailBranding:
+        arguments:
+            $logoPublicUrl: '%env(default:env_default_email_logo_url:EMAIL_LOGO_URL)%'
 
     App\Service\EmailVerificationService:
         arguments:
