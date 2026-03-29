@@ -107,11 +107,24 @@ Mismas variables que en Railway, normalmente en `.env.local`. Tabla de referenci
 | `FRONTEND_URL` | Enlaces (p. ej. recuperar contraseña) |
 | `DATABASE_URL` | MySQL |
 | `JWT_PASSPHRASE` | Frase del par de claves JWT |
-| `MAILER_DSN` | Correo |
+| `MAILER_DSN` | Correo (ver nota Brevo abajo) |
 | Firebase / Twilio / Stripe / Supabase / `GEMINI_API_KEY` | Según funciones |
 | `CORS_ALLOW_ORIGIN` | Regex de orígenes permitidos |
 | `SENTRY_DSN` | (Opcional) [Sentry](https://sentry.io) |
 | `SYMFONY_TRUSTED_PROXIES` | Tras proxy/Ingress (p. ej. `REMOTE_ADDR`) |
+
+### `MAILER_DSN` con Brevo (API) en Railway
+
+Formato válido (symfony/brevo-mailer): la clave va **en el usuario** del DSN, con esquema **`brevo+api://`**:
+
+`MAILER_DSN=brevo+api://xkeysib_TU_CLAVE@default`
+
+Errores frecuentes que provocan *The mailer DSN must contain a scheme* o fallos al parsear:
+
+- **`brevo+api//...`** (falta **`:`** antes de `//`; debe ser **`brevo+api://`**).
+- **`MAILER_DSN=MAILER_DSN=brevo+api://...`** en `.env` (valor duplicado; el string efectivo no es un DSN).
+
+El remitente (p. ej. `no-reply@…`) debe estar verificado en Brevo.
 
 ---
 
