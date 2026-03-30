@@ -74,6 +74,15 @@ class AppFixtures extends Fixture
             $user->setRoles($roles);
             $user->setVerifiedEmail(true);
 
+            // Flujo real: todo profesional parte de un perfil cliente.
+            $clientProfile = new ClientProfile();
+            $clientProfile->setFullName($faker->name());
+            $clientProfile->setPhoneNumber($faker->phoneNumber());
+            $clientProfile->setVerifiedPhone(true);
+            $clientProfile->setNotifyRequestActivity(false);
+            $clientProfile->setNotifyBidActivity(false);
+            $clientProfile->setNotifyReviews(false);
+
             $profile = new ProfessionalProfile();
             $profile->setFullName($faker->company());
             $profile->setPhoneNumber($faker->phoneNumber());
@@ -105,10 +114,13 @@ class AppFixtures extends Fixture
                 $profile->setPaidThroughAt(null);
             }
 
+            $user->setClientProfile($clientProfile);
+            $clientProfile->setUser($user);
             $user->setProfessionalProfile($profile);
             $profile->setUser($user);
 
             $manager->persist($user);
+            $manager->persist($clientProfile);
             $manager->persist($profile);
 
             return $profile;
