@@ -23,6 +23,10 @@ Autenticación: Bearer JWT en header Authorization
 ### ProfessionalProfile
 - GET/POST /api/professional_profiles, PATCH/PUT /api/professional_profiles/{id}
 - Campos de valoración: `rating`, `reviewCount`; en lectura también `reviews[]` (array embebido con id, score, comment, authorName, createdAt).
+- `taxId` (CIF) y `verifiedTaxId`:
+  - Si envías `taxId` desde la UI, el backend valida el CIF matemáticamente.
+  - Si el CIF es inválido responde con `400` y el mensaje `El CIF no es correcto.` y no se guarda el perfil.
+  - Tras una validación correcta, `verifiedTaxId` se guarda como `true`.
 
 ### Request
 - GET/POST /api/requests, GET/PATCH /api/requests/{id}

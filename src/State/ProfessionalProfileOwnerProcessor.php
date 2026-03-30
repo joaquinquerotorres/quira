@@ -15,6 +15,9 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
+use App\Service\ProfessionalVerificationService;
+use App\Validator\CifValidator;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 final class ProfessionalProfileOwnerProcessor implements ProcessorInterface
 {
@@ -23,7 +26,8 @@ final class ProfessionalProfileOwnerProcessor implements ProcessorInterface
         private readonly ProcessorInterface $persistProcessor,
         private readonly LoggerInterface $logger,
         private readonly Security $security,
-        private readonly EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager,
+        private readonly ProfessionalVerificationService $professionalVerificationService
     ) {
     }
 
@@ -89,6 +93,19 @@ final class ProfessionalProfileOwnerProcessor implements ProcessorInterface
             $this->entityManager->flush();
             $this->logger->info("Usuario {$user->getUserIdentifier()} ha solicitado el nivel {$tier} en su perfil profesional.");
         }
+
+        // CIF validation (solo si llega un CIF)
+        $taxId = $data->getTaxId();
+        if ($taxId !== null && trim($taxId) !== '') {
+            if (!CifValidator::isValidCif($taxId)) {
+                throw new BadRequestHttpException('El CIF no es correcto.');
+            }
+
+            $data->setVerifiedTaxId(true);
+        }
+
+        // Recalcular `isVerified` al guardar el perfil (email/phone + CIF si es ROLE_PRO)
+        $this->professionalVerificationService->recalculateIsVerified($data, $user);
 
         return $this->persistProcessor->process($data, $operation, $uriVariables, $context);
     }

@@ -51,7 +51,8 @@ final class VerificationControllerTest extends TestCase
         );
 
         $logger = $this->createMock(LoggerInterface::class);
-        $controller = new VerificationController($repo, $em, $emailService, $phoneService, $logger);
+        $proVerificationService = new \App\Service\ProfessionalVerificationService();
+        $controller = new VerificationController($repo, $em, $emailService, $phoneService, $logger, $proVerificationService);
 
         $request = Request::create(
             '/api/verify/email',
@@ -85,7 +86,8 @@ final class VerificationControllerTest extends TestCase
         );
 
         $logger = $this->createMock(LoggerInterface::class);
-        $controller = new VerificationController($repo, $em, $emailService, $phoneService, $logger);
+        $proVerificationService = new \App\Service\ProfessionalVerificationService();
+        $controller = new VerificationController($repo, $em, $emailService, $phoneService, $logger, $proVerificationService);
 
         $request = Request::create('/api/verify/email', 'POST');
         $response = $controller->confirmEmail($request);
@@ -115,7 +117,8 @@ final class VerificationControllerTest extends TestCase
         );
 
         $logger = $this->createMock(LoggerInterface::class);
-        $controller = new VerificationController($repo, $em, $emailService, $phoneService, $logger);
+        $proVerificationService = new \App\Service\ProfessionalVerificationService();
+        $controller = new VerificationController($repo, $em, $emailService, $phoneService, $logger, $proVerificationService);
 
         $request = Request::create(
             '/api/verify/email',

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Entity\User;
 use App\Repository\VerificationTokenRepository;
 use App\Service\EmailVerificationService;
 use App\Service\PhoneVerificationService;
+use App\Service\ProfessionalVerificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -24,7 +26,8 @@ class VerificationController extends AbstractController
         private readonly EntityManagerInterface $em,
         private readonly EmailVerificationService $emailVerificationService,
         private readonly PhoneVerificationService $phoneVerificationService,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly ProfessionalVerificationService $professionalVerificationService
     ) {
     }
 
@@ -49,10 +52,17 @@ class VerificationController extends AbstractController
             ], Response::HTTP_BAD_REQUEST);
         }
 
+        /** @var User $user */
         $user = $verificationToken->getUser();
         $user->setVerifiedEmail(true);
         $this->em->remove($verificationToken);
         $this->em->flush();
+
+        $proProfile = $user->getProfessionalProfile();
+        if ($proProfile !== null) {
+            $this->professionalVerificationService->recalculateIsVerified($proProfile, $user);
+            $this->em->flush();
+        }
 
         return new JsonResponse([
             'success' => true,
@@ -64,6 +74,7 @@ class VerificationController extends AbstractController
     #[IsGranted('ROLE_USER')]
     public function resendEmailVerification(): JsonResponse
     {
+        /** @var User $user */
         $user = $this->getUser();
         if ($user->isVerifiedEmail()) {
             return new JsonResponse([
@@ -90,6 +101,7 @@ class VerificationController extends AbstractController
     #[IsGranted('ROLE_USER')]
     public function sendPhoneOtp(Request $request): JsonResponse
     {
+        /** @var User $user */
         $user = $this->getUser();
         $data = json_decode($request->getContent(), true) ?? [];
         $profile = $data['profile'] ?? 'client';
@@ -154,6 +166,7 @@ class VerificationController extends AbstractController
     #[IsGranted('ROLE_USER')]
     public function confirmPhone(Request $request): JsonResponse
     {
+        /** @var User $user */
         $user = $this->getUser();
         $data = json_decode($request->getContent(), true) ?? [];
         $code = trim((string) ($data['code'] ?? ''));
@@ -204,6 +217,14 @@ class VerificationController extends AbstractController
         }
 
         $this->em->flush();
+
+        if ($profile === 'professional') {
+            $proProfile = $user->getProfessionalProfile();
+            if ($proProfile !== null) {
+                $this->professionalVerificationService->recalculateIsVerified($proProfile, $user);
+                $this->em->flush();
+            }
+        }
 
         return new JsonResponse([
             'success' => true,

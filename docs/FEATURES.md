@@ -130,6 +130,15 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
   - POST `/api/verify/phone/confirm` con body `{"code": "123456", "profile": "client" | "professional"}`:
     - Valida el OTP y marca `verifiedPhone` en el/los perfiles cuyo teléfono coincida tras normalización.
 
+### CIF (solo profesionales PRO)
+- `ProfessionalProfile.taxId` representa el CIF.
+- Cuando el usuario guarda/actualiza su `ProfessionalProfile` desde la UI y envía `taxId`, el backend valida el CIF matemáticamente.
+- Si el CIF es inválido: responde `400` y el perfil no se guarda (no se cambia `taxId` ni `verifiedTaxId`).
+- Si el CIF es válido: se guarda `verifiedTaxId=true`.
+- El flag `ProfessionalProfile.isVerified` se recalcula al guardar y también cuando se confirma email/teléfono:
+  - Free/Solver: requiere email verificado + teléfono PRO verificado
+  - Pro (`ROLE_PRO`): además requiere `verifiedTaxId=true`
+
 ## Límites y reglas de pujas (plan efectivo FREE)
 
 - Aplica a quien **no** tiene suscripción activa según `paidThroughAt` (incluye `ROLE_FREE`, `ROLE_PRO`/`ROLE_SOLVER` con pago caducado o `paidThroughAt` null)

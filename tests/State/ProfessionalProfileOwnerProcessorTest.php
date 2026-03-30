@@ -7,6 +7,7 @@ namespace App\Tests\State;
 use App\Entity\ProfessionalProfile;
 use App\Entity\User;
 use App\State\ProfessionalProfileOwnerProcessor;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -34,11 +35,66 @@ final class ProfessionalProfileOwnerProcessorTest extends TestCase
         $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
         $persistProcessor->method('process')->willReturnCallback(fn($data) => $data);
 
-        $processor = new ProfessionalProfileOwnerProcessor($persistProcessor, $logger, $security, $em);
+        $processor = new ProfessionalProfileOwnerProcessor($persistProcessor, $logger, $security, $em, new \App\Service\ProfessionalVerificationService());
         $result = $processor->process($profile, new \ApiPlatform\Metadata\Post());
 
         $this->assertSame($user, $result->getUser());
         $this->assertFalse($result->isVerified());
+    }
+
+    public function testValidatesCifAndRecalculatesIsVerifiedForProTier(): void
+    {
+        $user = new User();
+        $user->setEmail('newpro@test.com');
+        $user->setRoles(['ROLE_USER']);
+        $user->setVerifiedEmail(true);
+
+        $profile = new ProfessionalProfile();
+        $profile->setFullName('Pro Nuevo');
+        $profile->setTierRequested('PRO');
+        $profile->setVerifiedPhone(true);
+        $profile->setTaxId('A58818501'); // ejemplo válido
+
+        $security = $this->createMock(Security::class);
+        $security->method('getUser')->willReturn($user);
+        $logger = $this->createMock(LoggerInterface::class);
+        $em = $this->createMock(EntityManagerInterface::class);
+
+        $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
+        $persistProcessor->method('process')->willReturnCallback(fn($data) => $data);
+
+        $processor = new ProfessionalProfileOwnerProcessor($persistProcessor, $logger, $security, $em, new \App\Service\ProfessionalVerificationService());
+        $result = $processor->process($profile, new \ApiPlatform\Metadata\Post());
+
+        $this->assertTrue($result->isVerifiedTaxId());
+        $this->assertTrue($result->isVerified());
+    }
+
+    public function testThrowsWhenCifIsInvalid(): void
+    {
+        $this->expectException(BadRequestHttpException::class);
+        $this->expectExceptionMessage('El CIF no es correcto.');
+
+        $user = new User();
+        $user->setEmail('pro-invalid@test.com');
+        $user->setRoles(['ROLE_USER']);
+        $user->setVerifiedEmail(true);
+
+        $profile = new ProfessionalProfile();
+        $profile->setFullName('Pro');
+        $profile->setTierRequested('PRO');
+        $profile->setVerifiedPhone(true);
+        $profile->setTaxId('A58818500'); // control incorrecto
+
+        $security = $this->createMock(Security::class);
+        $security->method('getUser')->willReturn($user);
+        $logger = $this->createMock(LoggerInterface::class);
+        $em = $this->createMock(EntityManagerInterface::class);
+
+        $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
+
+        $processor = new ProfessionalProfileOwnerProcessor($persistProcessor, $logger, $security, $em, new \App\Service\ProfessionalVerificationService());
+        $processor->process($profile, new \ApiPlatform\Metadata\Post());
     }
 
     public function testThrowsWhenUserAlreadyHasProProfile(): void
@@ -60,7 +116,7 @@ final class ProfessionalProfileOwnerProcessorTest extends TestCase
 
         $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
 
-        $processor = new ProfessionalProfileOwnerProcessor($persistProcessor, $logger, $security, $em);
+        $processor = new ProfessionalProfileOwnerProcessor($persistProcessor, $logger, $security, $em, new \App\Service\ProfessionalVerificationService());
 
         $this->expectException(ConflictHttpException::class);
         $this->expectExceptionMessage('Ya tienes un perfil profesional');
@@ -79,7 +135,7 @@ final class ProfessionalProfileOwnerProcessorTest extends TestCase
 
         $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
 
-        $processor = new ProfessionalProfileOwnerProcessor($persistProcessor, $logger, $security, $em);
+        $processor = new ProfessionalProfileOwnerProcessor($persistProcessor, $logger, $security, $em, new \App\Service\ProfessionalVerificationService());
 
         $this->expectException(AccessDeniedHttpException::class);
         $this->expectExceptionMessage('Debes estar logueado');
@@ -104,7 +160,7 @@ final class ProfessionalProfileOwnerProcessorTest extends TestCase
         $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
         $persistProcessor->method('process')->willReturnCallback(fn($data) => $data);
 
-        $processor = new ProfessionalProfileOwnerProcessor($persistProcessor, $logger, $security, $em);
+        $processor = new ProfessionalProfileOwnerProcessor($persistProcessor, $logger, $security, $em, new \App\Service\ProfessionalVerificationService());
         $result = $processor->process($profile, new \ApiPlatform\Metadata\Post());
 
         $this->assertNotNull($result->getPaidThroughAt());

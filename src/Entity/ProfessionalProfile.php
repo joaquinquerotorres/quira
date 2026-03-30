@@ -73,6 +73,10 @@ class ProfessionalProfile
     #[Groups(['pro:read', 'pro:write', 'user:read'])]
     private ?string $taxId = null;
 
+    #[ORM\Column(options: ["default" => false])]
+    #[Groups(['pro:read', 'user:read'])]
+    private bool $verifiedTaxId = false;
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     #[Groups(['pro:read', 'pro:write', 'user:read'])]
     #[CleanText]
@@ -190,6 +194,18 @@ class ProfessionalProfile
     public function setTaxId(?string $taxId): self
     {
         $this->taxId = $taxId;
+
+        return $this;
+    }
+
+    public function isVerifiedTaxId(): bool
+    {
+        return $this->verifiedTaxId;
+    }
+
+    public function setVerifiedTaxId(bool $verifiedTaxId): self
+    {
+        $this->verifiedTaxId = $verifiedTaxId;
 
         return $this;
     }

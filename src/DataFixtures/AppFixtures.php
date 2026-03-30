@@ -90,6 +90,13 @@ class AppFixtures extends Fixture
             $proProfile->setLocationPoint(new Point($p['lng'], $p['lat']));
             $proProfile->setVerifiedPhone(true);
             $clientProfile->setVerifiedPhone(true);
+
+            // Para PRO: CIF debe estar verificado (regla Free/Solver vs Pro).
+            if (in_array('ROLE_PRO', $roles, true)) {
+                $proProfile->setTaxId('A58818501'); // Ejemplo válido de CIF
+                $proProfile->setVerifiedTaxId(true);
+            }
+
             $user->setProfessionalProfile($proProfile);
 
             $manager->persist($user);
