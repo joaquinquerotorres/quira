@@ -208,9 +208,10 @@ class AppFixtures extends Fixture
                 $request->setCategory($category);
                 $request->setTitle('Servicio de ' . $category->value . ' en Córdoba');
                 $request->setDescription($faker->text(80));
-                // La app permite crear visitas (y usarlas para el flujo de valoración)
-                // solo para solicitudes de riesgo alto.
-                $request->setRiskLevel($status === RequestStatus::PENDING ? RiskLevel::HIGH : RiskLevel::LOW);
+                // Para que se vean solicitudes de "dificultad alta" en todos los estados
+                // (PENDING/ACCEPTED/COMPLETED), generamos HIGH en todo el set.
+                // OJO: las VisitRequest solo las creamos para PENDING en el fixture.
+                $request->setRiskLevel(RiskLevel::HIGH);
 
                 // Rangos estimados en céntimos con margen (min != max).
                 $base = 6000 + ($catIdx * 700) + ($reqIdx * 200); // céntimos
