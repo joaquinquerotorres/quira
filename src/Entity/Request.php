@@ -55,7 +55,7 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
     'description' => 'partial',  
     'riskLevel' => 'exact'
 ])]
-#[ApiFilter(OrderFilter::class, properties: ['priceAmount', 'createdAt'], arguments: ['orderParameterName' => 'order'])] 
+#[ApiFilter(OrderFilter::class, properties: ['estimatedPriceMin', 'createdAt'], arguments: ['orderParameterName' => 'order'])] 
 class Request
 {
     #[ORM\Id]
@@ -90,14 +90,30 @@ class Request
     #[NoContactInfo]
     private ?string $clientOriginalDescription = null;
 
+    /**
+     * Legacy: precio único del cliente (histórico).
+     *
+     * Nuevo contrato: el cliente envía un rango en céntimos mediante
+     * `estimatedPriceMin/estimatedPriceMax`. Mantenemos esta columna para backfill y compatibilidad,
+     * pero la ocultamos del API y dejamos de validarla.
+     */
     #[ORM\Column(nullable: true)]
-    #[Groups(['request:read', 'request:write'])]
-    #[Assert\NotNull(message: "El precio es obligatorio.")]
-    #[Assert\Positive(message: "El precio debe ser mayor que cero.")]
     private ?int $priceAmount = null;
 
+    #[ORM\Column(nullable: false)]
+    #[Groups(['request:read', 'request:write'])]
+    #[Assert\NotNull(message: "estimatedPriceMin es obligatorio.")]
+    #[Assert\GreaterThanOrEqual(value: 0, message: "estimatedPriceMin debe ser >= 0 (céntimos).")]
+    private ?int $estimatedPriceMin = null;
+
+    #[ORM\Column(nullable: false)]
+    #[Groups(['request:read', 'request:write'])]
+    #[Assert\NotNull(message: "estimatedPriceMax es obligatorio.")]
+    #[Assert\GreaterThanOrEqual(value: 0, message: "estimatedPriceMax debe ser >= 0 (céntimos).")]
+    private ?int $estimatedPriceMax = null;
+
     #[ORM\Column(type: Types::JSON, nullable: true)]
-    #[Groups(['request:read'])]
+    #[Groups(['request:read', 'request:write'])]
     private ?array $aiDiagnosis = null;
 
     #[ORM\Column(length: 50, enumType: RequestStatus::class)]
@@ -265,6 +281,30 @@ class Request
         return $this;
     }
 
+    public function getEstimatedPriceMin(): ?int
+    {
+        return $this->estimatedPriceMin;
+    }
+
+    public function setEstimatedPriceMin(?int $estimatedPriceMin): self
+    {
+        $this->estimatedPriceMin = $estimatedPriceMin;
+
+        return $this;
+    }
+
+    public function getEstimatedPriceMax(): ?int
+    {
+        return $this->estimatedPriceMax;
+    }
+
+    public function setEstimatedPriceMax(?int $estimatedPriceMax): self
+    {
+        $this->estimatedPriceMax = $estimatedPriceMax;
+
+        return $this;
+    }
+
     public function getAiDiagnosis(): ?array
     {
         return $this->aiDiagnosis;
@@ -272,6 +312,15 @@ class Request
 
     public function setAiDiagnosis(?array $aiDiagnosis): self
     {
+        // Compatibilidad con frontend: aiDiagnosis puede llegar como {min, max}.
+        // Internamente usamos las claves existentes del sistema: estimated_price_min/estimated_price_max.
+        if ($aiDiagnosis !== null) {
+            if (array_key_exists('min', $aiDiagnosis) && array_key_exists('max', $aiDiagnosis)) {
+                $aiDiagnosis['estimated_price_min'] = $aiDiagnosis['estimated_price_min'] ?? $aiDiagnosis['min'];
+                $aiDiagnosis['estimated_price_max'] = $aiDiagnosis['estimated_price_max'] ?? $aiDiagnosis['max'];
+            }
+        }
+
         $this->aiDiagnosis = $aiDiagnosis;
 
         return $this;
@@ -560,6 +609,20 @@ class Request
         if (!$hasText && !$hasAudio && !$hasVideo) {
             $context->buildViolation('Debe explicar el problema: escriba una descripción, grabe un audio o suba un video.')
                 ->atPath('description')
+                ->addViolation();
+        }
+    }
+
+    #[Assert\Callback]
+    public function validateEstimatedPriceMinMax(ExecutionContextInterface $context): void
+    {
+        if ($this->estimatedPriceMin === null || $this->estimatedPriceMax === null) {
+            return;
+        }
+
+        if ($this->estimatedPriceMin > $this->estimatedPriceMax) {
+            $context->buildViolation('estimatedPriceMin no puede ser mayor que estimatedPriceMax.')
+                ->atPath('estimatedPriceMin')
                 ->addViolation();
         }
     }

@@ -169,7 +169,8 @@ abstract class ApiTestCase extends WebTestCase
         $request->setClient($clientProfile);
         $request->setTitle($title);
         $request->setDescription('Test description');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(8000);
+        $request->setEstimatedPriceMax(12000);
         $request->setCategory(Category::DIY);
         $request->setRiskLevel($riskLevel);
         $request->setStatus($status);

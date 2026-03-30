@@ -52,7 +52,18 @@ final class RequestCreationNotifier
 
             [$title, $price, $category] = [
                 $request->getTitle() ?  'Nueva oportunidad: ' . $request->getTitle() : 'Nueva oportunidad',
-                $request->getPriceAmount() !== null ? "{$request->getPriceAmount()}€" : 'Precio no definido',
+                (function () use ($request): string {
+                    $min = $request->getEstimatedPriceMin();
+                    $max = $request->getEstimatedPriceMax();
+                    if ($min === null || $max === null) {
+                        return 'Precio no definido';
+                    }
+
+                    // estimated_price_* se guarda en céntimos (enteros). Convertimos para el mensaje.
+                    $minEuros = number_format($min / 100, 2, '.', '');
+                    $maxEuros = number_format($max / 100, 2, '.', '');
+                    return "{$minEuros}€ - {$maxEuros}€";
+                })(),
                 $request->getCategory()->value ?? 'Categoría no definida'
             ];
             

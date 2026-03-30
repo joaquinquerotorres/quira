@@ -38,7 +38,8 @@ final class ReviewProcessorTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
         $request->setClient($clientProfile);
 
         $review = new Review();

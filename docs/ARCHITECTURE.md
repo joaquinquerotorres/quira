@@ -28,7 +28,7 @@
 | User | email, roles, FCM token, Firebase UID, Stripe customer ID, `isVerifiedPhone()` calculado a partir de los perfiles; en `user:read` el plan operativo va en el `professionalProfile` anidado (`paidThroughAt`, `subscriptionCancelAtPeriodEnd`) |
 | ClientProfile | Perfil cliente: nombre, teléfono, avatar, `rating`, `reviewCount`, `verifiedPhone` (rating unificado; antes ratingAsClient) |
 | ProfessionalProfile | Perfil profesional: bio, skills, paidThroughAt, ubicación (`locationPoint` + `serviceRadiusKm`), `verifiedPhone`, `subscriptionCancelAtPeriodEnd`, `rating`, `reviewCount` y array `reviews` embebido; rating/reviewCount actualizados por ReviewProcessor y fixtures |
-| Request | Solicitud de trabajo: título, `description`, opcionalmente `clientOriginalDescription` (texto previo a refinar con IA; mismo máximo de caracteres que el texto de `/api/predict`), estado, categoría, diagnóstico IA (`aiDiagnosis` con precios sugeridos) y posibles `VisitRequest` asociadas |
+| Request | Solicitud de trabajo: título, `description`, opcionalmente `clientOriginalDescription` (texto previo a refinar con IA; mismo máximo de caracteres que el texto de `/api/predict`), `estimatedPriceMin/estimatedPriceMax` (rango IA en céntimos), estado, categoría, diagnóstico IA (`aiDiagnosis` con precios sugeridos) y posibles `VisitRequest` asociadas |
 | Bid | Oferta de profesional: precio, comentario, estado, origen (`origin` = APP/VISIT), relación opcional a `VisitRequest` |
 | VisitRequest | Solicitud de visita de valoración: enlaza una `Request` y un `ProfessionalProfile`, con `status` (PENDING/ACCEPTED/REJECTED), `note` y timestamps |
 | Review | Reseña sobre cliente o profesional |

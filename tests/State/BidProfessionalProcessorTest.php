@@ -53,7 +53,8 @@ final class BidProfessionalProcessorTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(8000);
+        $request->setEstimatedPriceMax(12000);
         $request->setClient($clientProfile);
         $request->setStatus(RequestStatus::PENDING);
 
@@ -93,7 +94,8 @@ final class BidProfessionalProcessorTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(8000);
+        $request->setEstimatedPriceMax(12000);
         $request->setClient($clientProfile);
         $request->setStatus(RequestStatus::PENDING);
 
@@ -136,7 +138,8 @@ final class BidProfessionalProcessorTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(8000);
+        $request->setEstimatedPriceMax(12000);
         $request->setClient($clientProfile);
         $request->setStatus(RequestStatus::ACCEPTED);
 
@@ -174,7 +177,8 @@ final class BidProfessionalProcessorTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(8000);
+        $request->setEstimatedPriceMax(12000);
         $request->setClient($clientProfile);
         $request->setStatus(RequestStatus::PENDING);
 
@@ -217,7 +221,8 @@ final class BidProfessionalProcessorTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(8000);
+        $request->setEstimatedPriceMax(12000);
         $request->setClient($clientProfile);
         $request->setStatus(RequestStatus::PENDING);
 
@@ -260,7 +265,8 @@ final class BidProfessionalProcessorTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(8000);
+        $request->setEstimatedPriceMax(12000);
         $request->setClient($clientProfile);
         $request->setStatus(RequestStatus::PENDING);
 
@@ -304,7 +310,8 @@ final class BidProfessionalProcessorTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(8000);
+        $request->setEstimatedPriceMax(12000);
         $request->setClient($clientProfile);
         $request->setStatus(RequestStatus::PENDING);
 
@@ -347,7 +354,8 @@ final class BidProfessionalProcessorTest extends TestCase
         $request = new Request();
         $request->setTitle('Test request title');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(8000);
+        $request->setEstimatedPriceMax(12000);
         $request->setClient($clientProfile);
         $request->setStatus(RequestStatus::PENDING);
         $request->setRiskLevel(RiskLevel::HIGH);

@@ -244,7 +244,8 @@ final class BidRepositoryTest extends KernelTestCase
         $request->setTitle('Solicitud de prueba para tests');
         $request->setDescription('Descripción de prueba');
         $request->setAddress('Calle Test 123');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(8000);
+        $request->setEstimatedPriceMax(12000);
         $request->setCategory(Category::DIY);
         $request->setRiskLevel(RiskLevel::LOW);
         $request->setStatus($status);

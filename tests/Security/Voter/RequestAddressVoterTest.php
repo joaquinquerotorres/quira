@@ -40,7 +40,8 @@ final class RequestAddressVoterTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test 1');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
         $request->setClient($clientProfile);
         $request->setPreciseAddress('Calle Test 1, Piso 2');
 
@@ -71,7 +72,8 @@ final class RequestAddressVoterTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
         $request->setClient($clientProfile);
         $request->setAssignedProfessional($proProfile);
         $request->setPreciseAddress('Calle Test 1, Piso 2');
@@ -99,7 +101,8 @@ final class RequestAddressVoterTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
         $request->setClient($clientProfile);
         $request->setPreciseAddress('Calle Test 1');
 
@@ -135,7 +138,8 @@ final class RequestAddressVoterTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
         $request->setClient($clientProfile);
         $request->setPreciseAddress('Calle Test 1, Piso 2');
 
@@ -152,7 +156,8 @@ final class RequestAddressVoterTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
         $request->setPreciseAddress('Calle Test 1');
 
         $token = $this->createMock(\Symfony\Component\Security\Core\Authentication\Token\TokenInterface::class);

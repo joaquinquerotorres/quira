@@ -46,7 +46,8 @@ final class BidAcceptanceProcessorTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
         $request->setClient($clientProfile);
         $request->setStatus(RequestStatus::PENDING);
 
@@ -99,7 +100,8 @@ final class BidAcceptanceProcessorTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
         $request->setClient($clientProfile);
         $request->setStatus(RequestStatus::PENDING);
 
@@ -142,7 +144,8 @@ final class BidAcceptanceProcessorTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
         $request->setClient($clientProfile);
         $request->setStatus(RequestStatus::PENDING);
 

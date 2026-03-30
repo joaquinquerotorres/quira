@@ -24,7 +24,8 @@ final class RequestQuestionProcessorTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
 
         $clientProfile = new ClientProfile();
         $clientProfile->setFullName('Cliente');

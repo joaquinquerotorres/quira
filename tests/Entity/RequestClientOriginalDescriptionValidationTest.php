@@ -45,7 +45,8 @@ final class RequestClientOriginalDescriptionValidationTest extends KernelTestCas
         $r = new Request();
         $r->setTitle('12345678901234567890');
         $r->setAddress('Calle Test 1');
-        $r->setPriceAmount(100);
+        $r->setEstimatedPriceMin(100);
+        $r->setEstimatedPriceMax(100);
         $r->setCategory(Category::DIY);
         $r->setRiskLevel(RiskLevel::LOW);
         $r->setStatus(RequestStatus::PENDING);

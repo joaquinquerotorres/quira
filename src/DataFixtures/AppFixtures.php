@@ -152,7 +152,10 @@ class AppFixtures extends Fixture
 
                 $risk = $faker->randomElement(RiskLevel::cases());
                 $request->setRiskLevel($risk);
-                $request->setPriceAmount($risk === RiskLevel::HIGH ? rand(1500, 4000) : rand(60, 350));
+                // estimated_price_* se guarda en céntimos (enteros).
+                $basePriceCents = $risk === RiskLevel::HIGH ? rand(1500, 4000) : rand(60, 350);
+                $request->setEstimatedPriceMin($basePriceCents);
+                $request->setEstimatedPriceMax($basePriceCents);
                 $request->setAddress($faker->streetAddress() . ", Córdoba");
                 if ($faker->boolean(30)) {
                     $request->setPreciseAddress($faker->streetAddress() . ', ' . $faker->buildingNumber() . ', Córdoba');
@@ -177,7 +180,7 @@ class AppFixtures extends Fixture
                         $bid = new Bid();
                         $request->addBid($bid);
                         $bid->setProfessional($bidder->getUser());
-                        $bid->setPriceQuote($request->getPriceAmount() + rand(-20, 50));
+                        $bid->setPriceQuote($request->getEstimatedPriceMin() + rand(-20, 50));
                         $bid->setStatus(BidStatus::PENDING);
                         $bid->setEstimatedExecutionTime(
                             $estimatedExecutionOptions[$estimatedExecutionIndex % count($estimatedExecutionOptions)]
@@ -215,7 +218,7 @@ class AppFixtures extends Fixture
                         $bid = new Bid();
                         $request->addBid($bid);
                         $bid->setProfessional($bidder->getUser());
-                        $bid->setPriceQuote($request->getPriceAmount() + rand(-20, 50));
+                        $bid->setPriceQuote($request->getEstimatedPriceMin() + rand(-20, 50));
                         $bid->setStatus(BidStatus::PENDING);
                         $bid->setEstimatedExecutionTime(
                             $estimatedExecutionOptions[$estimatedExecutionIndex % count($estimatedExecutionOptions)]

@@ -48,7 +48,8 @@ final class BidWithdrawProcessorTest extends TestCase
         $request = new Request();
         $request->setTitle('Solicitud test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
         $request->setClient($clientProfile);
         $request->setStatus(RequestStatus::PENDING);
 
@@ -96,7 +97,8 @@ final class BidWithdrawProcessorTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
         $request->setClient($clientProfile);
         $request->setStatus(RequestStatus::PENDING);
 
@@ -146,7 +148,8 @@ final class BidWithdrawProcessorTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
         $request->setClient($clientProfile);
         $request->setStatus(RequestStatus::PENDING);
 
@@ -189,7 +192,8 @@ final class BidWithdrawProcessorTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
         $request->setClient($clientProfile);
         $request->setStatus(RequestStatus::PENDING);
 
@@ -232,7 +236,8 @@ final class BidWithdrawProcessorTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
         $request->setClient($clientProfile);
         $request->setStatus(RequestStatus::ACCEPTED);
 
@@ -271,7 +276,8 @@ final class BidWithdrawProcessorTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
         $request->setStatus(RequestStatus::PENDING);
 
         $bid = new Bid();

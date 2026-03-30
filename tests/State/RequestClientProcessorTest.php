@@ -44,7 +44,8 @@ final class RequestClientProcessorTest extends TestCase
         $request->setTitle('Reparar grifo');
         $request->setDescription('Gotea en la cocina');
         $request->setAddress('Calle Test 1');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(8000);
+        $request->setEstimatedPriceMax(12000);
 
         $this->geminiService->method('checkSafety')->willReturn(['is_safe' => true]);
 
@@ -84,7 +85,8 @@ final class RequestClientProcessorTest extends TestCase
         $request->setTitle('Test');
         $request->setDescription('Descripción del trabajo');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(8000);
+        $request->setEstimatedPriceMax(12000);
 
         $this->geminiService->method('checkSafety')->willReturn([
             'is_safe' => false,
@@ -128,7 +130,8 @@ final class RequestClientProcessorTest extends TestCase
         $request->setDescription(null);
         $request->setClientOriginalDescription('Texto solo en original');
         $request->setAddress('Calle Test 1');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(8000);
+        $request->setEstimatedPriceMax(12000);
 
         $this->geminiService
             ->expects($this->once())
@@ -174,7 +177,8 @@ final class RequestClientProcessorTest extends TestCase
         $request->setTitle('Test');
         $request->setDescription('Con foto');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(8000);
+        $request->setEstimatedPriceMax(12000);
         $request->photoBase64 = 'data:image/jpeg;base64,/9j/4AAQ';
 
         $this->mediaService->method('saveRequestMediaFile')
@@ -216,7 +220,8 @@ final class RequestClientProcessorTest extends TestCase
         $request->setTitle('Test extra media');
         $request->setDescription('Descripción con media extra');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(8000);
+        $request->setEstimatedPriceMax(12000);
 
         $request->setExtraPhotoUrls(['/uploads/requests/extra_photo_1.jpg']);
         $request->setExtraAudioUrls(['/uploads/requests/extra_audio_1.aac']);
@@ -250,7 +255,8 @@ final class RequestClientProcessorTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(8000);
+        $request->setEstimatedPriceMax(12000);
 
         $security = $this->createMock(Security::class);
         $security->method('getUser')->willReturn(null);
@@ -279,7 +285,8 @@ final class RequestClientProcessorTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(8000);
+        $request->setEstimatedPriceMax(12000);
 
         $security = $this->createMock(Security::class);
         $security->method('getUser')->willReturn($user);
@@ -314,7 +321,8 @@ final class RequestClientProcessorTest extends TestCase
         $request->setTitle('Test');
         $request->setDescription('Descripción');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(8000);
+        $request->setEstimatedPriceMax(12000);
 
         $this->geminiService->method('checkSafety')->willReturn(['is_safe' => true]);
 
@@ -351,7 +359,8 @@ final class RequestClientProcessorTest extends TestCase
         $request->setTitle('Test');
         $request->setDescription('Descripción');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(8000);
+        $request->setEstimatedPriceMax(12000);
 
         $this->geminiService->method('checkSafety')->willReturn(['is_safe' => true]);
 

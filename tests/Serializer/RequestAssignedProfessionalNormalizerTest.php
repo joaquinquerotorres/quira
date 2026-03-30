@@ -59,7 +59,8 @@ final class RequestAssignedProfessionalNormalizerTest extends TestCase
         $request = new Request();
         $request->setTitle('Test request');
         $request->setAddress('Calle 1');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
         $request->setClient($clientProfile);
         $request->setAssignedProfessional($proProfile);
 
@@ -94,7 +95,8 @@ final class RequestAssignedProfessionalNormalizerTest extends TestCase
         $request = new Request();
         $request->setTitle('Test request');
         $request->setAddress('Calle 1');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
         $request->setClient($clientProfile);
         $request->setAssignedProfessional(null);
 
@@ -141,7 +143,8 @@ final class RequestAssignedProfessionalNormalizerTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle');
-        $request->setPriceAmount(50);
+        $request->setEstimatedPriceMin(50);
+        $request->setEstimatedPriceMax(50);
         $request->setClient($clientProfile);
         $request->setAssignedProfessional(null);
 
@@ -242,7 +245,8 @@ final class RequestAssignedProfessionalNormalizerTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
         $request->setPreciseAddress('Avenida de Libia - 53');
         $request->setClient(new ClientProfile());
 
@@ -270,7 +274,8 @@ final class RequestAssignedProfessionalNormalizerTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
         $request->setClient($clientProfile);
         $request->setAssignedProfessional(null);
 
@@ -306,7 +311,8 @@ final class RequestAssignedProfessionalNormalizerTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
         $request->setClient($clientProfile);
 
         $innerResult = [

@@ -69,6 +69,7 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
 
 - Cada `Request` guarda en `aiDiagnosis`:
   - `estimated_price_min`, `estimated_price_max`, `category`, `sub_category`, `risk_level`, etc.
+- Además, el rango estimado se persiste también a nivel de entidad en columnas `estimated_price_min/estimated_price_max` (céntimos), para que el API pueda devolverlo siempre y permitir ordenación por `estimatedPriceMin`.
 - Cuando se **acepta** una `Bid`, se dispone del precio real (`priceQuote`) para ese trabajo concreto.
 - El comando `app:calibrate-pricing`:
   - Agrupa por `sub_category` (no solo por categoría) y acumula también el `risk_level` dominante de esa subcategoría.

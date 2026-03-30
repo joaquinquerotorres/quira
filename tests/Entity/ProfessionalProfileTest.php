@@ -68,7 +68,8 @@ final class ProfessionalProfileTest extends TestCase
         $request = new Request();
         $request->setTitle('Test');
         $request->setAddress('Calle Test');
-        $request->setPriceAmount(100);
+        $request->setEstimatedPriceMin(8000);
+        $request->setEstimatedPriceMax(12000);
         $request->setClient($client);
         $request->setStatus($status);
         return $request;
