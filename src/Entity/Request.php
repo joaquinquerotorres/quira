@@ -90,16 +90,6 @@ class Request
     #[NoContactInfo]
     private ?string $clientOriginalDescription = null;
 
-    /**
-     * Legacy: precio único del cliente (histórico).
-     *
-     * Nuevo contrato: el cliente envía un rango en céntimos mediante
-     * `estimatedPriceMin/estimatedPriceMax`. Mantenemos esta columna para backfill y compatibilidad,
-     * pero la ocultamos del API y dejamos de validarla.
-     */
-    #[ORM\Column(nullable: true)]
-    private ?int $priceAmount = null;
-
     #[ORM\Column(nullable: false)]
     #[Groups(['request:read', 'request:write'])]
     #[Assert\NotNull(message: "estimatedPriceMin es obligatorio.")]
@@ -265,18 +255,6 @@ class Request
     public function setClientOriginalDescription(?string $clientOriginalDescription): self
     {
         $this->clientOriginalDescription = $clientOriginalDescription;
-
-        return $this;
-    }
-
-    public function getPriceAmount(): ?int
-    {
-        return $this->priceAmount;
-    }
-
-    public function setPriceAmount(?int $priceAmount): self
-    {
-        $this->priceAmount = $priceAmount;
 
         return $this;
     }
