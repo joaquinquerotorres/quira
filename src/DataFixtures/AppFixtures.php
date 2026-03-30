@@ -208,7 +208,9 @@ class AppFixtures extends Fixture
                 $request->setCategory($category);
                 $request->setTitle('Servicio de ' . $category->value . ' en Córdoba');
                 $request->setDescription($faker->text(80));
-                $request->setRiskLevel(RiskLevel::LOW);
+                // La app permite crear visitas (y usarlas para el flujo de valoración)
+                // solo para solicitudes de riesgo alto.
+                $request->setRiskLevel($status === RequestStatus::PENDING ? RiskLevel::HIGH : RiskLevel::LOW);
 
                 // Rangos estimados en céntimos con margen (min != max).
                 $base = 6000 + ($catIdx * 700) + ($reqIdx * 200); // céntimos
@@ -260,7 +262,9 @@ class AppFixtures extends Fixture
                     // Visita solicitada por el profesional (aunque aún no esté asignada la request).
                     $visitRequest = new VisitRequest();
                     $visitRequest->setRequest($request);
-                    $visitRequest->setProfessional($winningPro);
+                    // El endpoint exige pro PRO activa para poder solicitar visitas.
+                    // Garantizamos que la visita la crea un pro con tier pago.
+                    $visitRequest->setProfessional($catIdx % 2 === 0 ? $solverPro : $proPro);
                     $visitRequest->setStatus(VisitRequest::STATUS_PENDING);
                     $visitRequest->setNote($faker->randomElement($visitNotes));
                     $manager->persist($visitRequest);
@@ -301,17 +305,8 @@ class AppFixtures extends Fixture
                     $manager->persist($question);
 
                     // Visita del profesional con estado acorde a si la request está cerrada.
-                    $visitRequest = new VisitRequest();
-                    $visitRequest->setRequest($request);
-                    $visitRequest->setProfessional($winningPro);
-                    if ($status === RequestStatus::COMPLETED) {
-                        $visitRequest->setStatus(VisitRequest::STATUS_ACCEPTED);
-                        $visitRequest->setNote('Visita confirmada y trabajo realizado.');
-                    } else {
-                        $visitRequest->setStatus(VisitRequest::STATUS_PENDING);
-                        $visitRequest->setNote($faker->randomElement($visitNotes));
-                    }
-                    $manager->persist($visitRequest);
+                    // Nota: omitimos VisitRequest aquí para mantener coherencia con la regla
+                    // de negocio (visitas solo para requests PENDING de riesgo alto).
 
                     // Review: solo para solicitudes cerradas (COMPLETED).
                     if ($status === RequestStatus::COMPLETED) {
