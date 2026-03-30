@@ -160,9 +160,18 @@ class AppFixtures extends Fixture
                 $risk = $faker->randomElement(RiskLevel::cases());
                 $request->setRiskLevel($risk);
                 // estimated_price_* se guarda en céntimos (enteros).
+                // Generamos un rango con margen para que min/max no sean idénticos.
                 $basePriceCents = $risk === RiskLevel::HIGH ? rand(1500, 4000) : rand(60, 350);
-                $request->setEstimatedPriceMin($basePriceCents);
-                $request->setEstimatedPriceMax($basePriceCents);
+                $minCents = (int) \round($basePriceCents * 0.8);
+                $maxCents = (int) \round($basePriceCents * 1.2);
+                if ($minCents < 0) {
+                    $minCents = 0;
+                }
+                if ($maxCents < $minCents) {
+                    $maxCents = $minCents;
+                }
+                $request->setEstimatedPriceMin($minCents);
+                $request->setEstimatedPriceMax($maxCents);
                 $request->setAddress($faker->streetAddress() . ", Córdoba");
                 if ($faker->boolean(30)) {
                     $request->setPreciseAddress($faker->streetAddress() . ', ' . $faker->buildingNumber() . ', Córdoba');
@@ -187,7 +196,11 @@ class AppFixtures extends Fixture
                         $bid = new Bid();
                         $request->addBid($bid);
                         $bid->setProfessional($bidder->getUser());
-                        $bid->setPriceQuote($request->getEstimatedPriceMin() + rand(-20, 50));
+                        // Oferta del pro: cercana al rango estimado.
+                        $bidMin = $request->getEstimatedPriceMin();
+                        $bidMax = $request->getEstimatedPriceMax();
+                        $bidMid = (int) \round(($bidMin + $bidMax) / 2);
+                        $bid->setPriceQuote(rand(max(0, $bidMid - 200), $bidMid + 200));
                         $bid->setStatus(BidStatus::PENDING);
                         $bid->setEstimatedExecutionTime(
                             $estimatedExecutionOptions[$estimatedExecutionIndex % count($estimatedExecutionOptions)]
@@ -225,7 +238,11 @@ class AppFixtures extends Fixture
                         $bid = new Bid();
                         $request->addBid($bid);
                         $bid->setProfessional($bidder->getUser());
-                        $bid->setPriceQuote($request->getEstimatedPriceMin() + rand(-20, 50));
+                        // Oferta del pro: cercana al rango estimado.
+                        $bidMin = $request->getEstimatedPriceMin();
+                        $bidMax = $request->getEstimatedPriceMax();
+                        $bidMid = (int) \round(($bidMin + $bidMax) / 2);
+                        $bid->setPriceQuote(rand(max(0, $bidMid - 200), $bidMid + 200));
                         $bid->setStatus(BidStatus::PENDING);
                         $bid->setEstimatedExecutionTime(
                             $estimatedExecutionOptions[$estimatedExecutionIndex % count($estimatedExecutionOptions)]
