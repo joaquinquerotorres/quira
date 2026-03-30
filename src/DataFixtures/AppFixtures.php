@@ -6,11 +6,11 @@ namespace App\DataFixtures;
 
 use App\Entity\Bid;
 use App\Entity\ClientProfile;
-use App\Entity\Notification;
 use App\Entity\ProfessionalProfile;
 use App\Entity\Request;
 use App\Entity\RequestQuestion;
 use App\Entity\Review;
+use App\Entity\VisitRequest;
 use App\Entity\User;
 use App\Enum\BidStatus;
 use App\Enum\Category;
@@ -34,84 +34,19 @@ class AppFixtures extends Fixture
         $faker = Factory::create('es_ES');
         $faker->seed(1234);
 
+        // Coordenadas aproximadas de Córdoba para que ST_Distance_Sphere tenga sentido.
         $cordobaPoints = [
-            ['lat' => 37.888175, 'lng' => -4.779383], // Tendillas
-            ['lat' => 37.891556, 'lng' => -4.783155], // Vial Norte
-            ['lat' => 37.880456, 'lng' => -4.789456], // Ciudad Jardín
-            ['lat' => 37.876123, 'lng' => -4.782345], // Zoco
-            ['lat' => 37.905678, 'lng' => -4.792345], // Brillante
-            ['lat' => 37.868901, 'lng' => -4.775678], // Sector Sur
-            ['lat' => 37.884567, 'lng' => -4.761234], // Fátima
-            ['lat' => 37.892345, 'lng' => -4.752345], // Santa Rosa
+            ['lat' => 37.888175, 'lng' => -4.779383],
+            ['lat' => 37.891556, 'lng' => -4.783155],
+            ['lat' => 37.880456, 'lng' => -4.789456],
+            ['lat' => 37.876123, 'lng' => -4.782345],
+            ['lat' => 37.905678, 'lng' => -4.792345],
+            ['lat' => 37.868901, 'lng' => -4.775678],
+            ['lat' => 37.884567, 'lng' => -4.761234],
+            ['lat' => 37.892345, 'lng' => -4.752345],
         ];
 
-        $availableSkills = array_map(fn($c) => $c->value, Category::cases());
-        $allPros = [];
-        $proPros = [];
-        $solverPros = [];
-
-        for ($i = 0; $i < 15; $i++) {
-            $user = new User();
-            $remainder = $i % 3;
-            $baseRoles = ['ROLE_USER', 'ROLE_PROFESSIONAL'];
-
-            if ($remainder === 0) {
-                $roles = array_merge($baseRoles, ['ROLE_PRO']);
-                $user->setEmail("pro_master_$i@test.com");
-                $group = &$proPros;
-            } elseif ($remainder === 1) {
-                $roles = array_merge($baseRoles, ['ROLE_SOLVER']);
-                $user->setEmail("pro_solver_$i@test.com");
-                $group = &$solverPros;
-            } else {
-                $roles = array_merge($baseRoles, ['ROLE_FREE']);
-                $user->setEmail("pro_free_$i@test.com");
-                $group = null;
-            }
-
-            $user->setRoles($roles);
-            $user->setPassword($this->hasher->hashPassword($user, 'password'));
-            $user->setVerifiedEmail(true);
-
-            $clientProfile = new ClientProfile();
-            $clientProfile->setFullName($faker->name());
-            $clientProfile->setPhoneNumber($faker->phoneNumber());
-            $user->setClientProfile($clientProfile);
-
-            $proProfile = new ProfessionalProfile();
-            $proProfile->setFullName($faker->company());
-            $proProfile->setPhoneNumber($faker->phoneNumber());
-            $proProfile->setSkills($faker->randomElements($availableSkills, rand(1, 3)));
-            $proProfile->setIsVerified(true);
-            $proProfile->setAddress($faker->streetAddress() . ", Córdoba");
-            $proProfile->setServiceRadiusKm(rand(10, 40));
-
-            $p = $cordobaPoints[array_rand($cordobaPoints)];
-            $proProfile->setLocationPoint(new Point($p['lng'], $p['lat']));
-            $proProfile->setVerifiedPhone(true);
-            $clientProfile->setVerifiedPhone(true);
-
-            // Para PRO: CIF debe estar verificado (regla Free/Solver vs Pro).
-            if (in_array('ROLE_PRO', $roles, true)) {
-                $proProfile->setTaxId('A58818501'); // Ejemplo válido de CIF
-                $proProfile->setVerifiedTaxId(true);
-            }
-
-            $user->setProfessionalProfile($proProfile);
-
-            $manager->persist($user);
-            $manager->persist($clientProfile);
-            $manager->persist($proProfile);
-
-            $allPros[] = $proProfile;
-            if ($group !== null) {
-                $group[] = $proProfile;
-            }
-        }
-
-        $allClients = [];
-        $completedRequests = []; // Para crear reviews después
-
+        $allSkills = array_map(fn($c) => $c->value, Category::cases());
         $estimatedExecutionOptions = [
             'Hoy mismo',
             'Mañana',
@@ -120,206 +55,123 @@ class AppFixtures extends Fixture
             'En dos semanas o más',
             'A convenir al aceptar la oferta',
         ];
-        $estimatedExecutionIndex = 0;
-
         $desiredExecutionOptions = [
             'Lo antes posible',
             'Esta semana',
             'La próxima semana',
             'A convenir al aceptar la oferta',
         ];
-        $desiredExecutionIndex = 0;
 
-        for ($i = 0; $i < 10; $i++) {
+        $createPro = function (
+            string $email,
+            array $roles,
+            bool $isProTier,
+            bool $verifiedTaxId
+        ) use ($manager, $faker, $cordobaPoints, $allSkills, $estimatedExecutionOptions): ProfessionalProfile {
             $user = new User();
-            $user->setEmail("client$i@test.com");
-            $user->setRoles(['ROLE_USER']);
+            $user->setEmail($email);
             $user->setPassword($this->hasher->hashPassword($user, 'password'));
+            $user->setRoles($roles);
             $user->setVerifiedEmail(true);
 
-            $clientProfile = new ClientProfile();
-            $clientProfile->setFullName($faker->name());
-            $clientProfile->setPhoneNumber($faker->phoneNumber());
-            $clientProfile->setVerifiedPhone(true);
-            $user->setClientProfile($clientProfile);
+            $profile = new ProfessionalProfile();
+            $profile->setFullName($faker->company());
+            $profile->setPhoneNumber($faker->phoneNumber());
+            $profile->setVerifiedPhone(true);
+            $profile->setSkills($allSkills);
+            $profile->setIsVerified(true);
+            $profile->setAddress($faker->streetAddress() . ', Córdoba');
+            $profile->setServiceRadiusKm(500);
+
+            $p = $cordobaPoints[array_rand($cordobaPoints)];
+            $profile->setLocationPoint(new Point($p['lng'], $p['lat']));
+
+            // Evita envíos externos desde listeners durante fixture load.
+            $profile->setNotifyRequestActivity(false);
+            $profile->setNotifyBidActivity(false);
+            $profile->setNotifyReviews(false);
+
+            if ($verifiedTaxId) {
+                $profile->setTaxId('A58818501');
+                $profile->setVerifiedTaxId(true);
+            } else {
+                $profile->setTaxId(null);
+                $profile->setVerifiedTaxId(false);
+            }
+
+            if ($isProTier) {
+                $profile->setPaidThroughAt(new \DateTimeImmutable('+6 months'));
+            } else {
+                $profile->setPaidThroughAt(null);
+            }
+
+            $user->setProfessionalProfile($profile);
+            $profile->setUser($user);
 
             $manager->persist($user);
-            $manager->persist($clientProfile);
-            $allClients[] = ['user' => $user, 'clientProfile' => $clientProfile];
+            $manager->persist($profile);
 
-            $numRequests = rand(2, 4);
-            for ($j = 0; $j < $numRequests; $j++) {
-                $request = new Request();
-                $request->setClient($clientProfile);
+            return $profile;
+        };
 
-                $category = Category::cases()[array_rand(Category::cases())];
-                $request->setCategory($category);
-                $request->setTitle("Servicio de " . $category->value . " en Córdoba");
-                $request->setDescription($faker->text(120));
+        // 3 pros: FREE / SOLVER / PRO.
+        $freePro = $createPro(
+            email: 'pro-free@test.com',
+            roles: ['ROLE_USER', 'ROLE_PROFESSIONAL', 'ROLE_FREE'],
+            isProTier: false,
+            verifiedTaxId: false
+        );
+        $solverPro = $createPro(
+            email: 'pro-solver@test.com',
+            roles: ['ROLE_USER', 'ROLE_PROFESSIONAL', 'ROLE_SOLVER'],
+            isProTier: true,
+            verifiedTaxId: false
+        );
+        $proPro = $createPro(
+            email: 'pro-pro@test.com',
+            roles: ['ROLE_USER', 'ROLE_PROFESSIONAL', 'ROLE_PRO'],
+            isProTier: true,
+            verifiedTaxId: true
+        );
 
-                $risk = $faker->randomElement(RiskLevel::cases());
-                $request->setRiskLevel($risk);
-                // estimated_price_* se guarda en céntimos (enteros).
-                // Generamos un rango con margen para que min/max no sean idénticos.
-                $basePriceCents = $risk === RiskLevel::HIGH ? rand(1500, 4000) : rand(60, 350);
-                $minCents = (int) \round($basePriceCents * 0.8);
-                $maxCents = (int) \round($basePriceCents * 1.2);
-                if ($minCents < 0) {
-                    $minCents = 0;
-                }
-                if ($maxCents < $minCents) {
-                    $maxCents = $minCents;
-                }
-                $request->setEstimatedPriceMin($minCents);
-                $request->setEstimatedPriceMax($maxCents);
-                $request->setAddress($faker->streetAddress() . ", Córdoba");
-                if ($faker->boolean(30)) {
-                    $request->setPreciseAddress($faker->streetAddress() . ', ' . $faker->buildingNumber() . ', Córdoba');
-                }
+        $proProfiles = [$freePro, $solverPro, $proPro];
 
-                $pReq = $cordobaPoints[array_rand($cordobaPoints)];
-                $request->setLocationPoint(new Point($pReq['lng'] + 0.002, $pReq['lat'] + 0.002));
+        $createClient = function (string $email, string $phone) use ($manager, $faker): ClientProfile {
+            $user = new User();
+            $user->setEmail($email);
+            $user->setPassword($this->hasher->hashPassword($user, 'password'));
+            $user->setRoles(['ROLE_USER']);
+            $user->setVerifiedEmail(true);
 
-                $eligibleBidders = ($risk === RiskLevel::HIGH && count($proPros) > 0) ? $proPros : $allPros;
+            $profile = new ClientProfile();
+            $profile->setFullName($faker->name());
+            $profile->setPhoneNumber($phone);
+            $profile->setVerifiedPhone(true);
+            $profile->setNotifyRequestActivity(false);
+            $profile->setNotifyBidActivity(false);
+            $profile->setNotifyReviews(false);
 
-                if ($faker->boolean(40)) {
-                    // Request con profesional asignado: crear bids primero, luego elegir ganador
-                    $numBids = rand(1, 3);
-                    $biddersUsed = [];
-                    $bids = [];
-                    for ($k = 0; $k < $numBids; $k++) {
-                        $bidder = $eligibleBidders[array_rand($eligibleBidders)];
-                        if (in_array($bidder, $biddersUsed, true)) {
-                            continue;
-                        }
-                        $biddersUsed[] = $bidder;
-                        $bid = new Bid();
-                        $request->addBid($bid);
-                        $bid->setProfessional($bidder->getUser());
-                        // Oferta del pro: cercana al rango estimado.
-                        $bidMin = $request->getEstimatedPriceMin();
-                        $bidMax = $request->getEstimatedPriceMax();
-                        $bidMid = (int) \round(($bidMin + $bidMax) / 2);
-                        $bid->setPriceQuote(rand(max(0, $bidMid - 200), $bidMid + 200));
-                        $bid->setStatus(BidStatus::PENDING);
-                        $bid->setEstimatedExecutionTime(
-                            $estimatedExecutionOptions[$estimatedExecutionIndex % count($estimatedExecutionOptions)]
-                        );
-                        $estimatedExecutionIndex++;
-                        $bids[] = $bid;
-                        $manager->persist($bid);
-                    }
-                    if (count($bids) > 0) {
-                        $winningBid = $bids[array_rand($bids)];
-                        $winningBid->setStatus(BidStatus::ACCEPTED);
-                        foreach ($bids as $b) {
-                            if ($b !== $winningBid) {
-                                $b->setStatus(BidStatus::REJECTED);
-                            }
-                        }
-                        $request->setAssignedProfessional($winningBid->getProfessional()->getProfessionalProfile());
-                        $isCompleted = $faker->boolean(35);
-                        $request->setStatus($isCompleted ? RequestStatus::COMPLETED : RequestStatus::ACCEPTED);
+            $user->setClientProfile($profile);
+            $profile->setUser($user);
 
-                        if ($isCompleted) {
-                            $completedRequests[] = [
-                                'request' => $request,
-                                'clientUser' => $user,
-                                'proUser' => $winningBid->getProfessional(),
-                            ];
-                        }
-                    } else {
-                        $request->setStatus(RequestStatus::PENDING);
-                    }
-                } else {
-                    $request->setStatus(RequestStatus::PENDING);
-                    for ($k = 0; $k < rand(1, 2); $k++) {
-                        $bidder = $eligibleBidders[array_rand($eligibleBidders)];
-                        $bid = new Bid();
-                        $request->addBid($bid);
-                        $bid->setProfessional($bidder->getUser());
-                        // Oferta del pro: cercana al rango estimado.
-                        $bidMin = $request->getEstimatedPriceMin();
-                        $bidMax = $request->getEstimatedPriceMax();
-                        $bidMid = (int) \round(($bidMin + $bidMax) / 2);
-                        $bid->setPriceQuote(rand(max(0, $bidMid - 200), $bidMid + 200));
-                        $bid->setStatus(BidStatus::PENDING);
-                        $bid->setEstimatedExecutionTime(
-                            $estimatedExecutionOptions[$estimatedExecutionIndex % count($estimatedExecutionOptions)]
-                        );
-                        $estimatedExecutionIndex++;
-                        $manager->persist($bid);
-                    }
-                }
+            $manager->persist($user);
+            $manager->persist($profile);
 
-                // Asignar disponibilidad deseada en lugar de fecha exacta
-                $request->setDesiredExecutionTime(
-                    $desiredExecutionOptions[$desiredExecutionIndex % count($desiredExecutionOptions)]
-                );
-                $desiredExecutionIndex++;
+            return $profile;
+        };
 
-                $manager->persist($request);
-            }
-        }
+        // 2 clientes.
+        $clientProfiles = [
+            $createClient('client0@test.com', '+34600000010'),
+            $createClient('client1@test.com', '+34600000011'),
+        ];
 
-        $manager->flush();
+        $requestsPerCategory = [
+            RequestStatus::PENDING,
+            RequestStatus::ACCEPTED,
+            RequestStatus::COMPLETED,
+        ];
 
-        // Crear reviews para solicitudes completadas (cliente valora al profesional)
-        foreach ($completedRequests as $item) {
-            $request = $item['request'];
-            $clientUser = $item['clientUser'];
-            $proUser = $item['proUser'];
-
-            $review = new Review();
-            $review->setRequest($request);
-            $review->setAuthor($clientUser);
-            $review->setTarget($proUser);
-            $review->setScore($faker->numberBetween(3, 5));
-            $review->setComment($faker->optional(0.7)->randomElement([
-                'Excelente trabajo, muy recomendable.',
-                'Muy profesional y puntual. Todo perfecto.',
-                'Muy satisfecho con el servicio.',
-                'Buen profesional, lo volvería a contratar.',
-                'Correcto, resolvió el problema.',
-            ]));
-            $manager->persist($review);
-        }
-
-        // Asegurar que las reviews están en BD antes de recalcular ratings
-        $manager->flush();
-
-        // Actualizar rating y reviewCount de todos los perfiles (profesionales y clientes) según las reviews existentes
-        $reviewRepo = $manager->getRepository(Review::class);
-        $userRepo = $manager->getRepository(User::class);
-        /** @var User[] $allUsers */
-        $allUsers = $userRepo->findAll();
-
-        foreach ($allUsers as $user) {
-            $reviewsAsTarget = $reviewRepo->findBy(['target' => $user]);
-            if (count($reviewsAsTarget) === 0) {
-                continue;
-            }
-
-            $avg = round(array_sum(array_map(fn(Review $r) => $r->getScore(), $reviewsAsTarget)) / count($reviewsAsTarget), 1);
-            $count = count($reviewsAsTarget);
-
-            $proProfile = $user->getProfessionalProfile();
-            if ($proProfile !== null) {
-                $proProfile->setRating((float) $avg);
-                $proProfile->setReviewCount($count);
-                $manager->persist($proProfile);
-            }
-
-            $clientProfile = $user->getClientProfile();
-            if ($clientProfile !== null) {
-                $clientProfile->setRating((float) $avg);
-                $clientProfile->setReviewCount($count);
-                $manager->persist($clientProfile);
-            }
-        }
-
-        // Crear RequestQuestions (profesional pregunta al cliente)
-        $allRequests = $manager->getRepository(Request::class)->findAll();
         $questionTexts = [
             '¿Hay acceso con ascensor o solo escaleras?',
             '¿Necesita el trabajo para alguna fecha concreta?',
@@ -327,45 +179,159 @@ class AppFixtures extends Fixture
             '¿Tienes ya los materiales o necesitas que los compre?',
             '¿Cuánto tiempo llevas con el problema?',
         ];
-        foreach ($allRequests as $request) {
-            if ($faker->boolean(25) && $request->getStatus() !== RequestStatus::CANCELLED) {
-                $proAsking = $allPros[array_rand($allPros)]->getUser();
-                $question = new RequestQuestion();
-                $question->setRequest($request);
-                $question->setAuthor($proAsking);
-                $question->setQuestionText($faker->randomElement($questionTexts));
-                if ($faker->boolean(60)) {
-                    $question->setAnswerText($faker->randomElement([
-                        'Sí, hay ascensor.',
-                        'Para la próxima semana si es posible.',
-                        'No hay mascotas.',
-                        'Ya tengo los materiales.',
-                        'Unos dos meses aproximadamente.',
-                    ]));
-                }
-                $manager->persist($question);
-            }
-        }
 
-        // Crear Notificaciones
-        $notificationTypes = [
-            ['type' => 'BID_RECEIVED', 'title' => 'Nueva oferta', 'message' => 'Has recibido una nueva oferta en tu solicitud.'],
-            ['type' => 'BID_ACCEPTED', 'title' => 'Oferta aceptada', 'message' => 'Tu oferta ha sido aceptada.'],
-            ['type' => 'QUESTION_RECEIVED', 'title' => 'Nueva pregunta', 'message' => 'Un profesional te ha hecho una pregunta sobre tu solicitud.'],
-            ['type' => 'REQUEST_ACTIVITY', 'title' => 'Actividad en solicitud', 'message' => 'Hay nueva actividad en una de tus solicitudes.'],
+        $answerTexts = [
+            'Sí, hay ascensor.',
+            'Para la próxima semana si es posible.',
+            'No hay mascotas.',
+            'Ya tengo los materiales.',
+            'Unos dos meses aproximadamente.',
+            'Puedo facilitar fotos del problema.',
+            'Podemos coordinar una hora por la tarde.',
         ];
-        foreach (array_merge(array_column($allClients, 'user'), array_map(fn($p) => $p->getUser(), $allPros)) as $user) {
-            $numNotifs = $faker->numberBetween(1, 4);
-            for ($n = 0; $n < $numNotifs; $n++) {
-                $nt = $faker->randomElement($notificationTypes);
-                $notif = new Notification();
-                $notif->setUser($user);
-                $notif->setTitle($nt['title']);
-                $notif->setMessage($nt['message']);
-                $notif->setType($nt['type']);
-                $notif->setIsRead($faker->boolean(40));
-                $notif->setRelatedId($faker->optional(0.6)->numberBetween(1, 50));
-                $manager->persist($notif);
+
+        $visitNotes = [
+            'Confirmación de visita coordinada con el profesional.',
+            'Pendiente de disponibilidad horaria.',
+            'Se revisará el alcance y se propondrá plan de actuación.',
+            'Requiere revisión en el domicilio para concretar el presupuesto.',
+        ];
+
+        $clientIdx = 0;
+        foreach (Category::cases() as $catIdx => $category) {
+            foreach ($requestsPerCategory as $reqIdx => $status) {
+                $clientProfile = $clientProfiles[$clientIdx % count($clientProfiles)];
+                $clientIdx++;
+
+                $request = new Request();
+                $request->setClient($clientProfile);
+                $request->setCategory($category);
+                $request->setTitle('Servicio de ' . $category->value . ' en Córdoba');
+                $request->setDescription($faker->text(80));
+                $request->setRiskLevel(RiskLevel::LOW);
+
+                // Rangos estimados en céntimos con margen (min != max).
+                $base = 6000 + ($catIdx * 700) + ($reqIdx * 200); // céntimos
+                $min = (int) \round($base * 0.8);
+                $max = (int) \round($base * 1.2);
+                if ($min < 0) {
+                    $min = 0;
+                }
+                if ($max < $min) {
+                    $max = $min;
+                }
+                if ($min === $max) {
+                    $max = $min + 1;
+                }
+
+                $request->setEstimatedPriceMin($min);
+                $request->setEstimatedPriceMax($max);
+
+                $request->setAddress($faker->streetAddress() . ', Córdoba');
+                $pReq = $cordobaPoints[($catIdx + $reqIdx) % count($cordobaPoints)];
+                $request->setLocationPoint(new Point($pReq['lng'], $pReq['lat']));
+                $request->setDesiredExecutionTime($desiredExecutionOptions[($catIdx + $reqIdx) % count($desiredExecutionOptions)]);
+
+                $winningPro = $proProfiles[($catIdx + $reqIdx) % count($proProfiles)];
+
+                if ($status === RequestStatus::PENDING) {
+                    $request->setStatus(RequestStatus::PENDING);
+                    // Un bid pendiente (sin asignación).
+                    $bid = new Bid();
+                    $bid->setProfessional($winningPro->getUser());
+                    $bid->setPriceQuote($min + 100);
+                    $bid->setStatus(BidStatus::PENDING);
+                    $bid->setEstimatedExecutionTime($estimatedExecutionOptions[($catIdx) % count($estimatedExecutionOptions)]);
+
+                    $request->addBid($bid);
+
+                    $manager->persist($bid);
+
+                    // Pregunta al cliente (sin respuesta obligatoria para PENDING).
+                    $question = new RequestQuestion();
+                    $question->setRequest($request);
+                    $question->setAuthor($winningPro->getUser());
+                    $question->setQuestionText($faker->randomElement($questionTexts));
+                    if ($faker->boolean(45)) {
+                        $question->setAnswerText($faker->randomElement($answerTexts));
+                    }
+                    $manager->persist($question);
+
+                    // Visita solicitada por el profesional (aunque aún no esté asignada la request).
+                    $visitRequest = new VisitRequest();
+                    $visitRequest->setRequest($request);
+                    $visitRequest->setProfessional($winningPro);
+                    $visitRequest->setStatus(VisitRequest::STATUS_PENDING);
+                    $visitRequest->setNote($faker->randomElement($visitNotes));
+                    $manager->persist($visitRequest);
+                } else {
+                    // Crear 2 bids: una aceptada (ganadora) y otra rechazada.
+                    $acceptedBid = new Bid();
+                    $acceptedBid->setProfessional($winningPro->getUser());
+                    $acceptedBid->setPriceQuote((int) \round(($min + $max) / 2));
+                    $acceptedBid->setStatus(BidStatus::ACCEPTED);
+                    $acceptedBid->setEstimatedExecutionTime($estimatedExecutionOptions[($catIdx) % count($estimatedExecutionOptions)]);
+
+                    $rejectedBid = new Bid();
+                    $rejectedBid->setProfessional($proProfiles[($catIdx + 1) % count($proProfiles)]->getUser());
+                    $rejectedBid->setPriceQuote((int) \round(($min + $max) / 2) - 300);
+                    if ($rejectedBid->getPriceQuote() < 0) {
+                        $rejectedBid->setPriceQuote(0);
+                    }
+                    $rejectedBid->setStatus(BidStatus::REJECTED);
+                    $rejectedBid->setEstimatedExecutionTime($estimatedExecutionOptions[($catIdx + 1) % count($estimatedExecutionOptions)]);
+
+                    $request->addBid($acceptedBid);
+                    $request->addBid($rejectedBid);
+
+                    $manager->persist($acceptedBid);
+                    $manager->persist($rejectedBid);
+
+                    $request->setAssignedProfessional($winningPro);
+                    $request->setStatus($status);
+
+                    // Pregunta al cliente con respuesta probabilística.
+                    $question = new RequestQuestion();
+                    $question->setRequest($request);
+                    $question->setAuthor($acceptedBid->getProfessional());
+                    $question->setQuestionText($faker->randomElement($questionTexts));
+                    if ($status === RequestStatus::COMPLETED || $faker->boolean(55)) {
+                        $question->setAnswerText($faker->randomElement($answerTexts));
+                    }
+                    $manager->persist($question);
+
+                    // Visita del profesional con estado acorde a si la request está cerrada.
+                    $visitRequest = new VisitRequest();
+                    $visitRequest->setRequest($request);
+                    $visitRequest->setProfessional($winningPro);
+                    if ($status === RequestStatus::COMPLETED) {
+                        $visitRequest->setStatus(VisitRequest::STATUS_ACCEPTED);
+                        $visitRequest->setNote('Visita confirmada y trabajo realizado.');
+                    } else {
+                        $visitRequest->setStatus(VisitRequest::STATUS_PENDING);
+                        $visitRequest->setNote($faker->randomElement($visitNotes));
+                    }
+                    $manager->persist($visitRequest);
+
+                    // Review: solo para solicitudes cerradas (COMPLETED).
+                    if ($status === RequestStatus::COMPLETED) {
+                        $review = new Review();
+                        $review->setRequest($request);
+                        $review->setAuthor($clientProfile->getUser());
+                        $review->setTarget($winningPro->getUser());
+                        $review->setScore($faker->numberBetween(3, 5));
+                        $review->setComment($faker->optional(0.7)->randomElement([
+                            'Excelente trabajo, muy recomendable.',
+                            'Muy profesional y puntual. Todo perfecto.',
+                            'Muy satisfecho con el servicio.',
+                            'Buen profesional, lo volvería a contratar.',
+                            'Correcto, resolvió el problema.',
+                        ]));
+                        $manager->persist($review);
+                    }
+                }
+
+                $manager->persist($request);
             }
         }
 
