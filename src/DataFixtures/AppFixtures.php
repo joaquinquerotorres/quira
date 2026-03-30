@@ -67,7 +67,7 @@ class AppFixtures extends Fixture
             array $roles,
             bool $isProTier,
             bool $verifiedTaxId
-        ) use ($manager, $faker, $cordobaPoints, $allSkills, $estimatedExecutionOptions): ProfessionalProfile {
+        ) use ($manager, $faker, $cordobaPoints, $allSkills): ProfessionalProfile {
             $user = new User();
             $user->setEmail($email);
             $user->setPassword($this->hasher->hashPassword($user, 'password'));
