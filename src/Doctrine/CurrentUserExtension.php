@@ -115,6 +115,8 @@ final class CurrentUserExtension implements QueryCollectionExtensionInterface, Q
                 $bidAlias = $queryNameGenerator->generateJoinAlias('bid');
                 $visitAlias = $queryNameGenerator->generateJoinAlias('visit');
                 $proProfile = $user->getProfessionalProfile();
+                $hasActivePaidSubscription = $proProfile !== null
+                    && $this->subscriptionService->hasActivePaidSubscription($proProfile);
 
                 $queryBuilder
                     ->leftJoin(sprintf('%s.client', $rootAlias), 'req_client')
@@ -140,7 +142,7 @@ final class CurrentUserExtension implements QueryCollectionExtensionInterface, Q
                             'req_client.user = :current_user',
                             'req_pro.user = :current_user',
                             sprintf(
-                                '(%s.status = :status_pending AND %s.riskLevel != :risk_high_item)',
+                                '(%s.status = :status_pending AND (%s.riskLevel != :risk_high_item OR :has_paid_subscription_item = true))',
                                 $rootAlias,
                                 $rootAlias
                             ),
@@ -153,6 +155,7 @@ final class CurrentUserExtension implements QueryCollectionExtensionInterface, Q
                     ->setParameter('visit_accepted', VisitRequest::STATUS_ACCEPTED)
                     ->setParameter('status_pending', RequestStatus::PENDING->value)
                     ->setParameter('risk_high_item', RiskLevel::HIGH)
+                    ->setParameter('has_paid_subscription_item', $hasActivePaidSubscription)
                     ->setParameter('bid_item_active_statuses', [BidStatus::PENDING, BidStatus::ACCEPTED]);
                 return;
             }

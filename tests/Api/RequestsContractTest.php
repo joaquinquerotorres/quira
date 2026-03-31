@@ -12,6 +12,52 @@ use PHPUnit\Framework\Attributes\Group;
 #[Group('database')]
 final class RequestsContractTest extends ApiTestCase
 {
+    public function testPendingHighRequestItemIsVisibleForPaidProfessionalButHiddenForUnpaidProfessional(): void
+    {
+        $client = $this->createClientUser(
+            email: 'client-market-high@test.com',
+            phoneNumber: '+34600000111',
+            verifiedPhone: true,
+            notifyRequestActivity: false,
+        );
+        $clientProfile = $client->getClientProfile();
+        $this->assertNotNull($clientProfile);
+
+        $paidPro = $this->createProfessionalUser(
+            email: 'pro-paid-market@test.com',
+            roles: ['ROLE_USER', 'ROLE_PROFESSIONAL', 'ROLE_SOLVER'],
+            phoneNumber: '+34600000112',
+            verifiedPhone: true,
+            notifyRequestActivity: false,
+        );
+        $paidProfile = $paidPro->getProfessionalProfile();
+        $this->assertNotNull($paidProfile);
+        $paidProfile->setPaidThroughAt(new \DateTimeImmutable('+15 days'));
+        $this->em->flush();
+
+        $unpaidPro = $this->createProfessionalUser(
+            email: 'pro-unpaid-market@test.com',
+            roles: ['ROLE_USER', 'ROLE_PROFESSIONAL', 'ROLE_FREE'],
+            phoneNumber: '+34600000113',
+            verifiedPhone: true,
+            notifyRequestActivity: false,
+        );
+
+        $request = $this->createRequest(
+            clientProfile: $clientProfile,
+            status: RequestStatus::PENDING,
+            riskLevel: RiskLevel::HIGH,
+            title: 'Request HIGH pending para visibilidad item',
+            desiredExecutionTime: 'Lo antes posible'
+        );
+
+        $this->browser->request('GET', '/api/requests/' . $request->getId(), [], [], $this->authHeaders($paidPro));
+        $this->assertResponseStatusCodeSame(200);
+
+        $this->browser->request('GET', '/api/requests/' . $request->getId(), [], [], $this->authHeaders($unpaidPro));
+        $this->assertResponseStatusCodeSame(404);
+    }
+
     public function testAssignedProfessionalAndVisitVisibilityControlsPhonesAndPreciseAddress(): void
     {
         $client = $this->createClientUser(

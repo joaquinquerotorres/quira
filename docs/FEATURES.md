@@ -151,7 +151,9 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
 
 ### CurrentUserExtension
 - **Request (colección):** según query (`is_market`, `my_jobs`, cliente, etc.); en mercado, profesionales sin suscripción activa no ven solicitudes **HIGH** salvo excepción (puja propia PENDING/ACCEPTED o asignado)
-- **Request (ítem):** cliente, asignado, visita aceptada, puja propia activa (PENDING/ACCEPTED), o PENDING no-HIGH (no se expone HIGH “vacía” a terceros)
+- **Request (ítem):** cliente, asignado, visita aceptada, puja propia activa (PENDING/ACCEPTED), o request `PENDING` en mercado:
+  - si es **no-HIGH**, visible para profesionales;
+  - si es **HIGH**, visible solo con suscripción activa (`paidThroughAt` vigente).
 - **Bid:** del profesional o de requests del cliente según contexto (`my_bids`, etc.)
 
 ### RequestAddressVoter

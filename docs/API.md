@@ -46,6 +46,10 @@ Autenticación: Bearer JWT en header Authorization
     - `"A convenir al aceptar la oferta"`
   - Ordenación en listados: `order[estimatedPriceMin]=asc|desc` (además de `createdAt` por defecto).
 - **Serialización (GET /api/requests/{id})**:
+  - **Visibilidad del ítem para profesionales (mercado):** una request `PENDING` se puede abrir en detalle si:
+    - `riskLevel != HIGH`, o
+    - `riskLevel = HIGH` y el profesional tiene suscripción activa (`paidThroughAt` vigente), o
+    - existe puja propia activa (`PENDING/ACCEPTED`), o visita aceptada, o está asignado.
   - `assignedProfessional`: objeto embebido `ProfessionalProfile` del profesional que ganó la puja. Incluye `fullName`, `address`, `skills`, `avatar`, `rating`, `reviewCount` y **`phoneNumber`** (inyectado por normalizer solo aquí; no se expone en las bids).
   - `client`: objeto embebido `ClientProfile` del cliente. Incluye `fullName`, `avatar`, `rating`, `reviewCount`. **`phoneNumber`** solo se incluye si el usuario actual es el profesional asignado o tiene una visita de valoración aceptada para esa request; en caso contrario se omite.
   - `preciseAddress`: solo presente si el usuario tiene permiso (cliente dueño, profesional asignado, pro con bid aceptada o con visita aceptada). Se rellena típicamente al aceptar una bid.
