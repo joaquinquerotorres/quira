@@ -6,6 +6,7 @@ namespace App\Tests\Doctrine;
 
 use App\Doctrine\CurrentUserExtension;
 use App\Entity\Bid;
+use App\Enum\BidStatus;
 use App\Service\ProfessionalSubscriptionService;
 use App\Entity\ClientProfile;
 use App\Entity\ProfessionalProfile;
@@ -82,6 +83,33 @@ final class CurrentUserExtensionTest extends KernelTestCase
         $this->assertStringContainsString('req_client', $dql);
         $this->assertStringContainsString('req_pro', $dql);
         $this->assertStringContainsString('status_pending', $dql);
+    }
+
+    public function testMyBidsCollectionExcludesRejectedBids(): void
+    {
+        $pro = $this->createProUser();
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $security = $this->createMock(Security::class);
+        $security->method('getUser')->willReturn($pro);
+        $security->method('isGranted')->with('ROLE_ADMIN')->willReturn(false);
+
+        $requestStack = new RequestStack();
+        $httpRequest = new \Symfony\Component\HttpFoundation\Request(query: ['my_bids' => 'true']);
+        $requestStack->push($httpRequest);
+
+        $extension = new CurrentUserExtension($security, $requestStack, new ProfessionalSubscriptionService());
+
+        $qb = $em->createQueryBuilder()
+            ->select('b')
+            ->from(Bid::class, 'b');
+
+        $qng = new \ApiPlatform\Doctrine\Orm\Util\QueryNameGenerator();
+        $extension->applyToCollection($qb, $qng, Bid::class);
+
+        $dql = $qb->getDQL();
+        $this->assertStringContainsString('b.professional = :current_user', $dql);
+        $this->assertStringContainsString('b.status != :my_bids_excluded_status', $dql);
+        $this->assertSame(BidStatus::REJECTED, $qb->getParameter('my_bids_excluded_status')?->getValue());
     }
 
     private function createProUser(): User

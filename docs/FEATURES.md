@@ -173,5 +173,5 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
 - is_market - Requests públicas para mercado
 - my_requests - Requests del cliente
 - my_jobs - Requests asignadas al profesional
-- my_bids - Bids del profesional
+- my_bids - Bids del profesional (excluye `REJECTED`)
 - history - Completadas/canceladas

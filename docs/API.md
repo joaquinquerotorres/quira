@@ -55,6 +55,7 @@ Autenticación: Bearer JWT en header Authorization
 ### Bid
 - GET/POST /api/bids, GET/PATCH /api/bids/{id}
 - PATCH /api/bids/{id}/accept - Aceptar oferta
+- En `GET /api/bids?my_bids=true` se listan solo bids propias activas/visibles para el profesional; las bids en estado `REJECTED` (retiradas/rechazadas) se excluyen del listado.
 - **POST /api/bids** puede responder **422** con `violations[]` y **`code`** estable para el cliente:
   - `BID_HIGH_REQUIRES_PAID_SUBSCRIPTION` — solicitud HIGH sin suscripción activa (`paidThroughAt`)
   - `BID_MONTHLY_LIMIT_EXCEEDED` — límite mensual del plan efectivo FREE alcanzado
