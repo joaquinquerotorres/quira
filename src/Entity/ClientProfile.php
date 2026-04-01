@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Put;
+use App\State\ClientProfileOwnerProcessor;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -21,10 +22,12 @@ use Doctrine\DBAL\Types\Types;
         new Get(normalizationContext: ['groups' => ['client:read']]),
         new Patch(
             inputFormats: ['json' => ['application/merge-patch+json', 'application/json']],
+            processor: ClientProfileOwnerProcessor::class,
             denormalizationContext: ['groups' => ['client:write']],
             security: "object.getUser() == user"
         ),
         new Put(
+            processor: ClientProfileOwnerProcessor::class,
             denormalizationContext: ['groups' => ['client:write']],
             security: "object.getUser() == user"
         )

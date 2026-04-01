@@ -111,10 +111,12 @@ Los tests en `tests/Api/` ejercitan endpoints reales (API Platform / controllers
 
 - **BidProfessionalProcessorTest**: reglas de negocio (HIGH, límite mensual, teléfono) vía **`ValidationException`** coherente con el **422** de API Platform.
 - **ProfessionalProfileOwnerProcessorTest**:
-  - valida autoverificación de teléfono profesional (`verifiedPhone=true`) solo con cliente verificado y mismo número normalizado;
-  - valida error **422** cuando no cumple la regla;
+  - valida autoverificación de teléfono profesional cuando coincide con el cliente verificado (incluyendo formatos distintos como `+34 600 111 222` y `600111222`);
+  - valida que, si no coincide o el cliente no está verificado, queda `verifiedPhone=false`;
   - valida desverificación automática al cambiar teléfono profesional a uno distinto;
   - valida obligatoriedad de `address` en alta/edición de perfil profesional.
+- **ClientProfileOwnerProcessorTest**:
+  - valida la lógica inversa al editar cliente: autoverificación cuando coincide con teléfono profesional verificado y no autoverificación cuando no cumple la regla.
 
 ## Tests de serialización
 

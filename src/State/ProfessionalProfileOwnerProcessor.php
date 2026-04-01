@@ -9,7 +9,7 @@ use ApiPlatform\Metadata\Post;
 use ApiPlatform\State\ProcessorInterface;
 use App\Entity\ProfessionalProfile;
 use App\Entity\User;
-use App\Service\PhoneVerificationService;
+use App\Service\PhoneComparisonService;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -32,7 +32,7 @@ final class ProfessionalProfileOwnerProcessor implements ProcessorInterface
         private readonly Security $security,
         private readonly EntityManagerInterface $entityManager,
         private readonly ProfessionalVerificationService $professionalVerificationService,
-        private readonly PhoneVerificationService $phoneVerificationService,
+        private readonly PhoneComparisonService $phoneComparisonService,
     ) {
     }
 
@@ -69,8 +69,8 @@ final class ProfessionalProfileOwnerProcessor implements ProcessorInterface
 
         /** @var ProfessionalProfile|null $previousProfile */
         $previousProfile = $context['previous_data'] ?? null;
-        $previousNormalizedPhone = $this->normalizeNullablePhone($previousProfile?->getPhoneNumber());
-        $currentNormalizedPhone = $this->normalizeNullablePhone($data->getPhoneNumber());
+        $previousNormalizedPhone = $this->phoneComparisonService->normalizeForComparison($previousProfile?->getPhoneNumber());
+        $currentNormalizedPhone = $this->phoneComparisonService->normalizeForComparison($data->getPhoneNumber());
         $phoneChanged = $previousNormalizedPhone !== $currentNormalizedPhone;
 
         $tier = $data->getTierRequested();
@@ -119,19 +119,14 @@ final class ProfessionalProfileOwnerProcessor implements ProcessorInterface
             $data->setVerifiedTaxId(true);
         }
 
-        $canAutoVerifyPhone = $this->canAutoVerifyProfessionalPhone($data, $user);
-        if ($data->isVerifiedPhone()) {
-            if (!$canAutoVerifyPhone) {
-                $this->throwBusinessValidation(
-                    'verifiedPhone',
-                    'Solo puedes autoverificar el teléfono profesional si coincide con tu teléfono cliente ya verificado.'
-                );
-            }
-            $data->setVerifiedPhone(true);
-        } elseif ($phoneChanged && !$canAutoVerifyPhone) {
-            // Si cambia el teléfono profesional y no coincide con el cliente verificado,
-            // forzamos desverificación para mantener consistencia.
-            $data->setVerifiedPhone(false);
+        if ($operation instanceof Post) {
+            // Become-pro: autoverificar si coincide con teléfono cliente verificado.
+            $data->setVerifiedPhone($this->canAutoVerifyProfessionalPhone($data, $user));
+        } elseif ($phoneChanged) {
+            $data->setVerifiedPhone($this->canAutoVerifyProfessionalPhone($data, $user));
+        } elseif ($previousProfile instanceof ProfessionalProfile) {
+            // No confiar en verifiedPhone enviado por el front si el teléfono no cambió.
+            $data->setVerifiedPhone($previousProfile->isVerifiedPhone());
         }
 
         // Recalcular `isVerified` al guardar el perfil (email/phone + CIF si es ROLE_PRO)
@@ -155,11 +150,7 @@ final class ProfessionalProfileOwnerProcessor implements ProcessorInterface
 
     private function normalizeNullablePhone(?string $phone): ?string
     {
-        if ($phone === null || trim($phone) === '') {
-            return null;
-        }
-
-        return $this->phoneVerificationService->normalizePhone($phone);
+        return $this->phoneComparisonService->normalizeForComparison($phone);
     }
 
     private function throwBusinessValidation(string $propertyPath, string $message): never

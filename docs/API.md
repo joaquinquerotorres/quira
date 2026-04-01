@@ -19,6 +19,11 @@ Autenticación: Bearer JWT en header Authorization
 ### ClientProfile
 - GET/PATCH/PUT /api/client_profiles/{id}
 - Campos de valoración: `rating`, `reviewCount` (unificados; el API expone `rating` en cliente y profesional).
+- Teléfono cliente:
+  - El backend decide el valor final de `verifiedPhone` (no confía en el payload).
+  - Si cambia `phoneNumber` y coincide con `ProfessionalProfile.phoneNumber` verificado del mismo usuario, autoverifica (`verifiedPhone=true`).
+  - Si no coincide (o el profesional no está verificado), guarda `verifiedPhone=false`.
+  - La comparación normaliza teléfonos y usa los últimos 9 dígitos (casos `+34 600 111 222` y `600111222` se consideran equivalentes).
 
 ### ProfessionalProfile
 - GET/POST /api/professional_profiles, PATCH/PUT /api/professional_profiles/{id}
@@ -29,9 +34,9 @@ Autenticación: Bearer JWT en header Authorization
   - Se persiste en `professional_profile` y se devuelve en lectura (`pro:read` / `user:read`).
 - Teléfono profesional:
   - En escritura admite `phoneNumber` y `verifiedPhone`.
-  - Si llega `verifiedPhone=true`, el backend solo lo acepta cuando el usuario tiene `ClientProfile.verifiedPhone=true` y ambos teléfonos coinciden tras normalización.
-  - Si no se cumple, responde `422` con mensaje de negocio.
-  - Si cambia `phoneNumber` a uno que no coincide con el cliente verificado, `verifiedPhone` se fuerza a `false`.
+  - El backend decide el valor final de `verifiedPhone` (no confía en el payload del cliente).
+  - En `POST` y cuando cambia `phoneNumber` en `PATCH/PUT`, autoverifica (`verifiedPhone=true`) si coincide con `ClientProfile.phoneNumber` verificado del mismo usuario tras normalizar.
+  - Si no coincide (o cliente no verificado), guarda `verifiedPhone=false`.
 - `taxId` (CIF) y `verifiedTaxId`:
   - Si envías `taxId` desde la UI, el backend valida el CIF matemáticamente.
   - Si el CIF es inválido responde con `400` y el mensaje `El CIF no es correcto.` y no se guarda el perfil.

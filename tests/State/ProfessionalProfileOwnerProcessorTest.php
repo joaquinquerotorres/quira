@@ -7,29 +7,22 @@ namespace App\Tests\State;
 use App\Entity\ClientProfile;
 use App\Entity\ProfessionalProfile;
 use App\Entity\User;
-use App\Service\PhoneVerificationService;
+use App\Service\PhoneComparisonService;
 use App\State\ProfessionalProfileOwnerProcessor;
 use ApiPlatform\Validator\Exception\ValidationException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
-use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 final class ProfessionalProfileOwnerProcessorTest extends TestCase
 {
-    private function buildPhoneVerificationService(): PhoneVerificationService
+    private function buildPhoneComparisonService(): PhoneComparisonService
     {
-        return new PhoneVerificationService(
-            '',
-            '',
-            '',
-            new ArrayAdapter(),
-            $this->createMock(LoggerInterface::class)
-        );
+        return new PhoneComparisonService();
     }
 
     public function testSetsUserAndIsVerifiedOnPost(): void
@@ -57,7 +50,7 @@ final class ProfessionalProfileOwnerProcessorTest extends TestCase
             $security,
             $em,
             new \App\Service\ProfessionalVerificationService(),
-            $this->buildPhoneVerificationService()
+            $this->buildPhoneComparisonService()
         );
         $result = $processor->process($profile, new \ApiPlatform\Metadata\Post());
 
@@ -100,7 +93,7 @@ final class ProfessionalProfileOwnerProcessorTest extends TestCase
             $security,
             $em,
             new \App\Service\ProfessionalVerificationService(),
-            $this->buildPhoneVerificationService()
+            $this->buildPhoneComparisonService()
         );
         $result = $processor->process($profile, new \ApiPlatform\Metadata\Post());
 
@@ -138,7 +131,7 @@ final class ProfessionalProfileOwnerProcessorTest extends TestCase
             $security,
             $em,
             new \App\Service\ProfessionalVerificationService(),
-            $this->buildPhoneVerificationService()
+            $this->buildPhoneComparisonService()
         );
         $processor->process($profile, new \ApiPlatform\Metadata\Post());
     }
@@ -170,7 +163,7 @@ final class ProfessionalProfileOwnerProcessorTest extends TestCase
             $security,
             $em,
             new \App\Service\ProfessionalVerificationService(),
-            $this->buildPhoneVerificationService()
+            $this->buildPhoneComparisonService()
         );
 
         $this->expectException(ConflictHttpException::class);
@@ -197,7 +190,7 @@ final class ProfessionalProfileOwnerProcessorTest extends TestCase
             $security,
             $em,
             new \App\Service\ProfessionalVerificationService(),
-            $this->buildPhoneVerificationService()
+            $this->buildPhoneComparisonService()
         );
 
         $this->expectException(AccessDeniedHttpException::class);
@@ -230,14 +223,14 @@ final class ProfessionalProfileOwnerProcessorTest extends TestCase
             $security,
             $em,
             new \App\Service\ProfessionalVerificationService(),
-            $this->buildPhoneVerificationService()
+            $this->buildPhoneComparisonService()
         );
         $result = $processor->process($profile, new \ApiPlatform\Metadata\Post());
 
         $this->assertNotNull($result->getPaidThroughAt());
     }
 
-    public function testThrowsValidationWhenAutoverifyWithoutVerifiedClientPhone(): void
+    public function testAutoverifyIsFalseWhenClientPhoneIsNotVerified(): void
     {
         $user = new User();
         $user->setEmail('pro-phone-invalid@test.com');
@@ -260,6 +253,7 @@ final class ProfessionalProfileOwnerProcessorTest extends TestCase
         $logger = $this->createMock(LoggerInterface::class);
         $em = $this->createMock(EntityManagerInterface::class);
         $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
+        $persistProcessor->method('process')->willReturnCallback(fn($data) => $data);
 
         $processor = new ProfessionalProfileOwnerProcessor(
             $persistProcessor,
@@ -267,11 +261,11 @@ final class ProfessionalProfileOwnerProcessorTest extends TestCase
             $security,
             $em,
             new \App\Service\ProfessionalVerificationService(),
-            $this->buildPhoneVerificationService()
+            $this->buildPhoneComparisonService()
         );
 
-        $this->expectException(ValidationException::class);
-        $processor->process($profile, new \ApiPlatform\Metadata\Post());
+        $result = $processor->process($profile, new \ApiPlatform\Metadata\Post());
+        $this->assertFalse($result->isVerifiedPhone());
     }
 
     public function testThrowsValidationWhenAddressIsMissing(): void
@@ -289,6 +283,7 @@ final class ProfessionalProfileOwnerProcessorTest extends TestCase
         $logger = $this->createMock(LoggerInterface::class);
         $em = $this->createMock(EntityManagerInterface::class);
         $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
+        $persistProcessor->method('process')->willReturnCallback(fn($data) => $data);
 
         $processor = new ProfessionalProfileOwnerProcessor(
             $persistProcessor,
@@ -296,7 +291,7 @@ final class ProfessionalProfileOwnerProcessorTest extends TestCase
             $security,
             $em,
             new \App\Service\ProfessionalVerificationService(),
-            $this->buildPhoneVerificationService()
+            $this->buildPhoneComparisonService()
         );
 
         $this->expectException(ValidationException::class);
@@ -342,14 +337,14 @@ final class ProfessionalProfileOwnerProcessorTest extends TestCase
             $security,
             $em,
             new \App\Service\ProfessionalVerificationService(),
-            $this->buildPhoneVerificationService()
+            $this->buildPhoneComparisonService()
         );
 
         $result = $processor->process($current, new \ApiPlatform\Metadata\Patch(), [], ['previous_data' => $previous]);
         $this->assertFalse($result->isVerifiedPhone());
     }
 
-    public function testThrowsValidationWhenAutoverifyPhoneDoesNotMatchClientPhone(): void
+    public function testAutoverifyIsFalseWhenPhoneDoesNotMatchClientPhone(): void
     {
         $user = new User();
         $user->setEmail('pro-phone-mismatch@test.com');
@@ -372,6 +367,7 @@ final class ProfessionalProfileOwnerProcessorTest extends TestCase
         $logger = $this->createMock(LoggerInterface::class);
         $em = $this->createMock(EntityManagerInterface::class);
         $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
+        $persistProcessor->method('process')->willReturnCallback(fn($data) => $data);
 
         $processor = new ProfessionalProfileOwnerProcessor(
             $persistProcessor,
@@ -379,10 +375,10 @@ final class ProfessionalProfileOwnerProcessorTest extends TestCase
             $security,
             $em,
             new \App\Service\ProfessionalVerificationService(),
-            $this->buildPhoneVerificationService()
+            $this->buildPhoneComparisonService()
         );
 
-        $this->expectException(ValidationException::class);
-        $processor->process($profile, new \ApiPlatform\Metadata\Post());
+        $result = $processor->process($profile, new \ApiPlatform\Metadata\Post());
+        $this->assertFalse($result->isVerifiedPhone());
     }
 }

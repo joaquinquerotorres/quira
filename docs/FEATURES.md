@@ -121,9 +121,11 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
   - `ClientProfile.verifiedPhone` y `ProfessionalProfile.verifiedPhone` (independientes).
   - El `User` expone un `isVerifiedPhone()` calculado pero no se usa como fuente de verdad para permisos.
 - Auto-verificación en `ProfessionalProfile` (POST/PATCH):
-  - El backend acepta `verifiedPhone` en escritura, pero solo permite `true` si el cliente del mismo usuario tiene teléfono verificado y coincide con el teléfono profesional tras normalización.
-  - Si no coincide (o cliente no verificado), responde **422** con error de negocio.
-  - Si se cambia el `phoneNumber` del profesional a otro distinto, `verifiedPhone` se fuerza a `false` (salvo que vuelva a cumplir la regla de coincidencia).
+  - El backend no confía en `verifiedPhone` enviado por frontend: calcula y persiste el estado real.
+  - En alta de profesional y cuando cambia el teléfono, autoverifica si coincide con el teléfono cliente verificado del mismo usuario (comparación normalizada).
+  - Si no coincide (o el otro perfil no está verificado), guarda `verifiedPhone=false`.
+  - Se aplica también en el flujo inverso al editar `ClientProfile`.
+  - Regla de comparación: normaliza a dígitos y compara los últimos 9 (ES).
 - PhoneVerificationService con SMS (Twilio) + modo sandbox:
   - OTP de 6 dígitos, TTL 5 minutos, almacenado en caché por usuario+número.
   - Si `TWILIO_SMS_FROM` está vacío en dev, no se llama a Twilio y el OTP se escribe en el log para pruebas.
