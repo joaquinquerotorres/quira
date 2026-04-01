@@ -140,6 +140,74 @@ final class NotificationServiceTest extends TestCase
         );
     }
 
+    public function testBidReceivedEmailUsesRichTemplateWhenContextProvided(): void
+    {
+        $user = $this->hybridFreeProfessionalUser();
+        $user->setFcmToken(null);
+
+        $mailer = $this->createMock(MailerInterface::class);
+        $mailer->expects(self::once())->method('send')->with(self::callback(function (Email $email): bool {
+            $html = (string) $email->getHtmlBody();
+            return str_contains($html, 'Nueva oferta recibida')
+                && str_contains($html, 'Oferta recibida')
+                && str_contains($html, 'Instalación de termo')
+                && str_contains($html, '250');
+        }));
+
+        $messaging = $this->createMock(Messaging::class);
+        $messaging->expects(self::never())->method('send');
+
+        $service = $this->createService($mailer, $messaging, client: 'EMAIL');
+
+        $service->send(
+            $user,
+            '¡Nueva oferta recibida!',
+            'body fallback',
+            'BID_RECEIVED',
+            NotificationAudience::Client,
+            99,
+            [
+                'professionalName' => 'María López',
+                'amount' => '250',
+                'requestTitle' => 'Instalación de termo',
+            ]
+        );
+    }
+
+    public function testNewRequestEmailUsesRichTemplateWhenContextProvided(): void
+    {
+        $user = $this->hybridFreeProfessionalUser();
+        $user->setFcmToken(null);
+
+        $mailer = $this->createMock(MailerInterface::class);
+        $mailer->expects(self::once())->method('send')->with(self::callback(function (Email $email): bool {
+            $html = (string) $email->getHtmlBody();
+            return str_contains($html, 'Nueva solicitud cerca de ti')
+                && str_contains($html, 'Categoría')
+                && str_contains($html, 'Fontanería urgente')
+                && str_contains($html, '120.00€ - 180.00€');
+        }));
+
+        $messaging = $this->createMock(Messaging::class);
+        $messaging->expects(self::never())->method('send');
+
+        $service = $this->createService($mailer, $messaging, free: 'EMAIL');
+
+        $service->send(
+            $user,
+            'Nueva oportunidad',
+            'body fallback',
+            'NEW_REQUEST',
+            NotificationAudience::Professional,
+            101,
+            [
+                'requestTitle' => 'Fontanería urgente',
+                'category' => 'PLUMBING',
+                'priceRange' => '120.00€ - 180.00€',
+            ]
+        );
+    }
+
     private function hybridFreeProfessionalUser(): User
     {
         $user = new User();

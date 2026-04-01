@@ -75,7 +75,12 @@ final class RequestCreationNotifier
                     $prefix . "Hola {$proProfile->getFullName()}, hay un nuevo trabajo de {$category} cerca de ti por {$price}. ¡Echa un vistazo!",
                     'NEW_REQUEST',
                     NotificationAudience::Professional,
-                    $request->getId()
+                    $request->getId(),
+                    [
+                        'requestTitle' => $request->getTitle() ?? 'Nueva solicitud',
+                        'category' => $category,
+                        'priceRange' => $price,
+                    ]
                 );
             } catch (\Throwable $e) {
                 $this->logger->error("❌ Error notificando al profesional {$user->getUserIdentifier()}: " . $e->getMessage());

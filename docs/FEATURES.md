@@ -108,6 +108,9 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
 ### NotificationService
 - Elige canal según `NotificationAudience` + roles (faceta pro) o `NOTIFICATIONS_CLIENT` (faceta cliente).
 - FCM para push; Twilio solo si el canal configurado es WhatsApp (nunca como fallback).
+- Emails:
+  - `BID_RECEIVED` y `NEW_REQUEST` usan plantillas HTML enriquecidas con bloques de contexto (solicitud, importe/rango).
+  - El resto de tipos usan una plantilla HTML genérica con el mismo look & feel (header/footer de marca y tarjeta de contenido).
 
 ## Verificación
 

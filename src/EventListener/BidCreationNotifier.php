@@ -76,7 +76,12 @@ final class BidCreationNotifier
                 ),
                 'BID_RECEIVED',
                 NotificationAudience::Client,
-                $request->getId()
+                $request->getId(),
+                [
+                    'professionalName' => $proProfile?->getFullName() ?? 'Un profesional',
+                    'amount' => (string) $bid->getPriceQuote(),
+                    'requestTitle' => $request->getTitle() ?? '',
+                ]
             );
         } catch (\Exception $e) {
             $this->logger->error("❌ Error al enviar la notificación de nueva oferta: " . $e->getMessage());
