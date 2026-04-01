@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Bid;
-use App\Enum\RequestStatus;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -37,11 +36,9 @@ class BidRepository extends ServiceEntityRepository
             ->where('b.professional = :professional')
             ->andWhere('b.createdAt >= :start')
             ->andWhere('b.createdAt <= :end')
-            ->andWhere('r.status != :request_cancelled')
             ->setParameter('professional', $professional)
             ->setParameter('start', $start)
             ->setParameter('end', $end)
-            ->setParameter('request_cancelled', RequestStatus::CANCELLED)
             ->getQuery()
             ->getSingleScalarResult();
     }

@@ -30,15 +30,26 @@ class CanBidController extends AbstractController
         $user = $this->getUser();
 
         if ($user->getProfessionalProfile() === null) {
-            return new JsonResponse(['canBidThisMonth' => false], 200);
+            return new JsonResponse([
+                'canBidThisMonth' => false,
+                'remainingBidsThisMonth' => 0,
+            ], 200);
         }
 
         if (!$this->subscriptionService->isSubjectToFreeProfessionalLimits($user)) {
-            return new JsonResponse(['canBidThisMonth' => true], 200);
+            return new JsonResponse([
+                'canBidThisMonth' => true,
+                'remainingBidsThisMonth' => null,
+            ], 200);
         }
 
-        $canBid = $this->bidRepository->canProfessionalBidThisMonth($user);
+        $usedBids = $this->bidRepository->countByProfessionalThisMonth($user);
+        $remainingBids = max(0, BidRepository::BIDS_MONTHLY_LIMIT_FREE - $usedBids);
+        $canBid = $remainingBids > 0;
 
-        return new JsonResponse(['canBidThisMonth' => $canBid], 200);
+        return new JsonResponse([
+            'canBidThisMonth' => $canBid,
+            'remainingBidsThisMonth' => $remainingBids,
+        ], 200);
     }
 }

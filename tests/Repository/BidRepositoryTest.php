@@ -94,12 +94,12 @@ final class BidRepositoryTest extends KernelTestCase
         $this->assertSame(1, $count, 'Should count accepted bids on accepted requests');
     }
 
-    public function testCountByProfessionalThisMonthExcludesBidsOnCancelledRequests(): void
+    public function testCountByProfessionalThisMonthCountsBidsOnCompletedRequests(): void
     {
-        $pro = $this->createProfessional('pro-exclude-cancelled@test.com');
-        $client = $this->createClient('client-cancelled@test.com');
+        $pro = $this->createProfessional('pro-count-completed@test.com');
+        $client = $this->createClient('client-completed@test.com');
 
-        $request = $this->createRequest($client, RequestStatus::CANCELLED);
+        $request = $this->createRequest($client, RequestStatus::COMPLETED);
         $this->em->persist($request);
         $this->em->flush();
 
@@ -113,7 +113,7 @@ final class BidRepositoryTest extends KernelTestCase
         $this->em->flush();
 
         $count = $this->bidRepository->countByProfessionalThisMonth($pro);
-        $this->assertSame(0, $count, 'Should not count bids on CANCELLED requests');
+        $this->assertSame(1, $count, 'Should count bids on completed requests');
     }
 
     public function testCountByProfessionalThisMonthOnlyCountsThisMonth(): void

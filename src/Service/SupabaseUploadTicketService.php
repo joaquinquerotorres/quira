@@ -133,4 +133,83 @@ final class SupabaseUploadTicketService
             default => $fallbackType === 'image' ? 'jpg' : 'bin',
         };
     }
+
+    /**
+     * Elimina un archivo de Supabase cuando recibimos su URL pública
+     * (formato: .../storage/v1/object/public/{bucket}/{path}).
+     */
+    public function deletePublicFileByUrl(string $publicUrl): bool
+    {
+        if ($publicUrl === '' || $this->supabaseUrl === '' || $this->serviceRoleKey === '') {
+            return false;
+        }
+
+        $baseUrl = rtrim($this->supabaseUrl, '/');
+        $parsed = parse_url($publicUrl);
+        if (!is_array($parsed) || !isset($parsed['path'])) {
+            return false;
+        }
+
+        $path = $parsed['path'];
+        $prefix = '/storage/v1/object/public/';
+        $pos = strpos($path, $prefix);
+        if ($pos === false) {
+            return false;
+        }
+
+        $relative = substr($path, $pos + strlen($prefix));
+        $parts = explode('/', $relative, 2);
+        if (count($parts) !== 2) {
+            return false;
+        }
+
+        [$bucket, $objectPath] = $parts;
+        $bucket = trim($bucket);
+        $objectPath = ltrim(trim($objectPath), '/');
+        if ($bucket === '' || $objectPath === '') {
+            return false;
+        }
+
+        try {
+            $endpoint = sprintf(
+                '%s/storage/v1/object/%s/%s',
+                $baseUrl,
+                rawurlencode($bucket),
+                str_replace('%2F', '/', rawurlencode($objectPath))
+            );
+            $response = $this->httpClient->request('DELETE', $endpoint, [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->serviceRoleKey,
+                    'apikey' => $this->serviceRoleKey,
+                ],
+            ]);
+
+            $status = $response->getStatusCode();
+            if ($status >= 400) {
+                $this->logger->warning('No se pudo borrar archivo en Supabase', [
+                    'url' => $publicUrl,
+                    'status' => $status,
+                ]);
+                return false;
+            }
+
+            return true;
+        } catch (\Throwable $e) {
+            $this->logger->warning('Error borrando archivo en Supabase', [
+                'url' => $publicUrl,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * @param array<int,string> $publicUrls
+     */
+    public function deleteManyPublicFiles(array $publicUrls): void
+    {
+        foreach ($publicUrls as $url) {
+            $this->deletePublicFileByUrl($url);
+        }
+    }
 }

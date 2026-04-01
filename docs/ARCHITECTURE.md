@@ -51,7 +51,7 @@
 ### Enums
 
 - BidStatus: PENDING, ACCEPTED, COMPLETED
-- RequestStatus: PENDING, PENDING_APPROVAL, ACCEPTED, COMPLETED, CANCELLED
+- RequestStatus: PENDING, PENDING_APPROVAL, ACCEPTED, COMPLETED
 - Category, RiskLevel
 
 ## Servicios
@@ -86,6 +86,7 @@
 - BidProfessionalProcessor: valida profesional, teléfono, límite mensual y HIGH según `paidThroughAt`; reglas de negocio vía `ValidationException` (422) con códigos `BID_*`
 - BidAcceptanceProcessor: acepta bid
 - BidWithdrawProcessor: retira bid
+- RequestDeleteProcessor: cancela request borrando datos dependientes y media
 - ReviewProcessor: valida autor; recalcula y persiste `rating` y `reviewCount` en el ClientProfile o ProfessionalProfile del usuario valorado
 - RequestQuestionProcessor: notifica
 - ProfessionalProfileOwnerProcessor: verifica propietario

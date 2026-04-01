@@ -9,6 +9,5 @@ enum RequestStatus: string
     case PENDING = 'PENDING';         
     case ACCEPTED = 'ACCEPTED';        
     case COMPLETED = 'COMPLETED';     
-    case CANCELLED = 'CANCELLED';  
     case PENDING_APPROVAL = 'PENDING_APPROVAL';      
 }

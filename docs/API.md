@@ -30,6 +30,10 @@ Autenticación: Bearer JWT en header Authorization
 
 ### Request
 - GET/POST /api/requests, GET/PATCH /api/requests/{id}
+- DELETE /api/requests/{id}/cancel - Cancelar solicitud (borrado físico)
+  - Solo el cliente dueño de la request.
+  - Solo si la request está `PENDING` o `PENDING_APPROVAL`.
+  - El backend elimina datos dependientes (`Bid`, `VisitRequest`, `RequestQuestion`, `Review`) y borra ficheros de Supabase asociados a la request y a las respuestas de preguntas.
 - Filtros: is_market, my_requests, my_jobs, my_bids, history
 - Campos relevantes:
   - `description`: texto refinado / mostrado como descripción del trabajo (puede venir del flujo con IA).
@@ -168,6 +172,9 @@ Autenticación: Bearer JWT en header Authorization
 
 ### Otros
 - GET /api/professionals/me/can-bid - ¿Puede pujar? (límite mensual si plan efectivo FREE según `paidThroughAt`)
+  - Respuesta: `canBidThisMonth` (bool) y `remainingBidsThisMonth`:
+    - número de pujas restantes para usuarios con límite FREE.
+    - `null` para usuarios con suscripción activa (sin límite mensual).
 
 ## Rutas públicas
 

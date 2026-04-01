@@ -6,6 +6,7 @@ namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Patch;
@@ -14,6 +15,7 @@ use App\Enum\Category;
 use App\Enum\RequestStatus;
 use App\Repository\RequestRepository;
 use App\State\RequestClientProcessor;
+use App\State\RequestDeleteProcessor;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
@@ -44,7 +46,11 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
             processor: RequestClientProcessor::class,
             normalizationContext: ['groups' => ['request:read']],
             denormalizationContext: ['groups' => ['request:write']],
-        )
+        ),
+        new Delete(
+            uriTemplate: '/requests/{id}/cancel',
+            processor: RequestDeleteProcessor::class
+        ),
     ]
 )] 
 #[ApiFilter(SearchFilter::class, properties: [

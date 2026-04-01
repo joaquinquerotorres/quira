@@ -57,7 +57,9 @@ final class CanBidTest extends ApiTestCase
 
         $data = $this->decodeJsonResponse($this->browser->getResponse()->getContent());
         $this->assertArrayHasKey('canBidThisMonth', $data);
+        $this->assertArrayHasKey('remainingBidsThisMonth', $data);
         $this->assertFalse($data['canBidThisMonth']);
+        $this->assertSame(0, $data['remainingBidsThisMonth']);
     }
 
     public function testCanBidTrueWhenOneBidWasWithdrawnAndDeleted(): void
@@ -114,7 +116,9 @@ final class CanBidTest extends ApiTestCase
 
         $data = $this->decodeJsonResponse($this->browser->getResponse()->getContent());
         $this->assertArrayHasKey('canBidThisMonth', $data);
+        $this->assertArrayHasKey('remainingBidsThisMonth', $data);
         $this->assertTrue($data['canBidThisMonth']);
+        $this->assertSame(1, $data['remainingBidsThisMonth']);
     }
 
     public function testCanBidFalseWhenAcceptedBidOnAcceptedRequestIsCounted(): void
@@ -169,7 +173,9 @@ final class CanBidTest extends ApiTestCase
 
         $data = $this->decodeJsonResponse($this->browser->getResponse()->getContent());
         $this->assertArrayHasKey('canBidThisMonth', $data);
+        $this->assertArrayHasKey('remainingBidsThisMonth', $data);
         $this->assertFalse($data['canBidThisMonth']);
+        $this->assertSame(0, $data['remainingBidsThisMonth']);
     }
 
     public function testCanBidFalseWhenRoleProButPaidThroughExpired(): void
@@ -212,6 +218,28 @@ final class CanBidTest extends ApiTestCase
 
         $data = $this->decodeJsonResponse($this->browser->getResponse()->getContent());
         $this->assertFalse($data['canBidThisMonth']);
+        $this->assertSame(0, $data['remainingBidsThisMonth']);
+    }
+
+    public function testCanBidForPaidProfessionalReturnsNullRemaining(): void
+    {
+        $pro = $this->createProfessionalUser(
+            email: 'pro-canbid-paid@test.com',
+            roles: ['ROLE_PROFESSIONAL', 'ROLE_PRO'],
+            phoneNumber: null,
+            verifiedPhone: false,
+            notifyRequestActivity: false,
+        );
+        $pro->getProfessionalProfile()?->setPaidThroughAt(new \DateTimeImmutable('+30 days'));
+        $this->em->flush();
+
+        $this->browser->request('GET', '/api/professionals/me/can-bid', [], [], $this->authHeaders($pro));
+        $this->assertResponseStatusCodeSame(200);
+
+        $data = $this->decodeJsonResponse($this->browser->getResponse()->getContent());
+        $this->assertTrue($data['canBidThisMonth']);
+        $this->assertArrayHasKey('remainingBidsThisMonth', $data);
+        $this->assertNull($data['remainingBidsThisMonth']);
     }
 }
 

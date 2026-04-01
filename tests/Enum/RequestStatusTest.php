@@ -15,9 +15,8 @@ final class RequestStatusTest extends TestCase
         $this->assertContains(RequestStatus::PENDING, $cases);
         $this->assertContains(RequestStatus::ACCEPTED, $cases);
         $this->assertContains(RequestStatus::COMPLETED, $cases);
-        $this->assertContains(RequestStatus::CANCELLED, $cases);
         $this->assertContains(RequestStatus::PENDING_APPROVAL, $cases);
-        $this->assertCount(5, $cases);
+        $this->assertCount(4, $cases);
     }
 
     public function testValues(): void

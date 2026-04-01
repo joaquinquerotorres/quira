@@ -176,4 +176,4 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
 - my_requests - Requests del cliente
 - my_jobs - Requests asignadas al profesional
 - my_bids - Bids del profesional existentes
-- history - Completadas/canceladas
+- history - Completadas (las canceladas se eliminan físicamente)

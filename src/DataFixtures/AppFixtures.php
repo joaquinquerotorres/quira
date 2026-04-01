@@ -91,6 +91,11 @@ class AppFixtures extends Fixture
             $proProfile->setVerifiedPhone(true);
             $clientProfile->setVerifiedPhone(true);
 
+            // Solo planes de pago (SOLVER/PRO) tienen periodo activo.
+            if (!in_array('ROLE_FREE', $roles, true)) {
+                $proProfile->setPaidThroughAt(new \DateTimeImmutable('+' . rand(15, 90) . ' days'));
+            }
+
             // Para PRO: CIF debe estar verificado (regla Free/Solver vs Pro).
             if (in_array('ROLE_PRO', $roles, true)) {
                 $proProfile->setTaxId('A58818501'); // Ejemplo válido de CIF
@@ -180,34 +185,40 @@ class AppFixtures extends Fixture
                 $pReq = $cordobaPoints[array_rand($cordobaPoints)];
                 $request->setLocationPoint(new Point($pReq['lng'] + 0.002, $pReq['lat'] + 0.002));
 
-                $eligibleBidders = ($risk === RiskLevel::HIGH && count($proPros) > 0) ? $proPros : $allPros;
+                $candidateBidders = ($risk === RiskLevel::HIGH && count($proPros) > 0) ? $proPros : $allPros;
+                $eligibleBidders = array_values(array_filter(
+                    $candidateBidders,
+                    static fn(ProfessionalProfile $pro): bool => in_array($category->value, $pro->getSkills(), true)
+                ));
 
                 if ($faker->boolean(40)) {
                     // Request con profesional asignado: crear bids primero, luego elegir ganador
                     $numBids = rand(1, 3);
                     $biddersUsed = [];
                     $bids = [];
-                    for ($k = 0; $k < $numBids; $k++) {
-                        $bidder = $eligibleBidders[array_rand($eligibleBidders)];
-                        if (in_array($bidder, $biddersUsed, true)) {
-                            continue;
+                    if (count($eligibleBidders) > 0) {
+                        for ($k = 0; $k < $numBids; $k++) {
+                            $bidder = $eligibleBidders[array_rand($eligibleBidders)];
+                            if (in_array($bidder, $biddersUsed, true)) {
+                                continue;
+                            }
+                            $biddersUsed[] = $bidder;
+                            $bid = new Bid();
+                            $request->addBid($bid);
+                            $bid->setProfessional($bidder->getUser());
+                            // Oferta del pro: cercana al rango estimado.
+                            $bidMin = $request->getEstimatedPriceMin();
+                            $bidMax = $request->getEstimatedPriceMax();
+                            $bidMid = (int) \round(($bidMin + $bidMax) / 2);
+                            $bid->setPriceQuote(rand(max(0, $bidMid - 200), $bidMid + 200));
+                            $bid->setStatus(BidStatus::PENDING);
+                            $bid->setEstimatedExecutionTime(
+                                $estimatedExecutionOptions[$estimatedExecutionIndex % count($estimatedExecutionOptions)]
+                            );
+                            $estimatedExecutionIndex++;
+                            $bids[] = $bid;
+                            $manager->persist($bid);
                         }
-                        $biddersUsed[] = $bidder;
-                        $bid = new Bid();
-                        $request->addBid($bid);
-                        $bid->setProfessional($bidder->getUser());
-                        // Oferta del pro: cercana al rango estimado.
-                        $bidMin = $request->getEstimatedPriceMin();
-                        $bidMax = $request->getEstimatedPriceMax();
-                        $bidMid = (int) \round(($bidMin + $bidMax) / 2);
-                        $bid->setPriceQuote(rand(max(0, $bidMid - 200), $bidMid + 200));
-                        $bid->setStatus(BidStatus::PENDING);
-                        $bid->setEstimatedExecutionTime(
-                            $estimatedExecutionOptions[$estimatedExecutionIndex % count($estimatedExecutionOptions)]
-                        );
-                        $estimatedExecutionIndex++;
-                        $bids[] = $bid;
-                        $manager->persist($bid);
                     }
                     if (count($bids) > 0) {
                         $winningBid = $bids[array_rand($bids)];
@@ -228,22 +239,24 @@ class AppFixtures extends Fixture
                     }
                 } else {
                     $request->setStatus(RequestStatus::PENDING);
-                    for ($k = 0; $k < rand(1, 2); $k++) {
-                        $bidder = $eligibleBidders[array_rand($eligibleBidders)];
-                        $bid = new Bid();
-                        $request->addBid($bid);
-                        $bid->setProfessional($bidder->getUser());
-                        // Oferta del pro: cercana al rango estimado.
-                        $bidMin = $request->getEstimatedPriceMin();
-                        $bidMax = $request->getEstimatedPriceMax();
-                        $bidMid = (int) \round(($bidMin + $bidMax) / 2);
-                        $bid->setPriceQuote(rand(max(0, $bidMid - 200), $bidMid + 200));
-                        $bid->setStatus(BidStatus::PENDING);
-                        $bid->setEstimatedExecutionTime(
-                            $estimatedExecutionOptions[$estimatedExecutionIndex % count($estimatedExecutionOptions)]
-                        );
-                        $estimatedExecutionIndex++;
-                        $manager->persist($bid);
+                    if (count($eligibleBidders) > 0) {
+                        for ($k = 0; $k < rand(1, 2); $k++) {
+                            $bidder = $eligibleBidders[array_rand($eligibleBidders)];
+                            $bid = new Bid();
+                            $request->addBid($bid);
+                            $bid->setProfessional($bidder->getUser());
+                            // Oferta del pro: cercana al rango estimado.
+                            $bidMin = $request->getEstimatedPriceMin();
+                            $bidMax = $request->getEstimatedPriceMax();
+                            $bidMid = (int) \round(($bidMin + $bidMax) / 2);
+                            $bid->setPriceQuote(rand(max(0, $bidMid - 200), $bidMid + 200));
+                            $bid->setStatus(BidStatus::PENDING);
+                            $bid->setEstimatedExecutionTime(
+                                $estimatedExecutionOptions[$estimatedExecutionIndex % count($estimatedExecutionOptions)]
+                            );
+                            $estimatedExecutionIndex++;
+                            $manager->persist($bid);
+                        }
                     }
                 }
 
@@ -323,7 +336,7 @@ class AppFixtures extends Fixture
             '¿Cuánto tiempo llevas con el problema?',
         ];
         foreach ($allRequests as $request) {
-            if ($faker->boolean(25) && $request->getStatus() !== RequestStatus::CANCELLED) {
+            if ($faker->boolean(25)) {
                 $proAsking = $allPros[array_rand($allPros)]->getUser();
                 $question = new RequestQuestion();
                 $question->setRequest($request);
