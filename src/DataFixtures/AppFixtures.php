@@ -212,11 +212,6 @@ class AppFixtures extends Fixture
                     if (count($bids) > 0) {
                         $winningBid = $bids[array_rand($bids)];
                         $winningBid->setStatus(BidStatus::ACCEPTED);
-                        foreach ($bids as $b) {
-                            if ($b !== $winningBid) {
-                                $b->setStatus(BidStatus::REJECTED);
-                            }
-                        }
                         $request->setAssignedProfessional($winningBid->getProfessional()->getProfessionalProfile());
                         $isCompleted = $faker->boolean(35);
                         $request->setStatus($isCompleted ? RequestStatus::COMPLETED : RequestStatus::ACCEPTED);

@@ -5,13 +5,12 @@ declare(strict_types=1);
 namespace App\State;
 
 use ApiPlatform\Metadata\Operation;
-use ApiPlatform\Metadata\Patch;
+use ApiPlatform\Metadata\Delete;
 use ApiPlatform\State\ProcessorInterface;
 use App\Entity\Bid;
 use App\Entity\User;
 use App\Enum\BidStatus;
 use App\Enum\RequestStatus;
-use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -21,9 +20,8 @@ use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 final class BidWithdrawProcessor implements ProcessorInterface
 {
     public function __construct(
-        #[Autowire(service: 'api_platform.doctrine.orm.state.persist_processor')]
-        private readonly ProcessorInterface $persistProcessor,
-        private readonly EntityManagerInterface $entityManager,
+        #[Autowire(service: 'api_platform.doctrine.orm.state.remove_processor')]
+        private readonly ProcessorInterface $removeProcessor,
         private readonly LoggerInterface $logger,
         private readonly Security $security,
     ) {
@@ -35,8 +33,8 @@ final class BidWithdrawProcessor implements ProcessorInterface
         array $uriVariables = [],
         array $context = []
     ): mixed {
-        if (!$data instanceof Bid || !$operation instanceof Patch) {
-            return $this->persistProcessor->process($data, $operation, $uriVariables, $context);
+        if (!$data instanceof Bid || !$operation instanceof Delete) {
+            return $data;
         }
 
         $user = $this->security->getUser();
@@ -51,12 +49,7 @@ final class BidWithdrawProcessor implements ProcessorInterface
             throw new AccessDeniedHttpException('Solo puedes retirar tus propias propuestas.');
         }
 
-        // Check original DB state: deserializer merges {status:REJECTED} before processor runs
-        $unitOfWork = $this->entityManager->getUnitOfWork();
-        $originalData = $unitOfWork->getOriginalEntityData($bid);
-        $originalStatus = $originalData['status'] ?? null;
-        $wasPending = $originalStatus === BidStatus::PENDING || $originalStatus === BidStatus::PENDING->value;
-        if (!$wasPending) {
+        if ($bid->getStatus() !== BidStatus::PENDING) {
             throw new BadRequestHttpException('Solo puedes retirar propuestas pendientes.');
         }
 
@@ -69,10 +62,8 @@ final class BidWithdrawProcessor implements ProcessorInterface
             throw new BadRequestHttpException('Solo puedes retirar propuestas en solicitudes pendientes (sin profesional asignado).');
         }
 
-        $bid->setStatus(BidStatus::REJECTED);
+        $this->logger->info("Usuario {$user->getUserIdentifier()} ha retirado su propuesta (bid {$bid->getId()}) de la solicitud '{$request->getTitle()}'. Se eliminará de BD.");
 
-        $this->logger->info("Usuario {$user->getUserIdentifier()} ha retirado su propuesta (bid {$bid->getId()}) de la solicitud '{$request->getTitle()}'.");
-
-        return $this->persistProcessor->process($data, $operation, $uriVariables, $context);
+        return $this->removeProcessor->process($data, $operation, $uriVariables, $context);
     }
 }

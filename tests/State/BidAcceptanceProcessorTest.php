@@ -153,7 +153,7 @@ final class BidAcceptanceProcessorTest extends TestCase
         $bid->setRequest($request);
         $bid->setProfessional($proUser);
         $bid->setPriceQuote(80);
-        $bid->setStatus(BidStatus::REJECTED);
+        $bid->setStatus(BidStatus::COMPLETED);
         $request->addBid($bid);
 
         $security = $this->createMock(Security::class);

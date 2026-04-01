@@ -12,8 +12,6 @@ use App\Entity\User;
 use App\Enum\BidStatus;
 use App\Enum\RequestStatus;
 use App\State\BidWithdrawProcessor;
-use Doctrine\ORM\EntityManagerInterface as OrmEntityManager;
-use Doctrine\ORM\UnitOfWork;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -29,7 +27,7 @@ final class BidWithdrawProcessorTest extends TestCase
         $this->logger = $this->createMock(LoggerInterface::class);
     }
 
-    public function testWithdrawsBidAndSetsStatusToRejected(): void
+    public function testWithdrawDeletesBidWhenConditionsAreMet(): void
     {
         $clientUser = new User();
         $clientUser->setEmail('client@test.com');
@@ -60,74 +58,21 @@ final class BidWithdrawProcessorTest extends TestCase
         $bid->setStatus(BidStatus::PENDING);
         $request->addBid($bid);
 
-        $unitOfWork = $this->createMock(UnitOfWork::class);
-        $unitOfWork->method('getOriginalEntityData')
-            ->with($bid)
-            ->willReturn(['status' => BidStatus::PENDING]);
-
-        $entityManager = $this->createMock(OrmEntityManager::class);
-        $entityManager->method('getUnitOfWork')->willReturn($unitOfWork);
-
         $security = $this->createMock(Security::class);
         $security->method('getUser')->willReturn($proUser);
 
-        $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
-        $persistProcessor->method('process')->willReturnCallback(fn($data) => $data);
+        $removeProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
+        $removeProcessor
+            ->expects($this->once())
+            ->method('process')
+            ->with($bid, $this->isInstanceOf(\ApiPlatform\Metadata\Delete::class))
+            ->willReturn(null);
 
-        $processor = new BidWithdrawProcessor($persistProcessor, $entityManager, $this->logger, $security);
-        $op = new \ApiPlatform\Metadata\Patch();
+        $processor = new BidWithdrawProcessor($removeProcessor, $this->logger, $security);
+        $op = new \ApiPlatform\Metadata\Delete();
 
         $result = $processor->process($bid, $op);
-
-        $this->assertSame(BidStatus::REJECTED, $result->getStatus());
-    }
-
-    public function testWithdrawsBidWhenOriginalDataHasPendingAsString(): void
-    {
-        $proUser = new User();
-        $proUser->setEmail('pro@test.com');
-        $proProfile = new ProfessionalProfile();
-        $proProfile->setFullName('Pro');
-        $proProfile->setUser($proUser);
-        $proUser->setProfessionalProfile($proProfile);
-
-        $clientProfile = new ClientProfile();
-        $clientProfile->setFullName('Cliente');
-
-        $request = new Request();
-        $request->setTitle('Test');
-        $request->setAddress('Calle Test');
-        $request->setEstimatedPriceMin(100);
-        $request->setEstimatedPriceMax(100);
-        $request->setClient($clientProfile);
-        $request->setStatus(RequestStatus::PENDING);
-
-        $bid = new Bid();
-        $bid->setRequest($request);
-        $bid->setProfessional($proUser);
-        $bid->setPriceQuote(80);
-        $bid->setStatus(BidStatus::REJECTED);
-        $request->addBid($bid);
-
-        $unitOfWork = $this->createMock(UnitOfWork::class);
-        $unitOfWork->method('getOriginalEntityData')
-            ->with($bid)
-            ->willReturn(['status' => 'PENDING']);
-
-        $entityManager = $this->createMock(OrmEntityManager::class);
-        $entityManager->method('getUnitOfWork')->willReturn($unitOfWork);
-
-        $security = $this->createMock(Security::class);
-        $security->method('getUser')->willReturn($proUser);
-
-        $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
-        $persistProcessor->method('process')->willReturnCallback(fn($data) => $data);
-
-        $processor = new BidWithdrawProcessor($persistProcessor, $entityManager, $this->logger, $security);
-
-        $result = $processor->process($bid, new \ApiPlatform\Metadata\Patch());
-
-        $this->assertSame(BidStatus::REJECTED, $result->getStatus());
+        $this->assertNull($result);
     }
 
     public function testThrowsWhenUserIsNotBidProfessional(): void
@@ -160,21 +105,15 @@ final class BidWithdrawProcessorTest extends TestCase
         $bid->setStatus(BidStatus::PENDING);
         $request->addBid($bid);
 
-        $unitOfWork = $this->createMock(UnitOfWork::class);
-        $unitOfWork->method('getOriginalEntityData')->willReturn(['status' => BidStatus::PENDING]);
-
-        $entityManager = $this->createMock(OrmEntityManager::class);
-        $entityManager->method('getUnitOfWork')->willReturn($unitOfWork);
-
         $security = $this->createMock(Security::class);
         $security->method('getUser')->willReturn($otherPro);
 
-        $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
-        $processor = new BidWithdrawProcessor($persistProcessor, $entityManager, $this->logger, $security);
+        $removeProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
+        $processor = new BidWithdrawProcessor($removeProcessor, $this->logger, $security);
 
         $this->expectException(AccessDeniedHttpException::class);
         $this->expectExceptionMessage('Solo puedes retirar tus propias propuestas');
-        $processor->process($bid, new \ApiPlatform\Metadata\Patch());
+        $processor->process($bid, new \ApiPlatform\Metadata\Delete());
     }
 
     public function testThrowsWhenBidWasNotPending(): void
@@ -201,24 +140,18 @@ final class BidWithdrawProcessorTest extends TestCase
         $bid->setRequest($request);
         $bid->setProfessional($proUser);
         $bid->setPriceQuote(80);
-        $bid->setStatus(BidStatus::REJECTED);
+        $bid->setStatus(BidStatus::COMPLETED);
         $request->addBid($bid);
-
-        $unitOfWork = $this->createMock(UnitOfWork::class);
-        $unitOfWork->method('getOriginalEntityData')->willReturn(['status' => BidStatus::REJECTED]);
-
-        $entityManager = $this->createMock(OrmEntityManager::class);
-        $entityManager->method('getUnitOfWork')->willReturn($unitOfWork);
 
         $security = $this->createMock(Security::class);
         $security->method('getUser')->willReturn($proUser);
 
-        $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
-        $processor = new BidWithdrawProcessor($persistProcessor, $entityManager, $this->logger, $security);
+        $removeProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
+        $processor = new BidWithdrawProcessor($removeProcessor, $this->logger, $security);
 
         $this->expectException(BadRequestHttpException::class);
         $this->expectExceptionMessage('Solo puedes retirar propuestas pendientes');
-        $processor->process($bid, new \ApiPlatform\Metadata\Patch());
+        $processor->process($bid, new \ApiPlatform\Metadata\Delete());
     }
 
     public function testThrowsWhenRequestNotPending(): void
@@ -248,21 +181,15 @@ final class BidWithdrawProcessorTest extends TestCase
         $bid->setStatus(BidStatus::PENDING);
         $request->addBid($bid);
 
-        $unitOfWork = $this->createMock(UnitOfWork::class);
-        $unitOfWork->method('getOriginalEntityData')->willReturn(['status' => BidStatus::PENDING]);
-
-        $entityManager = $this->createMock(OrmEntityManager::class);
-        $entityManager->method('getUnitOfWork')->willReturn($unitOfWork);
-
         $security = $this->createMock(Security::class);
         $security->method('getUser')->willReturn($proUser);
 
-        $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
-        $processor = new BidWithdrawProcessor($persistProcessor, $entityManager, $this->logger, $security);
+        $removeProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
+        $processor = new BidWithdrawProcessor($removeProcessor, $this->logger, $security);
 
         $this->expectException(BadRequestHttpException::class);
         $this->expectExceptionMessage('Solo puedes retirar propuestas en solicitudes pendientes');
-        $processor->process($bid, new \ApiPlatform\Metadata\Patch());
+        $processor->process($bid, new \ApiPlatform\Metadata\Delete());
     }
 
     public function testThrowsWhenNotLoggedIn(): void
@@ -286,20 +213,14 @@ final class BidWithdrawProcessorTest extends TestCase
         $bid->setPriceQuote(80);
         $bid->setStatus(BidStatus::PENDING);
 
-        $unitOfWork = $this->createMock(UnitOfWork::class);
-        $unitOfWork->method('getOriginalEntityData')->willReturn(['status' => BidStatus::PENDING]);
-
-        $entityManager = $this->createMock(OrmEntityManager::class);
-        $entityManager->method('getUnitOfWork')->willReturn($unitOfWork);
-
         $security = $this->createMock(Security::class);
         $security->method('getUser')->willReturn(null);
 
-        $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
-        $processor = new BidWithdrawProcessor($persistProcessor, $entityManager, $this->logger, $security);
+        $removeProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
+        $processor = new BidWithdrawProcessor($removeProcessor, $this->logger, $security);
 
         $this->expectException(AccessDeniedHttpException::class);
         $this->expectExceptionMessage('Debes estar logueado para retirar una propuesta');
-        $processor->process($bid, new \ApiPlatform\Metadata\Patch());
+        $processor->process($bid, new \ApiPlatform\Metadata\Delete());
     }
 }

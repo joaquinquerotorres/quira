@@ -142,7 +142,7 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
 ## Límites y reglas de pujas (plan efectivo FREE)
 
 - Aplica a quien **no** tiene suscripción activa según `paidThroughAt` (incluye `ROLE_FREE`, `ROLE_PRO`/`ROLE_SOLVER` con pago caducado o `paidThroughAt` null)
-- Límite de **3 pujas por mes calendario** (conteo en `BidRepository`; excluye el patrón “retirada”: `REJECTED` con request aún `PENDING`)
+- Límite de **3 pujas por mes calendario** (conteo en `BidRepository`; las pujas retiradas no cuentan porque se eliminan de BD)
 - **HIGH:** no se puede crear nueva puja sin suscripción activa; quien ya tiene puja `PENDING`/`ACCEPTED` o es el asignado sigue pudiendo ver el hilo según filtros de API
 - POST `/api/bids` devuelve **422** con `violations[]` y códigos estables (`BID_HIGH_REQUIRES_PAID_SUBSCRIPTION`, `BID_MONTHLY_LIMIT_EXCEEDED`) para el cliente
 - GET `/api/professionals/me/can-bid` → `canBidThisMonth` coherente con el plan efectivo (no solo `ROLE_FREE`)
@@ -175,5 +175,5 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
 - is_market - Requests públicas para mercado
 - my_requests - Requests del cliente
 - my_jobs - Requests asignadas al profesional
-- my_bids - Bids del profesional (excluye `REJECTED`)
+- my_bids - Bids del profesional existentes
 - history - Completadas/canceladas

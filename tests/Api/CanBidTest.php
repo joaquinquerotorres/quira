@@ -60,7 +60,7 @@ final class CanBidTest extends ApiTestCase
         $this->assertFalse($data['canBidThisMonth']);
     }
 
-    public function testCanBidTrueWhenOnlyWithdrawnBidsAreExcluded(): void
+    public function testCanBidTrueWhenOneBidWasWithdrawnAndDeleted(): void
     {
         $pro = $this->createProfessionalUser(
             email: 'pro-canbid-2@test.com',
@@ -78,7 +78,7 @@ final class CanBidTest extends ApiTestCase
         );
         $clientProfile = $client->getClientProfile();
 
-        // 2 pending bids on PENDING requests + 1 withdrawn bid (REJECTED on PENDING request).
+        // 2 pending bids on PENDING requests + 1 bid that gets withdrawn (deleted from DB).
         for ($i = 0; $i < 2; $i++) {
             $request = $this->createRequest(
                 clientProfile: $clientProfile,
@@ -100,12 +100,14 @@ final class CanBidTest extends ApiTestCase
             riskLevel: RiskLevel::LOW,
         );
 
-        $this->createBid(
+        $withdrawnBid = $this->createBid(
             request: $withdrawnRequest,
             professionalUser: $pro,
-            status: BidStatus::REJECTED,
+            status: BidStatus::PENDING,
             priceQuote: 1200,
         );
+        $this->em->remove($withdrawnBid);
+        $this->em->flush();
 
         $this->browser->request('GET', '/api/professionals/me/can-bid', [], [], $this->authHeaders($pro));
         $this->assertResponseStatusCodeSame(200);
@@ -115,7 +117,7 @@ final class CanBidTest extends ApiTestCase
         $this->assertTrue($data['canBidThisMonth']);
     }
 
-    public function testCanBidFalseWhenRejectedBidOnAcceptedRequestIsCounted(): void
+    public function testCanBidFalseWhenAcceptedBidOnAcceptedRequestIsCounted(): void
     {
         $pro = $this->createProfessionalUser(
             email: 'pro-canbid-3@test.com',
@@ -133,7 +135,7 @@ final class CanBidTest extends ApiTestCase
         );
         $clientProfile = $client->getClientProfile();
 
-        // 2 pending bids on PENDING requests + 1 rejected bid on ACCEPTED request.
+        // 2 pending bids on PENDING requests + 1 accepted bid on ACCEPTED request.
         for ($i = 0; $i < 2; $i++) {
             $request = $this->createRequest(
                 clientProfile: $clientProfile,
@@ -158,7 +160,7 @@ final class CanBidTest extends ApiTestCase
         $this->createBid(
             request: $acceptedRequest,
             professionalUser: $pro,
-            status: BidStatus::REJECTED,
+            status: BidStatus::ACCEPTED,
             priceQuote: 1400,
         );
 

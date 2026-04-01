@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\Metadata\Patch;
 use ApiPlatform\State\ProcessorInterface;
 use App\Entity\Bid;
+use App\Entity\User;
 use App\Enum\BidStatus;
 use App\Enum\RequestStatus;
 use Psr\Log\LoggerInterface;
@@ -83,11 +84,6 @@ final class BidAcceptanceProcessor implements ProcessorInterface
             $bid->setStatus(BidStatus::ACCEPTED);
             $request->setStatus(RequestStatus::ACCEPTED);
             $request->setAssignedProfessional($proProfile);
-            foreach ($request->getBids() as $otherBid) {
-                if ($otherBid !== $bid && $otherBid->getStatus() === BidStatus::PENDING) {
-                    $otherBid->setStatus(BidStatus::REJECTED);
-                }
-            }
             $this->logger->info("Usuario {$user->getUserIdentifier()} ha aceptado la oferta con ID {$bid->getId()} para la solicitud '{$request->getTitle()}'.");
         }
 

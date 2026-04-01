@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Bid;
-use App\Enum\BidStatus;
 use App\Enum\RequestStatus;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -39,15 +38,10 @@ class BidRepository extends ServiceEntityRepository
             ->andWhere('b.createdAt >= :start')
             ->andWhere('b.createdAt <= :end')
             ->andWhere('r.status != :request_cancelled')
-            // Excluir únicamente las pujas retiradas: cuando el bid está REJECTED pero la request sigue PENDING.
-            // Tras aceptar una bid, los otros bids pasan a REJECTED pero la request queda ACCEPTED; esas deben contarse.
-            ->andWhere('NOT (b.status = :bid_rejected AND r.status = :request_pending)')
             ->setParameter('professional', $professional)
             ->setParameter('start', $start)
             ->setParameter('end', $end)
-            ->setParameter('bid_rejected', BidStatus::REJECTED)
             ->setParameter('request_cancelled', RequestStatus::CANCELLED)
-            ->setParameter('request_pending', RequestStatus::PENDING)
             ->getQuery()
             ->getSingleScalarResult();
     }

@@ -43,10 +43,10 @@ final class BidRepositoryTest extends KernelTestCase
         $this->bidRepository = $this->em->getRepository(Bid::class);
     }
 
-    public function testCountByProfessionalThisMonthExcludesRejectedBids(): void
+    public function testCountByProfessionalThisMonthExcludesWithdrawnBidsBecauseTheyAreDeleted(): void
     {
-        $pro = $this->createProfessional('pro-exclude-rejected@test.com');
-        $client = $this->createClient('client-rej@test.com');
+        $pro = $this->createProfessional('pro-exclude-withdrawn@test.com');
+        $client = $this->createClient('client-withdrawn@test.com');
 
         $request = $this->createRequest($client, RequestStatus::PENDING);
         $this->em->persist($request);
@@ -60,42 +60,38 @@ final class BidRepositoryTest extends KernelTestCase
         $request->addBid($bidPending);
         $this->em->persist($bidPending);
 
-        $bidRejected = new Bid();
-        $bidRejected->setRequest($request);
-        $bidRejected->setProfessional($pro);
-        $bidRejected->setPriceQuote(60);
-        $bidRejected->setStatus(BidStatus::REJECTED);
-        $request->addBid($bidRejected);
-        $this->em->persist($bidRejected);
+        $this->em->flush();
 
+        // Simula retirada: ahora la puja se elimina físicamente.
+        $this->em->remove($bidPending);
         $this->em->flush();
 
         $count = $this->bidRepository->countByProfessionalThisMonth($pro);
-        $this->assertSame(1, $count, 'Should exclude withdrawn bids (REJECTED on PENDING requests)');
+        $this->assertSame(0, $count, 'Should exclude withdrawn bids because they no longer exist');
     }
 
-    public function testCountByProfessionalThisMonthCountsRejectedBidsOnAcceptedRequests(): void
+    public function testCountByProfessionalThisMonthCountsAcceptedBidOnAcceptedRequest(): void
     {
-        $pro = $this->createProfessional('pro-count-rejected-accepted@test.com');
-        $client = $this->createClient('client-count-rejected-accepted@test.com');
+        $pro = $this->createProfessional('pro-count-accepted@test.com');
+        $client = $this->createClient('client-count-accepted@test.com');
 
         $request = $this->createRequest($client, RequestStatus::ACCEPTED);
         $this->em->persist($request);
         $this->em->flush();
 
-        $bidRejected = new Bid();
-        $bidRejected->setRequest($request);
-        $bidRejected->setProfessional($pro);
-        $bidRejected->setPriceQuote(60);
-        $bidRejected->setStatus(BidStatus::REJECTED);
-        $request->addBid($bidRejected);
-        $this->em->persist($bidRejected);
+        $bidAccepted = new Bid();
+        $bidAccepted->setRequest($request);
+        $bidAccepted->setProfessional($pro);
+        $bidAccepted->setPriceQuote(60);
+        $bidAccepted->setStatus(BidStatus::ACCEPTED);
+        $request->addBid($bidAccepted);
+        $this->em->persist($bidAccepted);
 
         $this->em->flush();
 
         $count = $this->bidRepository->countByProfessionalThisMonth($pro);
 
-        $this->assertSame(1, $count, 'Should count REJECTED bids when the request is already ACCEPTED');
+        $this->assertSame(1, $count, 'Should count accepted bids on accepted requests');
     }
 
     public function testCountByProfessionalThisMonthExcludesBidsOnCancelledRequests(): void

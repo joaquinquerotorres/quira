@@ -67,8 +67,6 @@ final class CurrentUserExtension implements QueryCollectionExtensionInterface, Q
                 if ($httpRequest && $httpRequest->query->get('my_bids') === 'true') {
                     $queryBuilder
                         ->andWhere(sprintf('%s.professional = :current_user', $rootAlias))
-                        ->andWhere(sprintf('%s.status != :my_bids_excluded_status', $rootAlias))
-                        ->setParameter('my_bids_excluded_status', BidStatus::REJECTED)
                         ->setParameter('current_user', $user);
 
                     $searchReqTitle = $httpRequest->query->get('request.title') ?? $httpRequest->query->get('request_title');

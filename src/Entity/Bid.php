@@ -7,13 +7,13 @@ namespace App\Entity;
 use ApiPlatform\Doctrine\Orm\Filter\OrderFilter;
 use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use App\Enum\BidStatus;
-use App\Entity\VisitRequest;
 use App\Repository\BidRepository;
 use App\State\BidAcceptanceProcessor;
 use App\State\BidProfessionalProcessor;
@@ -48,9 +48,9 @@ use Symfony\Component\Validator\Constraints as Assert;
             denormalizationContext: ['groups' => ['bid:accept']],
             normalizationContext: ['groups' => ['bid:read']]
         ),
-        new Patch(
+        new Delete(
+            uriTemplate: '/bids/{id}/withdraw',
             processor: BidWithdrawProcessor::class,
-            denormalizationContext: ['groups' => ['bid:withdraw']],
             normalizationContext: ['groups' => ['bid:read']]
         )
     ]
@@ -88,7 +88,7 @@ class Bid
     private ?string $comment = null;
 
     #[ORM\Column(length: 20)]
-    #[Groups(['bid:read', 'bid:write', 'bid:accept', 'bid:withdraw', 'request:read'])]
+    #[Groups(['bid:read', 'bid:write', 'bid:accept', 'request:read'])]
     private BidStatus $status = BidStatus::PENDING;
 
     #[ORM\Column]

@@ -78,7 +78,7 @@ Los tests en `tests/Api/` ejercitan endpoints reales (API Platform / controllers
   - Nota: por el filtrado de `CurrentUserExtension`, un profesional ajeno sin bid/visita aceptada puede recibir 404 (esperado).
 
 - **CanBidTest**
-  - Verifica `GET /api/professionals/me/can-bid` y el cómputo del límite mensual (excluyendo únicamente retiradas: `REJECTED` en request `PENDING`).
+  - Verifica `GET /api/professionals/me/can-bid` y el cómputo del límite mensual (las retiradas se excluyen porque la bid se elimina de BD).
   - Incluye **`testCanBidFalseWhenRoleProButPaidThroughExpired`**: `ROLE_PRO` con `paidThroughAt` en el pasado se trata como plan efectivo FREE para el límite mensual.
 
 - **VisitRequestContractTest**
