@@ -79,6 +79,7 @@ Los tests en `tests/Api/` ejercitan endpoints reales (API Platform / controllers
 
 - **CanBidTest**
   - Verifica `GET /api/professionals/me/can-bid` y el cómputo del límite mensual (las retiradas se excluyen porque la bid se elimina de BD).
+  - Verifica también `remainingBidsThisMonth` (entero para plan efectivo FREE, `null` para planes de pago activos).
   - Incluye **`testCanBidFalseWhenRoleProButPaidThroughExpired`**: `ROLE_PRO` con `paidThroughAt` en el pasado se trata como plan efectivo FREE para el límite mensual.
 
 - **VisitRequestContractTest**
@@ -109,6 +110,11 @@ Los tests en `tests/Api/` ejercitan endpoints reales (API Platform / controllers
 ## Tests de State / procesadores
 
 - **BidProfessionalProcessorTest**: reglas de negocio (HIGH, límite mensual, teléfono) vía **`ValidationException`** coherente con el **422** de API Platform.
+- **ProfessionalProfileOwnerProcessorTest**:
+  - valida autoverificación de teléfono profesional (`verifiedPhone=true`) solo con cliente verificado y mismo número normalizado;
+  - valida error **422** cuando no cumple la regla;
+  - valida desverificación automática al cambiar teléfono profesional a uno distinto;
+  - valida obligatoriedad de `address` en alta/edición de perfil profesional.
 
 ## Tests de serialización
 

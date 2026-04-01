@@ -120,6 +120,10 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
 - Verificación por **perfil**:
   - `ClientProfile.verifiedPhone` y `ProfessionalProfile.verifiedPhone` (independientes).
   - El `User` expone un `isVerifiedPhone()` calculado pero no se usa como fuente de verdad para permisos.
+- Auto-verificación en `ProfessionalProfile` (POST/PATCH):
+  - El backend acepta `verifiedPhone` en escritura, pero solo permite `true` si el cliente del mismo usuario tiene teléfono verificado y coincide con el teléfono profesional tras normalización.
+  - Si no coincide (o cliente no verificado), responde **422** con error de negocio.
+  - Si se cambia el `phoneNumber` del profesional a otro distinto, `verifiedPhone` se fuerza a `false` (salvo que vuelva a cumplir la regla de coincidencia).
 - PhoneVerificationService con SMS (Twilio) + modo sandbox:
   - OTP de 6 dígitos, TTL 5 minutos, almacenado en caché por usuario+número.
   - Si `TWILIO_SMS_FROM` está vacío en dev, no se llama a Twilio y el OTP se escribe en el log para pruebas.
@@ -145,7 +149,7 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
 - Límite de **3 pujas por mes calendario** (conteo en `BidRepository`; las pujas retiradas no cuentan porque se eliminan de BD)
 - **HIGH:** no se puede crear nueva puja sin suscripción activa; quien ya tiene puja `PENDING`/`ACCEPTED` o es el asignado sigue pudiendo ver el hilo según filtros de API
 - POST `/api/bids` devuelve **422** con `violations[]` y códigos estables (`BID_HIGH_REQUIRES_PAID_SUBSCRIPTION`, `BID_MONTHLY_LIMIT_EXCEEDED`) para el cliente
-- GET `/api/professionals/me/can-bid` → `canBidThisMonth` coherente con el plan efectivo (no solo `ROLE_FREE`)
+- GET `/api/professionals/me/can-bid` → `canBidThisMonth` + `remainingBidsThisMonth` coherente con el plan efectivo (no solo `ROLE_FREE`)
 
 ## Filtrado de datos
 

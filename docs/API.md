@@ -23,6 +23,15 @@ Autenticación: Bearer JWT en header Authorization
 ### ProfessionalProfile
 - GET/POST /api/professional_profiles, PATCH/PUT /api/professional_profiles/{id}
 - Campos de valoración: `rating`, `reviewCount`; en lectura también `reviews[]` (array embebido con id, score, comment, authorName, createdAt).
+- `address`:
+  - Se admite en escritura (`POST` y `PATCH`).
+  - Es obligatorio en backend para alta/edición del perfil profesional.
+  - Se persiste en `professional_profile` y se devuelve en lectura (`pro:read` / `user:read`).
+- Teléfono profesional:
+  - En escritura admite `phoneNumber` y `verifiedPhone`.
+  - Si llega `verifiedPhone=true`, el backend solo lo acepta cuando el usuario tiene `ClientProfile.verifiedPhone=true` y ambos teléfonos coinciden tras normalización.
+  - Si no se cumple, responde `422` con mensaje de negocio.
+  - Si cambia `phoneNumber` a uno que no coincide con el cliente verificado, `verifiedPhone` se fuerza a `false`.
 - `taxId` (CIF) y `verifiedTaxId`:
   - Si envías `taxId` desde la UI, el backend valida el CIF matemáticamente.
   - Si el CIF es inválido responde con `400` y el mensaje `El CIF no es correcto.` y no se guarda el perfil.

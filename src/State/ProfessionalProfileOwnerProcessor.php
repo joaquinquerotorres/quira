@@ -9,6 +9,7 @@ use ApiPlatform\Metadata\Post;
 use ApiPlatform\State\ProcessorInterface;
 use App\Entity\ProfessionalProfile;
 use App\Entity\User;
+use App\Service\PhoneVerificationService;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -18,6 +19,9 @@ use Psr\Log\LoggerInterface;
 use App\Service\ProfessionalVerificationService;
 use App\Validator\CifValidator;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use ApiPlatform\Validator\Exception\ValidationException;
+use Symfony\Component\Validator\ConstraintViolation;
+use Symfony\Component\Validator\ConstraintViolationList;
 
 final class ProfessionalProfileOwnerProcessor implements ProcessorInterface
 {
@@ -27,7 +31,8 @@ final class ProfessionalProfileOwnerProcessor implements ProcessorInterface
         private readonly LoggerInterface $logger,
         private readonly Security $security,
         private readonly EntityManagerInterface $entityManager,
-        private readonly ProfessionalVerificationService $professionalVerificationService
+        private readonly ProfessionalVerificationService $professionalVerificationService,
+        private readonly PhoneVerificationService $phoneVerificationService,
     ) {
     }
 
@@ -57,6 +62,16 @@ final class ProfessionalProfileOwnerProcessor implements ProcessorInterface
             $data->setUser($user);
             $data->setIsVerified(false);
         }
+
+        if (trim((string) $data->getAddress()) === '') {
+            $this->throwBusinessValidation('address', 'La dirección es obligatoria para el perfil profesional.');
+        }
+
+        /** @var ProfessionalProfile|null $previousProfile */
+        $previousProfile = $context['previous_data'] ?? null;
+        $previousNormalizedPhone = $this->normalizeNullablePhone($previousProfile?->getPhoneNumber());
+        $currentNormalizedPhone = $this->normalizeNullablePhone($data->getPhoneNumber());
+        $phoneChanged = $previousNormalizedPhone !== $currentNormalizedPhone;
 
         $tier = $data->getTierRequested();
         
@@ -104,9 +119,55 @@ final class ProfessionalProfileOwnerProcessor implements ProcessorInterface
             $data->setVerifiedTaxId(true);
         }
 
+        $canAutoVerifyPhone = $this->canAutoVerifyProfessionalPhone($data, $user);
+        if ($data->isVerifiedPhone()) {
+            if (!$canAutoVerifyPhone) {
+                $this->throwBusinessValidation(
+                    'verifiedPhone',
+                    'Solo puedes autoverificar el teléfono profesional si coincide con tu teléfono cliente ya verificado.'
+                );
+            }
+            $data->setVerifiedPhone(true);
+        } elseif ($phoneChanged && !$canAutoVerifyPhone) {
+            // Si cambia el teléfono profesional y no coincide con el cliente verificado,
+            // forzamos desverificación para mantener consistencia.
+            $data->setVerifiedPhone(false);
+        }
+
         // Recalcular `isVerified` al guardar el perfil (email/phone + CIF si es ROLE_PRO)
         $this->professionalVerificationService->recalculateIsVerified($data, $user);
 
         return $this->persistProcessor->process($data, $operation, $uriVariables, $context);
+    }
+
+    private function canAutoVerifyProfessionalPhone(ProfessionalProfile $profile, User $user): bool
+    {
+        $clientProfile = $user->getClientProfile();
+        if ($clientProfile === null || !$clientProfile->isVerifiedPhone()) {
+            return false;
+        }
+
+        $clientPhone = $this->normalizeNullablePhone($clientProfile->getPhoneNumber());
+        $proPhone = $this->normalizeNullablePhone($profile->getPhoneNumber());
+
+        return $clientPhone !== null && $proPhone !== null && $clientPhone === $proPhone;
+    }
+
+    private function normalizeNullablePhone(?string $phone): ?string
+    {
+        if ($phone === null || trim($phone) === '') {
+            return null;
+        }
+
+        return $this->phoneVerificationService->normalizePhone($phone);
+    }
+
+    private function throwBusinessValidation(string $propertyPath, string $message): never
+    {
+        $violations = new ConstraintViolationList([
+            new ConstraintViolation($message, null, [], null, $propertyPath, null),
+        ]);
+
+        throw new ValidationException($violations);
     }
 }

@@ -89,7 +89,7 @@ class ProfessionalProfile
     private ?string $phoneNumber = null;
 
     #[ORM\Column(type: 'boolean', options: ['default' => false])]
-    #[Groups(['pro:read', 'user:read'])]
+    #[Groups(['pro:read', 'pro:write', 'user:read'])]
     private bool $verifiedPhone = false;
 
     #[ORM\Column(length: 255, nullable: true)]
@@ -98,6 +98,7 @@ class ProfessionalProfile
 
     #[ORM\Column(length: 255, nullable: true)]
     #[Groups(['pro:read', 'pro:write', 'user:read', 'request:read'])] 
+    #[Assert\NotBlank(message: 'La dirección es obligatoria para el perfil profesional.')]
     private ?string $address = null;
 
     #[ORM\Column(type: 'point', nullable: true)]
