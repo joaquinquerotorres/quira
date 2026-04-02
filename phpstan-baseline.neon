@@ -8,12 +8,6 @@ parameters:
 			path: src/Entity/ProfessionalProfile.php
 
 		-
-			message: '#^Using nullsafe method call on non\-nullable type App\\Entity\\ProfessionalProfile\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: src/EventListener/BidCreationNotifier.php
-
-		-
 			message: '#^Using nullsafe method call on non\-nullable type App\\Entity\\Request\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1

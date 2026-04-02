@@ -70,7 +70,7 @@ final class BidCreationNotifier
                 '¡Nueva oferta recibida!',
                 sprintf(
                     '%s te ha enviado una oferta de %s€ para "%s".',
-                    $proProfile?->getFullName() ?? 'Un profesional',
+                    $proProfile->getFullName() ?? 'Un profesional',
                     $bid->getPriceQuote(),
                     $request->getTitle()
                 ),
@@ -78,7 +78,7 @@ final class BidCreationNotifier
                 NotificationAudience::Client,
                 $request->getId(),
                 [
-                    'professionalName' => $proProfile?->getFullName() ?? 'Un profesional',
+                    'professionalName' => $proProfile->getFullName() ?? 'Un profesional',
                     'amount' => (string) $bid->getPriceQuote(),
                     'requestTitle' => $request->getTitle() ?? '',
                 ]
