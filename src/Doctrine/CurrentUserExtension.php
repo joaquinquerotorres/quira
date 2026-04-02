@@ -214,25 +214,6 @@ final class CurrentUserExtension implements QueryCollectionExtensionInterface, Q
                     ->andWhere('mkt_client.user != :current_user')
                     ->setParameter('current_user', $user);
 
-                if (!$this->subscriptionService->hasActivePaidSubscription($proProfile)) {
-                    $highExceptionDql = sprintf(
-                        'EXISTS (SELECT 1 FROM %s bid_high WHERE bid_high.request = %s AND bid_high.professional = :current_user AND bid_high.status IN (:bid_statuses_high_exception))',
-                        Bid::class,
-                        $rootAlias
-                    );
-                    $queryBuilder
-                        ->andWhere(
-                            $queryBuilder->expr()->orX(
-                                sprintf('%s.riskLevel != :risk_level_high', $rootAlias),
-                                sprintf('%s.assignedProfessional = :current_pro_profile', $rootAlias),
-                                $highExceptionDql
-                            )
-                        )
-                        ->setParameter('risk_level_high', RiskLevel::HIGH)
-                        ->setParameter('current_pro_profile', $proProfile)
-                        ->setParameter('bid_statuses_high_exception', [BidStatus::PENDING, BidStatus::ACCEPTED]);
-                }
-
             } elseif ($httpRequest && $httpRequest->query->get('my_jobs') === 'true') {
                  $queryBuilder
                     ->join(sprintf('%s.assignedProfessional', $rootAlias), 'my_job_pro')
