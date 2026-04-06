@@ -51,7 +51,7 @@ Autenticación: Bearer JWT en header Authorization
 - Filtros: is_market, my_requests, my_jobs, my_bids, history
 - Campos relevantes:
   - `description`: texto refinado / mostrado como descripción del trabajo (puede venir del flujo con IA).
-  - `clientOriginalDescription` (opcional, nullable): texto libre que el cliente escribió **antes** de refinar con `/api/predict` u otra edición; se persiste para trazabilidad. Máximo **5000** caracteres (mismo límite que `description` en POST `/api/predict`). Lectura y escritura en los mismos grupos que `description`. Si no hay `description` pero sí `clientOriginalDescription` (y/o audio/vídeo), la validación “debe explicar el problema” sigue cumpliéndose. En la creación de solicitud, la comprobación de seguridad (IA) usa `description` si viene informada; si está vacía, usa `clientOriginalDescription`.
+  - `clientOriginalDescription` (opcional, nullable): texto libre que el cliente escribió **antes** de refinar con `/api/predict` u otra edición; se persiste para trazabilidad. Máximo **5000** caracteres (mismo límite que `description` en POST `/api/predict`). Lectura y escritura en los mismos grupos que `description`. Si no hay `description` pero sí `clientOriginalDescription` (y/o audio/vídeo), la validación “debe explicar el problema” sigue cumpliéndose. En la creación de solicitud, la comprobación de seguridad (IA) usa `description` si viene informada; si está vacía, usa `clientOriginalDescription`. Esa comprobación se ejecuta con el modelo fijo **`gemini-2.0-flash`**; **`POST /api/predict`** usa en cambio **`GEMINI_MODEL`** (ver `docs/SETUP.md`).
   - `estimatedPriceMin` (int, céntimos): mínimo estimado generado por IA (rango orientativo). La UI lo convierte a euros dividiendo entre 100.
   - `estimatedPriceMax` (int, céntimos): máximo estimado generado por IA (rango orientativo). La UI lo convierte a euros dividiendo entre 100.
   - `aiDiagnosis` (opcional): JSON del diagnóstico IA. Si llega como `{ "min": ..., "max": ... }` (céntimos), el backend lo normaliza a `estimated_price_min/estimated_price_max`. No afecta a la validación del rango.
@@ -121,7 +121,7 @@ Autenticación: Bearer JWT en header Authorization
 **Reconciliación (operaciones / cron):** `php bin/console stripe:reconcile-subscriptions` (opción `--user-id=` para uno solo). Compara suscripciones en Stripe con la BD por si faltó un webhook.
 
 ### Predict (IA)
-- POST `/api/predict` - Diagnóstico con Gemini (body: description, image, audio, video, location opcional)
+- POST `/api/predict` - Diagnóstico con Gemini (body: description, image, audio, video, location opcional). Usa el modelo **`GEMINI_MODEL`** (no el de la validación de seguridad al crear solicitud).
   - El body puede ser **muy grande** (vídeo en base64). En **móvil / 4G** la subida tarda; el cliente debe usar **timeout HTTP generoso** (p. ej. ≥ 120 s). En producción Docker, los límites PHP ampliados están en `docker/php/zz-quira.ini` (ver `docs/DEPLOY.md`).
   - `image`, `audio`, `video` pueden enviarse como **Data URL** (`data:<mime>;base64,<data>`) o base64 “crudo”.
   - Mimes recomendados:

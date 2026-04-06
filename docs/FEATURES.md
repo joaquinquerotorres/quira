@@ -53,7 +53,7 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
 
 ### Funcionalidad
 - Diagnóstico preliminar del problema descrito
-- Comprobación de seguridad (fraude de contacto, contenido ofensivo)
+- Comprobación de seguridad (fraude de contacto, contenido ofensivo) vía `GeminiService::checkSafety()`: usa el modelo fijo **`gemini-2.0-flash`** (más rápido/barato que el de diagnose) y `generationConfig` con salida acotada (`maxOutputTokens` 100). El resto de llamadas a Gemini (p. ej. `diagnose`, POST `/api/predict`) usan **`GEMINI_MODEL`** (por defecto `gemini-2.5-flash`).
 - Caché de contexto (GeminiCache) para tablas de precios y reglas (si falla la creación, la predicción sigue funcionando)
 
 ### Tabla de precios (CSV) y Córdoba

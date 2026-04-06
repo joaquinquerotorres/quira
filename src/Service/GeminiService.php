@@ -11,6 +11,9 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class GeminiService
 {
+    /** Modelo para validación de seguridad: más rápido y barato que el usado en diagnose. */
+    private const SAFETY_MODEL = 'gemini-2.0-flash';
+
     public function __construct(
         #[Autowire('%env(GEMINI_API_KEY)%')] 
         private string $apiKey,
@@ -202,7 +205,8 @@ class GeminiService
 
     public function checkSafety(?string $title, ?string $description, ?string $image = null, ?string $audio = null, ?string $video = null): array
     {
-        $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . $this->model . ':generateContent?key=' . $this->apiKey;
+        $safetyModel = $this->normalizeModelName(self::SAFETY_MODEL);
+        $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . $safetyModel . ':generateContent?key=' . $this->apiKey;
         
         $systemPrompt = <<<PROMPT
             Actúa como el sistema de seguridad 'Sentinel' de la App Quira.
@@ -249,6 +253,7 @@ class GeminiService
             'generationConfig' => [
                 'responseMimeType' => 'application/json',
                 'temperature' => 0.0,
+                'maxOutputTokens' => 100,
             ],
         ];
 

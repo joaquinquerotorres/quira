@@ -64,7 +64,7 @@
 | StripeSubscriptionSyncService | Alinea `paidThroughAt` y `subscriptionCancelAtPeriodEnd` con objetos Subscription / Invoice de Stripe |
 | ProfessionalSubscriptionService | `hasActivePaidSubscription` / límites efectivos FREE según `paidThroughAt` |
 | NotificationService | WhatsApp, push FCM, email (elige canal según roles/perfil y preferencias, con fallback escalonado) |
-| GeminiService | Diagnóstico IA, validación y precios sugeridos usando CSV externo + contexto cacheado |
+| GeminiService | Diagnose/predict con `GEMINI_MODEL` + CSV/cache; validación de seguridad (`checkSafety`) con modelo fijo `gemini-2.0-flash` |
 | GeminiCacheService | Gestión de cache persistente de contexto Gemini (tabla de precios y reglas) |
 | SocialAuthService | Verificación Firebase |
 | EmailVerificationService | Emails de verificación |

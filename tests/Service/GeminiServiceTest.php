@@ -12,14 +12,33 @@ use Symfony\Component\HttpClient\Response\MockResponse;
 
 final class GeminiServiceTest extends TestCase
 {
+    /**
+     * Tras prepareRequest, Symfony mueve `json` a `body`; el callback de MockHttpClient recibe `body`.
+     *
+     * @return array<string, mixed>
+     */
+    private static function requestPayloadFromMockOptions(array $options): array
+    {
+        if (isset($options['json']) && \is_array($options['json'])) {
+            return $options['json'];
+        }
+        if (isset($options['body']) && \is_string($options['body'])) {
+            $decoded = json_decode($options['body'], true);
+
+            return \is_array($decoded) ? $decoded : [];
+        }
+
+        return [];
+    }
+
     public function testDiagnoseBuildsValidPayloadKeysAndInlineData(): void
     {
         $mock = new MockHttpClient(function (string $method, string $url, array $options): MockResponse {
             self::assertSame('POST', $method);
             self::assertStringContainsString('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', $url);
 
-            $payload = $options['json'] ?? null;
-            self::assertIsArray($payload);
+            $payload = self::requestPayloadFromMockOptions($options);
+            self::assertNotSame([], $payload);
 
             self::assertArrayHasKey('generationConfig', $payload);
             self::assertArrayHasKey('responseMimeType', $payload['generationConfig']);
@@ -71,7 +90,7 @@ final class GeminiServiceTest extends TestCase
         $webmHeader = base64_encode("\x1a\x45\xdf\xa3" . str_repeat("\0", 8));
 
         $mock = new MockHttpClient(function (string $method, string $url, array $options): MockResponse {
-            $payload = $options['json'] ?? [];
+            $payload = self::requestPayloadFromMockOptions($options);
             $audio = $payload['contents'][0]['parts'][1]['inline_data'] ?? null;
             self::assertIsArray($audio);
             self::assertSame('audio/webm', $audio['mime_type']);
@@ -99,6 +118,38 @@ final class GeminiServiceTest extends TestCase
         );
 
         self::assertSame('DIY', $result['category']);
+    }
+
+    public function testCheckSafetyUsesGemini20FlashRegardlessOfMainModel(): void
+    {
+        $mock = new MockHttpClient(function (string $method, string $url, array $options): MockResponse {
+            self::assertSame('POST', $method);
+            self::assertStringContainsString('models/gemini-2.0-flash:generateContent', $url);
+
+            $payload = self::requestPayloadFromMockOptions($options);
+            self::assertNotSame([], $payload);
+            self::assertArrayHasKey('generationConfig', $payload);
+            $gc = $payload['generationConfig'];
+            self::assertSame('application/json', $gc['responseMimeType']);
+            self::assertEquals(0.0, $gc['temperature']);
+            self::assertSame(100, $gc['maxOutputTokens']);
+
+            return new MockResponse(json_encode([
+                'candidates' => [[
+                    'content' => [
+                        'parts' => [[
+                            'text' => '{"is_safe":true,"reason":null}',
+                        ]],
+                    ],
+                ]],
+            ], JSON_THROW_ON_ERROR), ['http_code' => 200]);
+        });
+
+        $service = new GeminiService('test-key', 'gemini-2.5-flash', $mock, new NullLogger());
+
+        $result = $service->checkSafety('Título', 'Descripción', null, null, null);
+
+        self::assertTrue($result['is_safe']);
     }
 }
 
