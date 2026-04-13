@@ -164,6 +164,12 @@ class AppFixtures extends Fixture
 
                 $risk = $faker->randomElement(RiskLevel::cases());
                 $request->setRiskLevel($risk);
+                $pricingType = match (true) {
+                    $risk === RiskLevel::HIGH && $faker->boolean(60) => Request::PRICING_TYPE_VISIT_REQUIRED,
+                    $faker->boolean(35) => Request::PRICING_TYPE_RANGE,
+                    default => Request::PRICING_TYPE_FIXED,
+                };
+                $request->setPricingType($pricingType);
                 // estimated_price_* se guarda en céntimos (enteros).
                 // Generamos un rango con margen para que min/max no sean idénticos.
                 $basePriceCents = $risk === RiskLevel::HIGH ? rand(1500, 4000) : rand(60, 350);
@@ -177,6 +183,13 @@ class AppFixtures extends Fixture
                 }
                 $request->setEstimatedPriceMin($minCents);
                 $request->setEstimatedPriceMax($maxCents);
+                $request->setAiDiagnosis([
+                    'pricing_type' => $pricingType,
+                    'safe' => true,
+                    'safety_reason' => null,
+                    'estimated_price_min' => $minCents,
+                    'estimated_price_max' => $maxCents,
+                ]);
                 $request->setAddress($faker->streetAddress() . ", Córdoba");
                 if ($faker->boolean(30)) {
                     $request->setPreciseAddress($faker->streetAddress() . ', ' . $faker->buildingNumber() . ', Córdoba');
@@ -210,7 +223,21 @@ class AppFixtures extends Fixture
                             $bidMin = $request->getEstimatedPriceMin();
                             $bidMax = $request->getEstimatedPriceMax();
                             $bidMid = (int) \round(($bidMin + $bidMax) / 2);
-                            $bid->setPriceQuote(rand(max(0, $bidMid - 200), $bidMid + 200));
+                            if ($pricingType === Request::PRICING_TYPE_RANGE
+                                || ($pricingType === Request::PRICING_TYPE_VISIT_REQUIRED && $faker->boolean(50))) {
+                                $rangeMin = rand(max(1, $bidMid - 250), max(1, $bidMid - 50));
+                                $rangeMax = rand($rangeMin, $rangeMin + 300);
+                                $bid->setPricingType(Bid::PRICING_TYPE_RANGE);
+                                $bid->setPriceQuoteMin($rangeMin);
+                                $bid->setPriceQuoteMax($rangeMax);
+                                $bid->setPriceQuote($rangeMin); // compatibilidad legacy
+                            } else {
+                                $fixed = rand(max(1, $bidMid - 200), max(1, $bidMid + 200));
+                                $bid->setPricingType(Bid::PRICING_TYPE_FIXED);
+                                $bid->setPriceQuote($fixed);
+                                $bid->setPriceQuoteMin($fixed);
+                                $bid->setPriceQuoteMax($fixed);
+                            }
                             $bid->setStatus(BidStatus::PENDING);
                             $bid->setEstimatedExecutionTime(
                                 $estimatedExecutionOptions[$estimatedExecutionIndex % count($estimatedExecutionOptions)]
@@ -249,7 +276,21 @@ class AppFixtures extends Fixture
                             $bidMin = $request->getEstimatedPriceMin();
                             $bidMax = $request->getEstimatedPriceMax();
                             $bidMid = (int) \round(($bidMin + $bidMax) / 2);
-                            $bid->setPriceQuote(rand(max(0, $bidMid - 200), $bidMid + 200));
+                            if ($pricingType === Request::PRICING_TYPE_RANGE
+                                || ($pricingType === Request::PRICING_TYPE_VISIT_REQUIRED && $faker->boolean(50))) {
+                                $rangeMin = rand(max(1, $bidMid - 250), max(1, $bidMid - 50));
+                                $rangeMax = rand($rangeMin, $rangeMin + 300);
+                                $bid->setPricingType(Bid::PRICING_TYPE_RANGE);
+                                $bid->setPriceQuoteMin($rangeMin);
+                                $bid->setPriceQuoteMax($rangeMax);
+                                $bid->setPriceQuote($rangeMin); // compatibilidad legacy
+                            } else {
+                                $fixed = rand(max(1, $bidMid - 200), max(1, $bidMid + 200));
+                                $bid->setPricingType(Bid::PRICING_TYPE_FIXED);
+                                $bid->setPriceQuote($fixed);
+                                $bid->setPriceQuoteMin($fixed);
+                                $bid->setPriceQuoteMax($fixed);
+                            }
                             $bid->setStatus(BidStatus::PENDING);
                             $bid->setEstimatedExecutionTime(
                                 $estimatedExecutionOptions[$estimatedExecutionIndex % count($estimatedExecutionOptions)]

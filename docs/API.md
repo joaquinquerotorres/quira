@@ -54,7 +54,8 @@ Autenticación: Bearer JWT en header Authorization
   - `clientOriginalDescription` (opcional, nullable): texto libre que el cliente escribió **antes** de refinar con `/api/predict` u otra edición; se persiste para trazabilidad. Máximo **5000** caracteres (mismo límite que `description` en POST `/api/predict`). Lectura y escritura en los mismos grupos que `description`. Si no hay `description` pero sí `clientOriginalDescription` (y/o audio/vídeo), la validación “debe explicar el problema” sigue cumpliéndose. La moderación se determina desde `aiDiagnosis.safe` / `aiDiagnosis.safety_reason` generado por `diagnose`.
   - `estimatedPriceMin` (int, céntimos): mínimo estimado generado por IA (rango orientativo). La UI lo convierte a euros dividiendo entre 100.
   - `estimatedPriceMax` (int, céntimos): máximo estimado generado por IA (rango orientativo). La UI lo convierte a euros dividiendo entre 100.
-  - `aiDiagnosis` (opcional): JSON del diagnóstico IA. Si llega como `{ "min": ..., "max": ... }` (céntimos), el backend lo normaliza a `estimated_price_min/estimated_price_max`. No afecta a la validación del rango.
+  - `aiDiagnosis` (opcional): JSON del diagnóstico IA. Si llega como `{ "min": ..., "max": ... }` (céntimos), el backend lo normaliza a `estimated_price_min/estimated_price_max`.
+  - `pricingType` (`FIXED`, `RANGE`, `VISIT_REQUIRED`): tipología de pricing sugerida por IA, persistida en la request para guiar pujas y visitas.
   - `photoUrl`, `audioUrl`, `videoUrl`: media principal de la solicitud.
   - `extraPhotoUrls[]`, `extraAudioUrls[]`, `extraVideoUrls[]`: arrays opcionales de URLs de media adicional (máx. 3 elementos en total, gestionados por el frontend).
   - `desiredExecutionTime`: disponibilidad preferida para realizar el trabajo (sin fecha exacta). Valores permitidos:
@@ -87,7 +88,9 @@ Autenticación: Bearer JWT en header Authorization
   - `BID_MONTHLY_LIMIT_EXCEEDED` — límite mensual del plan efectivo FREE alcanzado
   - Otros errores de validación (teléfono no verificado, etc.) siguen el mismo formato de violaciones.
 - Campos principales:
-  - `priceQuote` (int, céntimos)
+  - `pricingType` (`FIXED` o `RANGE`)
+  - `priceQuote` (int, céntimos): obligatorio en `FIXED`; en `RANGE` se mantiene por compatibilidad (normalmente igual a `priceQuoteMin`).
+  - `priceQuoteMin`, `priceQuoteMax` (int, céntimos): obligatorios en `RANGE`.
   - `comment` (texto opcional)
   - `estimatedExecutionTime` (opcional): uno de:
     - `"Hoy mismo"`
@@ -141,7 +144,9 @@ Autenticación: Bearer JWT en header Authorization
 
 - POST `/api/requests/{id}/visit-request`
   - Solo usuarios con `ROLE_PRO`, suscripción **activa** (`paidThroughAt` futuro) y `ProfessionalProfile` asociado.
-  - Solo se permiten visitas para solicitudes con `riskLevel = HIGH` y estado `PENDING`.
+  - Solo se permiten visitas para solicitudes `PENDING` con `pricingType = VISIT_REQUIRED` (o `aiDiagnosis.pricing_type` legacy).
+  - En solicitudes `HIGH`, además se exige profesional `ROLE_PRO` con suscripción activa (`paidThroughAt` futuro).
+  - En solicitudes no HIGH, cualquier profesional con acceso al trabajo puede solicitar visita.
   - Crea (o reutiliza si ya existe) una `VisitRequest` con `status = PENDING` para la `Request` indicada y el profesional autenticado.
   - Body opcional: `{"note": "Texto opcional del profesional sobre la visita"}`.
 

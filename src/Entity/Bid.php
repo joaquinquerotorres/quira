@@ -58,6 +58,9 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ApiFilter(OrderFilter::class, properties: ['priceQuote', 'createdAt'], arguments: ['orderParameterName' => 'order'])]
 class Bid
 {
+    public const PRICING_TYPE_FIXED = 'FIXED';
+    public const PRICING_TYPE_RANGE = 'RANGE';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -80,6 +83,21 @@ class Bid
     #[Assert\NotNull]
     #[Assert\Positive]
     private ?int $priceQuote = null;
+
+    #[ORM\Column(length: 20, options: ['default' => self::PRICING_TYPE_FIXED])]
+    #[Groups(['bid:read', 'bid:write', 'request:read'])]
+    #[Assert\Choice(choices: [self::PRICING_TYPE_FIXED, self::PRICING_TYPE_RANGE], message: 'El tipo de precio de la propuesta no es válido.')]
+    private string $pricingType = self::PRICING_TYPE_FIXED;
+
+    #[ORM\Column(nullable: true)]
+    #[Groups(['bid:read', 'bid:write', 'request:read'])]
+    #[Assert\GreaterThan(value: 0, message: 'priceQuoteMin debe ser mayor que 0.')]
+    private ?int $priceQuoteMin = null;
+
+    #[ORM\Column(nullable: true)]
+    #[Groups(['bid:read', 'bid:write', 'request:read'])]
+    #[Assert\GreaterThan(value: 0, message: 'priceQuoteMax debe ser mayor que 0.')]
+    private ?int $priceQuoteMax = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     #[Groups(['bid:read', 'bid:write', 'request:read'])]
@@ -190,6 +208,42 @@ class Bid
     public function setEstimatedExecutionTime(?string $estimatedExecutionTime): self
     {
         $this->estimatedExecutionTime = $estimatedExecutionTime;
+
+        return $this;
+    }
+
+    public function getPricingType(): string
+    {
+        return $this->pricingType;
+    }
+
+    public function setPricingType(string $pricingType): self
+    {
+        $this->pricingType = strtoupper(trim($pricingType));
+
+        return $this;
+    }
+
+    public function getPriceQuoteMin(): ?int
+    {
+        return $this->priceQuoteMin;
+    }
+
+    public function setPriceQuoteMin(?int $priceQuoteMin): self
+    {
+        $this->priceQuoteMin = $priceQuoteMin;
+
+        return $this;
+    }
+
+    public function getPriceQuoteMax(): ?int
+    {
+        return $this->priceQuoteMax;
+    }
+
+    public function setPriceQuoteMax(?int $priceQuoteMax): self
+    {
+        $this->priceQuoteMax = $priceQuoteMax;
 
         return $this;
     }

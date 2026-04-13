@@ -64,6 +64,10 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
 #[ApiFilter(OrderFilter::class, properties: ['estimatedPriceMin', 'createdAt'], arguments: ['orderParameterName' => 'order'])] 
 class Request
 {
+    public const PRICING_TYPE_FIXED = 'FIXED';
+    public const PRICING_TYPE_RANGE = 'RANGE';
+    public const PRICING_TYPE_VISIT_REQUIRED = 'VISIT_REQUIRED';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -111,6 +115,14 @@ class Request
     #[ORM\Column(type: Types::JSON, nullable: true)]
     #[Groups(['request:read', 'request:write'])]
     private ?array $aiDiagnosis = null;
+
+    #[ORM\Column(length: 20, nullable: true)]
+    #[Groups(['request:read', 'request:write', 'bid:read'])]
+    #[Assert\Choice(
+        choices: [self::PRICING_TYPE_FIXED, self::PRICING_TYPE_RANGE, self::PRICING_TYPE_VISIT_REQUIRED],
+        message: 'El tipo de pricing no es válido.'
+    )]
+    private ?string $pricingType = null;
 
     #[ORM\Column(length: 50, enumType: RequestStatus::class)]
     #[Groups(['request:read', 'request:write', 'bid:read'])]
@@ -306,8 +318,47 @@ class Request
         }
 
         $this->aiDiagnosis = $aiDiagnosis;
+        $this->pricingType = $this->extractPricingType($aiDiagnosis);
 
         return $this;
+    }
+
+    public function getPricingType(): ?string
+    {
+        return $this->pricingType;
+    }
+
+    public function setPricingType(?string $pricingType): self
+    {
+        $pricingType = is_string($pricingType) ? strtoupper(trim($pricingType)) : null;
+        if (!in_array($pricingType, [self::PRICING_TYPE_FIXED, self::PRICING_TYPE_RANGE, self::PRICING_TYPE_VISIT_REQUIRED], true)) {
+            $pricingType = null;
+        }
+        $this->pricingType = $pricingType;
+
+        return $this;
+    }
+
+    /**
+     * @param array<string, mixed>|null $aiDiagnosis
+     */
+    private function extractPricingType(?array $aiDiagnosis): ?string
+    {
+        if ($aiDiagnosis === null) {
+            return null;
+        }
+
+        $raw = $aiDiagnosis['pricing_type'] ?? $aiDiagnosis['pricingType'] ?? null;
+        if (!is_string($raw)) {
+            return null;
+        }
+
+        $pricingType = strtoupper(trim($raw));
+        if (!in_array($pricingType, [self::PRICING_TYPE_FIXED, self::PRICING_TYPE_RANGE, self::PRICING_TYPE_VISIT_REQUIRED], true)) {
+            return null;
+        }
+
+        return $pricingType;
     }
 
     public function getStatus(): RequestStatus

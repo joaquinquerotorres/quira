@@ -83,7 +83,8 @@ Los tests en `tests/Api/` ejercitan endpoints reales (API Platform / controllers
   - Incluye **`testCanBidFalseWhenRoleProButPaidThroughExpired`**: `ROLE_PRO` con `paidThroughAt` en el pasado se trata como plan efectivo FREE para el límite mensual.
 
 - **VisitRequestContractTest**
-  - El profesional debe tener **`paidThroughAt` futuro** (suscripción activa); sin eso `POST .../visit-request` responde **403**.
+  - `POST .../visit-request` exige `aiDiagnosis.pricing_type = VISIT_REQUIRED` y request `PENDING`.
+  - Si la request es `HIGH`, se requiere además profesional `ROLE_PRO` con `paidThroughAt` futuro.
   - Verifica el flujo de visita: solicitar visita, aceptar visita, y que tras la aceptación el pro puede ver `preciseAddress`.
   - Verifica que se crean notificaciones (`VISIT_REQUEST_CREATED`, `VISIT_REQUEST_ACCEPTED`) cuando `notifyRequestActivity` está activado.
 

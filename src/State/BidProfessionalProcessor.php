@@ -128,9 +128,58 @@ final class BidProfessionalProcessor implements ProcessorInterface
                 }
             }
 
+            $requestPricingType = $request->getPricingType();
+            $bidPricingType = strtoupper($bid->getPricingType());
+            $allowedByRequest = match ($requestPricingType) {
+                Request::PRICING_TYPE_FIXED => [Bid::PRICING_TYPE_FIXED],
+                Request::PRICING_TYPE_RANGE => [Bid::PRICING_TYPE_RANGE],
+                Request::PRICING_TYPE_VISIT_REQUIRED => [Bid::PRICING_TYPE_FIXED, Bid::PRICING_TYPE_RANGE],
+                default => [Bid::PRICING_TYPE_FIXED, Bid::PRICING_TYPE_RANGE],
+            };
+
+            if (!in_array($bidPricingType, $allowedByRequest, true)) {
+                $this->throwBidValidation(
+                    'pricingType',
+                    sprintf('Esta solicitud solo admite propuestas de tipo: %s.', implode(' o ', $allowedByRequest)),
+                    'BID_PRICING_TYPE_NOT_ALLOWED'
+                );
+            }
+
+            if ($bidPricingType === Bid::PRICING_TYPE_FIXED) {
+                if (($bid->getPriceQuote() ?? 0) <= 0) {
+                    $this->throwBidValidation(
+                        'priceQuote',
+                        'Debes indicar un precio fijo mayor que 0.',
+                        'BID_FIXED_PRICE_REQUIRED'
+                    );
+                }
+                $fixed = $bid->getPriceQuote();
+                $bid->setPriceQuoteMin($fixed);
+                $bid->setPriceQuoteMax($fixed);
+            } else {
+                $min = $bid->getPriceQuoteMin();
+                $max = $bid->getPriceQuoteMax();
+                if (($min ?? 0) <= 0 || ($max ?? 0) <= 0) {
+                    $this->throwBidValidation(
+                        'priceQuoteMin',
+                        'Para propuesta por rango debes indicar priceQuoteMin y priceQuoteMax mayores que 0.',
+                        'BID_RANGE_PRICES_REQUIRED'
+                    );
+                }
+                if ($max < $min) {
+                    $this->throwBidValidation(
+                        'priceQuoteMax',
+                        'priceQuoteMax debe ser mayor o igual que priceQuoteMin.',
+                        'BID_RANGE_INVALID'
+                    );
+                }
+                // Compatibilidad legacy: mantener priceQuote con el mínimo del rango.
+                $bid->setPriceQuote($min);
+            }
+
             $bid->setStatus(BidStatus::PENDING);
             $bid->setProfessional($user);
-            $this->logger->info("Usuario {$user->getUserIdentifier()} ha hecho una oferta de {$bid->getPriceQuote()}€ para la solicitud '{$request->getTitle()}'.");
+            $this->logger->info("Usuario {$user->getUserIdentifier()} ha hecho una oferta ({$bidPricingType}) para la solicitud '{$request->getTitle()}'.");
         }
 
         return $this->persistProcessor->process($data, $operation, $uriVariables, $context);

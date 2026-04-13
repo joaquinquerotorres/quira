@@ -48,6 +48,8 @@ final class VisitRequestContractTest extends ApiTestCase
             preciseAddress: 'Avenida de Libia - 53',
             desiredExecutionTime: 'Lo antes posible',
         );
+        $request->setAiDiagnosis(['pricing_type' => 'VISIT_REQUIRED']);
+        $this->em->flush();
 
         // Pro requests a visit
         $this->browser->request(
@@ -105,6 +107,88 @@ final class VisitRequestContractTest extends ApiTestCase
         // Sanity: Visit status is updated in response after accept
         $visitUpdated = $this->em->find(VisitRequestEntity::class, $visitRequestId);
         $this->assertSame(VisitRequestEntity::STATUS_ACCEPTED, $visitUpdated?->getStatus());
+    }
+
+    public function testAllowsVisitRequestOnNonHighWhenPricingTypeRequiresVisit(): void
+    {
+        $client = $this->createClientUser(
+            email: 'client-visit-non-high@test.com',
+            phoneNumber: null,
+            verifiedPhone: true
+        );
+        $clientProfile = $client->getClientProfile();
+
+        $pro = $this->createProfessionalUser(
+            email: 'solver-visit-non-high@test.com',
+            roles: ['ROLE_SOLVER', 'ROLE_USER', 'ROLE_PROFESSIONAL'],
+            phoneNumber: null,
+            verifiedPhone: true
+        );
+
+        $request = $this->createRequest(
+            clientProfile: $clientProfile,
+            status: RequestStatus::PENDING,
+            riskLevel: RiskLevel::LOW,
+            title: 'Request non-high visit required',
+            preciseAddress: null,
+            desiredExecutionTime: 'Esta semana',
+        );
+        $request->setAiDiagnosis(['pricing_type' => 'VISIT_REQUIRED']);
+        $this->em->flush();
+
+        $this->browser->request(
+            'POST',
+            '/api/requests/' . $request->getId() . '/visit-request',
+            [],
+            [],
+            $this->authHeaders($pro),
+            json_encode([])
+        );
+
+        $this->assertResponseStatusCodeSame(201);
+    }
+
+    public function testRejectsVisitRequestWhenPricingTypeDoesNotRequireVisit(): void
+    {
+        $client = $this->createClientUser(
+            email: 'client-visit-no-required@test.com',
+            phoneNumber: null,
+            verifiedPhone: true
+        );
+        $clientProfile = $client->getClientProfile();
+
+        $pro = $this->createProfessionalUser(
+            email: 'pro-visit-no-required@test.com',
+            roles: ['ROLE_PRO', 'ROLE_USER', 'ROLE_PROFESSIONAL'],
+            phoneNumber: null,
+            verifiedPhone: true
+        );
+        $proProfile = $pro->getProfessionalProfile();
+        $this->assertNotNull($proProfile);
+        $proProfile->setPaidThroughAt(new \DateTimeImmutable('+1 year'));
+        $this->em->flush();
+
+        $request = $this->createRequest(
+            clientProfile: $clientProfile,
+            status: RequestStatus::PENDING,
+            riskLevel: RiskLevel::HIGH,
+            title: 'Request high no visit required',
+            preciseAddress: null,
+            desiredExecutionTime: 'Lo antes posible',
+        );
+        $request->setAiDiagnosis(['pricing_type' => 'RANGE']);
+        $this->em->flush();
+
+        $this->browser->request(
+            'POST',
+            '/api/requests/' . $request->getId() . '/visit-request',
+            [],
+            [],
+            $this->authHeaders($pro),
+            json_encode([])
+        );
+
+        $this->assertResponseStatusCodeSame(400);
     }
 }
 

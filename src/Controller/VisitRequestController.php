@@ -42,20 +42,9 @@ final class VisitRequestController extends AbstractController
             return new JsonResponse(['message' => 'No autenticado.'], Response::HTTP_UNAUTHORIZED);
         }
 
-        if (!in_array('ROLE_PRO', $user->getRoles(), true)) {
-            return new JsonResponse(['message' => 'Solo el plan PRO puede solicitar visitas de valoración.'], Response::HTTP_FORBIDDEN);
-        }
-
         $proProfile = $user->getProfessionalProfile();
         if ($proProfile === null) {
             return new JsonResponse(['message' => 'Debes tener un perfil profesional para solicitar una visita.'], Response::HTTP_FORBIDDEN);
-        }
-
-        if (!$this->subscriptionService->hasActivePaidSubscription($proProfile)) {
-            return new JsonResponse(
-                ['message' => 'Necesitas una suscripción PRO activa para solicitar visitas de valoración.'],
-                Response::HTTP_FORBIDDEN
-            );
         }
 
         $serviceRequest = $this->requestRepository->find($id);
@@ -67,8 +56,20 @@ final class VisitRequestController extends AbstractController
             return new JsonResponse(['message' => 'Solo puedes pedir una visita para solicitudes pendientes.'], Response::HTTP_BAD_REQUEST);
         }
 
-        if ($serviceRequest->getRiskLevel() !== RiskLevel::HIGH) {
-            return new JsonResponse(['message' => 'Solo puedes pedir visitas de valoración para solicitudes de riesgo alto.'], Response::HTTP_BAD_REQUEST);
+        if ($serviceRequest->getRiskLevel() === RiskLevel::HIGH) {
+            if (!in_array('ROLE_PRO', $user->getRoles(), true) || !$this->subscriptionService->hasActivePaidSubscription($proProfile)) {
+                return new JsonResponse(
+                    ['message' => 'Solo un profesional PRO con suscripción activa puede solicitar visita en solicitudes HIGH.'],
+                    Response::HTTP_FORBIDDEN
+                );
+            }
+        }
+
+        if ($this->resolvePricingType($serviceRequest) !== Request::PRICING_TYPE_VISIT_REQUIRED) {
+            return new JsonResponse(
+                ['message' => 'Esta solicitud no requiere visita de valoración según el diagnóstico.'],
+                Response::HTTP_BAD_REQUEST
+            );
         }
 
         // Evitar duplicados por request + profesional
@@ -188,6 +189,19 @@ final class VisitRequestController extends AbstractController
         $this->em->flush();
 
         return $this->json($visit, Response::HTTP_OK, [], ['groups' => ['visit:read']]);
+    }
+
+    private function resolvePricingType(Request $request): string
+    {
+        $pricingType = $request->getPricingType();
+        if (is_string($pricingType) && $pricingType !== '') {
+            return strtoupper($pricingType);
+        }
+
+        $aiDiagnosis = $request->getAiDiagnosis();
+        $raw = is_array($aiDiagnosis) ? ($aiDiagnosis['pricing_type'] ?? $aiDiagnosis['pricingType'] ?? '') : '';
+
+        return is_string($raw) ? strtoupper(trim($raw)) : '';
     }
 }
 
