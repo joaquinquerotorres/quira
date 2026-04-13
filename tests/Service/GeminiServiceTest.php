@@ -120,25 +120,23 @@ final class GeminiServiceTest extends TestCase
         self::assertSame('DIY', $result['category']);
     }
 
-    public function testCheckSafetyUsesGemini20FlashRegardlessOfMainModel(): void
+    public function testDiagnoseReturnsSafetyFieldsFromPromptStepOne(): void
     {
         $mock = new MockHttpClient(function (string $method, string $url, array $options): MockResponse {
             self::assertSame('POST', $method);
-            self::assertStringContainsString('models/gemini-2.0-flash:generateContent', $url);
+            self::assertStringContainsString('models/gemini-2.5-flash:generateContent', $url);
 
             $payload = self::requestPayloadFromMockOptions($options);
             self::assertNotSame([], $payload);
             self::assertArrayHasKey('generationConfig', $payload);
             $gc = $payload['generationConfig'];
             self::assertSame('application/json', $gc['responseMimeType']);
-            self::assertEquals(0.0, $gc['temperature']);
-            self::assertSame(100, $gc['maxOutputTokens']);
 
             return new MockResponse(json_encode([
                 'candidates' => [[
                     'content' => [
                         'parts' => [[
-                            'text' => '{"is_safe":true,"reason":null}',
+                            'text' => '{"safe":false,"safety_reason":"Contenido no relacionado con servicios del hogar","title":"Solicitud pendiente de revisión","description":"Contenido no válido","summary_text":"Contenido bloqueado por moderación","category":"DIY","sub_category":"General","risk_level":"LOW","estimated_price_min":0,"estimated_price_max":0,"urgency":"SCHEDULED","schedule_intent":null}',
                         ]],
                     ],
                 ]],
@@ -147,9 +145,10 @@ final class GeminiServiceTest extends TestCase
 
         $service = new GeminiService('test-key', 'gemini-2.5-flash', $mock, new NullLogger());
 
-        $result = $service->checkSafety('Título', 'Descripción', null, null, null);
+        $result = $service->diagnose('Título', null, null, null, null, null);
 
-        self::assertTrue($result['is_safe']);
+        self::assertFalse($result['safe']);
+        self::assertSame('Contenido no relacionado con servicios del hogar', $result['safety_reason']);
     }
 }
 

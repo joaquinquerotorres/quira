@@ -10,7 +10,6 @@ use ApiPlatform\State\ProcessorInterface;
 use App\Entity\Request;
 use App\Entity\User;
 use App\Enum\RequestStatus;
-use App\Service\GeminiService;
 use App\Service\MediaService;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -28,8 +27,7 @@ final class RequestClientProcessor implements ProcessorInterface
         private readonly ProcessorInterface $persistProcessor,
         private readonly LoggerInterface $logger,
         private readonly Security $security,
-        private readonly MediaService $mediaService,
-        private readonly GeminiService $geminiService
+        private readonly MediaService $mediaService
     ) {
     }
 
@@ -95,24 +93,13 @@ final class RequestClientProcessor implements ProcessorInterface
                 $data->setVideoUrl($publicUrl);
             }
 
-            $textForSafety = $data->getDescription() ?? '';
-            if ($textForSafety === '') {
-                $textForSafety = $data->getClientOriginalDescription() ?? '';
-            }
+            [$isSafe, $moderationReason] = $this->resolveSafetyFromDiagnosis($data->getAiDiagnosis());
 
-            $securityCheck = $this->geminiService->checkSafety(
-                title: $data->getTitle() ?? '',
-                description: $textForSafety,
-                image: $data->photoBase64,
-                audio: $data->audioBase64,
-                video: $data->videoBase64
-            );
-
-            if ($securityCheck['is_safe'] === false) {
+            if ($isSafe === false) {
                 $data->setStatus(RequestStatus::PENDING_APPROVAL); 
                 $data->setIsFlagged(true);
-                $data->setModerationReason($securityCheck['reason']);
-                $this->logger->info("La solicitud '{$data->getTitle()}' del usuario {$user->getUserIdentifier()} ha sido marcada para revisión por contenido inseguro. Razón: {$securityCheck['reason']}.");
+                $data->setModerationReason($moderationReason);
+                $this->logger->info("La solicitud '{$data->getTitle()}' del usuario {$user->getUserIdentifier()} ha sido marcada para revisión por contenido inseguro. Razón: {$moderationReason}.");
             } else {
                 $data->setStatus(RequestStatus::PENDING);
                 $data->setIsFlagged(false);
@@ -122,5 +109,27 @@ final class RequestClientProcessor implements ProcessorInterface
         }
 
         return $this->persistProcessor->process($data, $operation, $uriVariables, $context);
+    }
+
+    /**
+     * @param array<string, mixed>|null $aiDiagnosis
+     * @return array{0: bool, 1: ?string}
+     */
+    private function resolveSafetyFromDiagnosis(?array $aiDiagnosis): array
+    {
+        if ($aiDiagnosis === null) {
+            return [true, null];
+        }
+
+        $safeValue = $aiDiagnosis['safe'] ?? $aiDiagnosis['is_safe'] ?? true;
+        $isSafe = filter_var($safeValue, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        if ($isSafe === null) {
+            $isSafe = true;
+        }
+
+        $reasonValue = $aiDiagnosis['safety_reason'] ?? $aiDiagnosis['reason'] ?? null;
+        $reason = is_string($reasonValue) && $reasonValue !== '' ? $reasonValue : 'Contenido marcado por diagnóstico IA.';
+
+        return [$isSafe, $isSafe ? null : $reason];
     }
 }

@@ -8,7 +8,6 @@ use App\Entity\ClientProfile;
 use App\Entity\Request;
 use App\Entity\User;
 use App\Enum\RequestStatus;
-use App\Service\GeminiService;
 use App\Service\MediaService;
 use App\State\RequestClientProcessor;
 use PHPUnit\Framework\TestCase;
@@ -19,14 +18,13 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 final class RequestClientProcessorTest extends TestCase
 {
     private LoggerInterface $logger;
+    /** @var MediaService&\PHPUnit\Framework\MockObject\MockObject */
     private MediaService $mediaService;
-    private GeminiService $geminiService;
 
     protected function setUp(): void
     {
         $this->logger = $this->createMock(LoggerInterface::class);
         $this->mediaService = $this->createMock(MediaService::class);
-        $this->geminiService = $this->createMock(GeminiService::class);
     }
 
     public function testSetsClientAndStatusWhenSafe(): void
@@ -46,8 +44,7 @@ final class RequestClientProcessorTest extends TestCase
         $request->setAddress('Calle Test 1');
         $request->setEstimatedPriceMin(8000);
         $request->setEstimatedPriceMax(12000);
-
-        $this->geminiService->method('checkSafety')->willReturn(['is_safe' => true]);
+        $request->setAiDiagnosis(['safe' => true, 'safety_reason' => null]);
 
         $security = $this->createMock(Security::class);
         $security->method('getUser')->willReturn($user);
@@ -59,8 +56,7 @@ final class RequestClientProcessorTest extends TestCase
             $persistProcessor,
             $this->logger,
             $security,
-            $this->mediaService,
-            $this->geminiService
+            $this->mediaService
         );
 
         $result = $processor->process($request, new \ApiPlatform\Metadata\Post());
@@ -87,10 +83,9 @@ final class RequestClientProcessorTest extends TestCase
         $request->setAddress('Calle Test');
         $request->setEstimatedPriceMin(8000);
         $request->setEstimatedPriceMax(12000);
-
-        $this->geminiService->method('checkSafety')->willReturn([
-            'is_safe' => false,
-            'reason' => 'Contenido inapropiado',
+        $request->setAiDiagnosis([
+            'safe' => false,
+            'safety_reason' => 'Contenido inapropiado',
         ]);
 
         $security = $this->createMock(Security::class);
@@ -103,8 +98,7 @@ final class RequestClientProcessorTest extends TestCase
             $persistProcessor,
             $this->logger,
             $security,
-            $this->mediaService,
-            $this->geminiService
+            $this->mediaService
         );
 
         $result = $processor->process($request, new \ApiPlatform\Metadata\Post());
@@ -114,7 +108,7 @@ final class RequestClientProcessorTest extends TestCase
         $this->assertSame('Contenido inapropiado', $result->getModerationReason());
     }
 
-    public function testCheckSafetyUsesClientOriginalDescriptionWhenDescriptionEmpty(): void
+    public function testUsesLegacySafetyKeysFromAiDiagnosisWhenPresent(): void
     {
         $user = new User();
         $user->setEmail('client@test.com');
@@ -132,18 +126,10 @@ final class RequestClientProcessorTest extends TestCase
         $request->setAddress('Calle Test 1');
         $request->setEstimatedPriceMin(8000);
         $request->setEstimatedPriceMax(12000);
-
-        $this->geminiService
-            ->expects($this->once())
-            ->method('checkSafety')
-            ->with(
-                'Reparar algo',
-                'Texto solo en original',
-                null,
-                null,
-                null
-            )
-            ->willReturn(['is_safe' => true]);
+        $request->setAiDiagnosis([
+            'is_safe' => false,
+            'reason' => 'Marcado por esquema legacy',
+        ]);
 
         $security = $this->createMock(Security::class);
         $security->method('getUser')->willReturn($user);
@@ -155,11 +141,13 @@ final class RequestClientProcessorTest extends TestCase
             $persistProcessor,
             $this->logger,
             $security,
-            $this->mediaService,
-            $this->geminiService
+            $this->mediaService
         );
 
-        $processor->process($request, new \ApiPlatform\Metadata\Post());
+        $result = $processor->process($request, new \ApiPlatform\Metadata\Post());
+        $this->assertSame(RequestStatus::PENDING_APPROVAL, $result->getStatus());
+        $this->assertTrue($result->getIsFlagged());
+        $this->assertSame('Marcado por esquema legacy', $result->getModerationReason());
     }
 
     public function testSavesMediaWhenBase64Provided(): void
@@ -184,7 +172,7 @@ final class RequestClientProcessorTest extends TestCase
         $this->mediaService->method('saveRequestMediaFile')
             ->with('data:image/jpeg;base64,/9j/4AAQ', 'requests', 'image')
             ->willReturn('/uploads/requests/img_xyz.jpg');
-        $this->geminiService->method('checkSafety')->willReturn(['is_safe' => true]);
+        $request->setAiDiagnosis(['safe' => true, 'safety_reason' => null]);
 
         $security = $this->createMock(Security::class);
         $security->method('getUser')->willReturn($user);
@@ -196,8 +184,7 @@ final class RequestClientProcessorTest extends TestCase
             $persistProcessor,
             $this->logger,
             $security,
-            $this->mediaService,
-            $this->geminiService
+            $this->mediaService
         );
 
         $result = $processor->process($request, new \ApiPlatform\Metadata\Post());
@@ -226,8 +213,7 @@ final class RequestClientProcessorTest extends TestCase
         $request->setExtraPhotoUrls(['/uploads/requests/extra_photo_1.jpg']);
         $request->setExtraAudioUrls(['/uploads/requests/extra_audio_1.aac']);
         $request->setExtraVideoUrls(['/uploads/requests/extra_video_1.mp4']);
-
-        $this->geminiService->method('checkSafety')->willReturn(['is_safe' => true]);
+        $request->setAiDiagnosis(['safe' => true, 'safety_reason' => null]);
 
         $security = $this->createMock(Security::class);
         $security->method('getUser')->willReturn($user);
@@ -239,8 +225,7 @@ final class RequestClientProcessorTest extends TestCase
             $persistProcessor,
             $this->logger,
             $security,
-            $this->mediaService,
-            $this->geminiService
+            $this->mediaService
         );
 
         $result = $processor->process($request, new \ApiPlatform\Metadata\Post());
@@ -267,8 +252,7 @@ final class RequestClientProcessorTest extends TestCase
             $persistProcessor,
             $this->logger,
             $security,
-            $this->mediaService,
-            $this->geminiService
+            $this->mediaService
         );
 
         $this->expectException(AccessDeniedHttpException::class);
@@ -297,8 +281,7 @@ final class RequestClientProcessorTest extends TestCase
             $persistProcessor,
             $this->logger,
             $security,
-            $this->mediaService,
-            $this->geminiService
+            $this->mediaService
         );
 
         $this->expectException(AccessDeniedHttpException::class);
@@ -324,8 +307,6 @@ final class RequestClientProcessorTest extends TestCase
         $request->setEstimatedPriceMin(8000);
         $request->setEstimatedPriceMax(12000);
 
-        $this->geminiService->method('checkSafety')->willReturn(['is_safe' => true]);
-
         $security = $this->createMock(Security::class);
         $security->method('getUser')->willReturn($user);
 
@@ -335,8 +316,7 @@ final class RequestClientProcessorTest extends TestCase
             $persistProcessor,
             $this->logger,
             $security,
-            $this->mediaService,
-            $this->geminiService
+            $this->mediaService
         );
 
         $this->expectException(AccessDeniedHttpException::class);
@@ -362,8 +342,6 @@ final class RequestClientProcessorTest extends TestCase
         $request->setEstimatedPriceMin(8000);
         $request->setEstimatedPriceMax(12000);
 
-        $this->geminiService->method('checkSafety')->willReturn(['is_safe' => true]);
-
         $security = $this->createMock(Security::class);
         $security->method('getUser')->willReturn($user);
 
@@ -373,8 +351,7 @@ final class RequestClientProcessorTest extends TestCase
             $persistProcessor,
             $this->logger,
             $security,
-            $this->mediaService,
-            $this->geminiService
+            $this->mediaService
         );
 
         $this->expectException(AccessDeniedHttpException::class);

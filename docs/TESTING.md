@@ -37,7 +37,7 @@ php bin/phpunit --group database
 | tests/Controller/ | StripeCheckoutControllerTest, SocialLoginControllerTest |
 | tests/Api/ | Tests de contrato/E2E contra endpoints reales (`/api/*`) |
 | tests/State/ | BidProfessionalProcessor, BidAcceptanceProcessor, RequestClientProcessor, etc. |
-| tests/Service/ | StripeCheckoutSessionHandlerTest, GeminiServiceTest (`diagnose`, `checkSafety` y payload hacia la API de Gemini) |
+| tests/Service/ | StripeCheckoutSessionHandlerTest, GeminiServiceTest (`diagnose`, campos de seguridad y payload hacia la API de Gemini) |
 | tests/Repository/ | BidRepositoryTest |
 | tests/Entity/ | UserTest, ProfessionalProfileTest, ReviewTest, RequestClientOriginalDescriptionValidationTest |
 | tests/Doctrine/ | CurrentUserExtensionTest |
