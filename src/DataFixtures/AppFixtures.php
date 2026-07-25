@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\DataFixtures;
 
 use App\Entity\Bid;
+use App\Entity\CalendarEvent;
 use App\Entity\ClientProfile;
 use App\Entity\Notification;
 use App\Entity\ProfessionalProfile;
@@ -81,7 +82,8 @@ class AppFixtures extends Fixture
             $proProfile = new ProfessionalProfile();
             $proProfile->setFullName($faker->company());
             $proProfile->setPhoneNumber($faker->phoneNumber());
-            $proProfile->setSkills($faker->randomElements($availableSkills));
+            $skillCount = $faker->numberBetween(3, min(5, \count($availableSkills)));
+            $proProfile->setSkills($faker->randomElements($availableSkills, $skillCount));
             $proProfile->setIsVerified(true);
             $proProfile->setAddress($faker->streetAddress() . ", Córdoba");
             $proProfile->setServiceRadiusKm(rand(10, 40));
@@ -116,6 +118,7 @@ class AppFixtures extends Fixture
 
         $allClients = [];
         $completedRequests = []; // Para crear reviews después
+        $wonJobs = []; // Trabajos ACCEPTED/COMPLETED con profesional asignado → CalendarEvent
 
         $estimatedExecutionOptions = [
             'Hoy mismo',
@@ -250,9 +253,15 @@ class AppFixtures extends Fixture
                     if (count($bids) > 0) {
                         $winningBid = $bids[array_rand($bids)];
                         $winningBid->setStatus(BidStatus::ACCEPTED);
-                        $request->setAssignedProfessional($winningBid->getProfessional()->getProfessionalProfile());
+                        $proProfile = $winningBid->getProfessional()->getProfessionalProfile();
+                        $request->setAssignedProfessional($proProfile);
                         $isCompleted = $faker->boolean(35);
                         $request->setStatus($isCompleted ? RequestStatus::COMPLETED : RequestStatus::ACCEPTED);
+
+                        $wonJobs[] = [
+                            'request' => $request,
+                            'professional' => $proProfile,
+                        ];
 
                         if ($isCompleted) {
                             $completedRequests[] = [
@@ -267,8 +276,18 @@ class AppFixtures extends Fixture
                 } else {
                     $request->setStatus(RequestStatus::PENDING);
                     if (count($eligibleBidders) > 0) {
-                        for ($k = 0; $k < rand(1, 2); $k++) {
-                            $bidder = $eligibleBidders[array_rand($eligibleBidders)];
+                        $biddersUsed = [];
+                        $numBids = min(rand(1, 2), count($eligibleBidders));
+                        for ($k = 0; $k < $numBids; $k++) {
+                            $remaining = array_values(array_filter(
+                                $eligibleBidders,
+                                static fn(ProfessionalProfile $pro): bool => !in_array($pro, $biddersUsed, true)
+                            ));
+                            if ($remaining === []) {
+                                break;
+                            }
+                            $bidder = $remaining[array_rand($remaining)];
+                            $biddersUsed[] = $bidder;
                             $bid = new Bid();
                             $request->addBid($bid);
                             $bid->setProfessional($bidder->getUser());
@@ -312,6 +331,40 @@ class AppFixtures extends Fixture
         }
 
         $manager->flush();
+
+        // Agendar en calendario la mayoría de trabajos ganados (dispersos en el mes actual ± 20 días).
+        foreach ($wonJobs as $index => $item) {
+            if (!$faker->boolean(75)) {
+                continue;
+            }
+
+            /** @var Request $wonRequest */
+            $wonRequest = $item['request'];
+            /** @var ProfessionalProfile $wonPro */
+            $wonPro = $item['professional'];
+            if ($wonPro === null) {
+                continue;
+            }
+
+            $dayOffset = ($index % 41) - 20; // -20 .. +20
+            $hour = 8 + ($index % 10); // 08:00 .. 17:00
+            $startsAt = (new \DateTimeImmutable('today'))
+                ->modify(sprintf('%+d days', $dayOffset))
+                ->setTime($hour, $index % 2 === 0 ? 0 : 30);
+
+            $event = new CalendarEvent();
+            $event->setRequest($wonRequest);
+            $event->setProfessional($wonPro);
+            $event->setStartsAt($startsAt);
+            if ($faker->boolean(30)) {
+                $event->setNotes($faker->randomElement([
+                    'Llevar herramientas básicas.',
+                    'Confirmar acceso con el cliente.',
+                    'Presupuesto ya aceptado.',
+                ]));
+            }
+            $manager->persist($event);
+        }
 
         // Crear reviews para solicitudes completadas (cliente valora al profesional)
         foreach ($completedRequests as $item) {

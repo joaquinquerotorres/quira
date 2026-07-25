@@ -71,11 +71,11 @@ class Request
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['request:read'])]
+    #[Groups(['request:read', 'calendar:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['request:read', 'request:write', 'bid:read'])]
+    #[Groups(['request:read', 'request:write', 'bid:read', 'calendar:read'])]
     #[Assert\NotBlank(message: "El título no puede estar vacío.")]
     #[Assert\Length(
         min: 10,
@@ -125,7 +125,7 @@ class Request
     private ?string $pricingType = null;
 
     #[ORM\Column(length: 50, enumType: RequestStatus::class)]
-    #[Groups(['request:read', 'request:write', 'bid:read'])]
+    #[Groups(['request:read', 'request:write', 'bid:read', 'calendar:read'])]
     private RequestStatus $status = RequestStatus::PENDING;
 
     #[ORM\Column(length: 50, enumType: RiskLevel::class)]

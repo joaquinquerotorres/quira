@@ -50,6 +50,7 @@ final class BidAcceptanceProcessorTest extends TestCase
         $request->setEstimatedPriceMax(100);
         $request->setClient($clientProfile);
         $request->setStatus(RequestStatus::PENDING);
+        $request->setPreciseAddress('Calle Exacta 12, 3º B, Córdoba');
 
         $bid = new Bid();
         $bid->setRequest($request);
@@ -72,6 +73,50 @@ final class BidAcceptanceProcessorTest extends TestCase
         $this->assertSame(BidStatus::ACCEPTED, $result->getStatus());
         $this->assertSame(RequestStatus::ACCEPTED, $request->getStatus());
         $this->assertSame($proProfile, $request->getAssignedProfessional());
+    }
+
+    public function testThrowsWhenPreciseAddressMissing(): void
+    {
+        $clientUser = new User();
+        $clientUser->setEmail('client@test.com');
+        $clientProfile = new ClientProfile();
+        $clientProfile->setFullName('Cliente');
+        $clientProfile->setUser($clientUser);
+        $clientUser->setClientProfile($clientProfile);
+
+        $proUser = new User();
+        $proUser->setEmail('pro@test.com');
+        $proProfile = new ProfessionalProfile();
+        $proProfile->setFullName('Pro');
+        $proProfile->setUser($proUser);
+        $proUser->setProfessionalProfile($proProfile);
+
+        $request = new Request();
+        $request->setTitle('Test');
+        $request->setAddress('Calle Test');
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
+        $request->setClient($clientProfile);
+        $request->setStatus(RequestStatus::PENDING);
+
+        $bid = new Bid();
+        $bid->setRequest($request);
+        $bid->setProfessional($proUser);
+        $bid->setPriceQuote(80);
+        $bid->setStatus(BidStatus::PENDING);
+        $request->addBid($bid);
+
+        $security = $this->createMock(Security::class);
+        $security->method('getUser')->willReturn($clientUser);
+
+        $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
+
+        $processor = new BidAcceptanceProcessor($persistProcessor, $this->logger, $security);
+        $op = new \ApiPlatform\Metadata\Patch();
+
+        $this->expectException(BadRequestHttpException::class);
+        $this->expectExceptionMessage('Debes indicar la dirección exacta antes de aceptar la oferta');
+        $processor->process($bid, $op);
     }
 
     public function testThrowsWhenNonOwnerClientTriesToAccept(): void

@@ -79,6 +79,12 @@ final class BidAcceptanceProcessor implements ProcessorInterface
                 throw new AccessDeniedHttpException('Sólo puedes aceptar ofertas para tus propias solicitudes.');
             }
 
+            $preciseAddress = $request->getPreciseAddress();
+            if ($preciseAddress === null || trim($preciseAddress) === '') {
+                $this->logger->warning('Intento de aceptar una oferta sin dirección exacta en la solicitud.');
+                throw new BadRequestHttpException('Debes indicar la dirección exacta antes de aceptar la oferta.');
+            }
+
             $proUser = $bid->getProfessional();
             $proProfile = $proUser->getProfessionalProfile();
             if (!$proProfile) {

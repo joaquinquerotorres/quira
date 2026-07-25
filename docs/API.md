@@ -75,6 +75,16 @@ Autenticación: Bearer JWT en header Authorization
   - `bids[]`: cada bid incluye `professional` (User) con `professionalProfile` embebido: `avatar`, `rating`, `reviewCount` (sin teléfono).
   - `visitRequests[]`: cada elemento expone `professionalPhone` **solo cuando** `status === ACCEPTED`; en otros estados el teléfono no se devuelve.
 
+### CalendarEvent
+- GET/POST `/api/calendar_events`, GET/PATCH/DELETE `/api/calendar_events/{id}`
+- Calendario de trabajos del profesional asignado (un evento por `request` + `professional`).
+- Campo principal: `startsAt` (datetime): fecha y hora de **comienzo** del trabajo. No hay hora de fin.
+- POST: fuerza el `professional` del usuario autenticado; la request debe estar `ACCEPTED` o `COMPLETED` y tenerle asignado; requiere `startsAt`; 409 si ya existe evento para ese trabajo.
+- PATCH: `startsAt`, `notes`.
+- DELETE: elimina el evento del calendario.
+- Filtros: `startsAt` (DateFilter, rango de mes), `request` (exact IRI).
+- Visibilidad: `CurrentUserExtension` limita la colección/ítem al `ProfessionalProfile` del usuario.
+
 ### Bid
 - GET/POST /api/bids, GET /api/bids/{id}
 - PATCH /api/bids/{id}/accept - Aceptar oferta

@@ -164,6 +164,7 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
   - si es **no-HIGH**, visible para profesionales;
   - si es **HIGH**, visible solo con suscripción activa (`paidThroughAt` vigente).
 - **Bid:** del profesional o de requests del cliente según contexto (`my_bids`, etc.)
+- **CalendarEvent:** solo eventos del `ProfessionalProfile` del usuario autenticado
 
 ### RequestAddressVoter
 - Campo `preciseAddress` solo visible para:
@@ -186,3 +187,9 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
 - my_jobs - Requests asignadas al profesional
 - my_bids - Bids del profesional existentes
 - history - Completadas (las canceladas se eliminan físicamente)
+
+## Calendario profesional
+- El profesional asignado puede crear un `CalendarEvent` por trabajo ganado (`ACCEPTED`/`COMPLETED`).
+- Un único evento por par request + professional; se guarda la fecha y hora de **comienzo** (`startsAt`), sin hora de fin (varios trabajos el mismo día).
+- Se puede editar el comienzo o eliminar el evento.
+- La app móvil muestra vista mensual, FAB de alta y acceso desde perfil / detalle del trabajo.

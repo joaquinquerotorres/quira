@@ -9,6 +9,7 @@ use ApiPlatform\Doctrine\Orm\Extension\QueryItemExtensionInterface;
 use ApiPlatform\Doctrine\Orm\Util\QueryNameGeneratorInterface;
 use ApiPlatform\Metadata\Operation;
 use App\Entity\Bid;
+use App\Entity\CalendarEvent;
 use App\Entity\Request;
 use App\Entity\User;
 use App\Entity\VisitRequest;
@@ -264,6 +265,18 @@ final class CurrentUserExtension implements QueryCollectionExtensionInterface, Q
                 )
                 ->setParameter('current_user', $user)
                 ->setParameter('current_pro_profile', $proProfile);
+        }
+
+        if ($resourceClass === CalendarEvent::class) {
+            $proProfile = $user->getProfessionalProfile();
+            if ($proProfile === null) {
+                $queryBuilder->andWhere('1 = 0');
+
+                return;
+            }
+            $queryBuilder
+                ->andWhere(sprintf('%s.professional = :calendar_pro_profile', $rootAlias))
+                ->setParameter('calendar_pro_profile', $proProfile);
         }
     }
 
