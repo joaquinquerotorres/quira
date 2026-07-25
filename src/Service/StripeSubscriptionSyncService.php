@@ -67,12 +67,11 @@ final class StripeSubscriptionSyncService
 
     public function syncFromInvoice(Invoice $invoice): void
     {
-        $subId = $invoice->subscription ?? null;
-        if ($subId === null || $subId === '') {
+        $id = StripeService::extractInvoiceSubscriptionId($invoice);
+        if ($id === null || $id === '') {
             return;
         }
 
-        $id = \is_string($subId) ? $subId : $subId->id;
         $this->syncFromSubscriptionId($id);
     }
 
@@ -103,12 +102,12 @@ final class StripeSubscriptionSyncService
 
     private function computePaidThroughAt(Subscription $subscription): ?\DateTimeImmutable
     {
-        $cpe = $subscription->current_period_end ?? null;
+        $cpe = StripeService::extractSubscriptionPeriodEnd($subscription);
         if ($cpe === null) {
             return null;
         }
 
-        $periodEnd = \DateTimeImmutable::createFromFormat('U', (string) (int) $cpe);
+        $periodEnd = \DateTimeImmutable::createFromFormat('U', (string) $cpe);
         if ($periodEnd === false) {
             return null;
         }
@@ -197,8 +196,8 @@ final class StripeSubscriptionSyncService
         usort(
             $pool,
             static function (Subscription $a, Subscription $b): int {
-                $ea = (int) ($a->current_period_end ?? 0);
-                $eb = (int) ($b->current_period_end ?? 0);
+                $ea = StripeService::extractSubscriptionPeriodEnd($a) ?? 0;
+                $eb = StripeService::extractSubscriptionPeriodEnd($b) ?? 0;
 
                 return $eb <=> $ea;
             }

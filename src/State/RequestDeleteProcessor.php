@@ -78,7 +78,13 @@ final class RequestDeleteProcessor implements ProcessorInterface
         }
 
         $reviewRepo = $this->entityManager->getRepository(Review::class);
+        $affectedTargets = [];
         foreach ($reviewRepo->findBy(['request' => $data]) as $review) {
+            $target = $review->getTarget();
+            $author = $review->getAuthor();
+            if ($target !== null && $author !== null) {
+                $affectedTargets[] = [$target, $this->isUserProfessional($author)];
+            }
             $this->entityManager->remove($review);
         }
 
@@ -90,7 +96,52 @@ final class RequestDeleteProcessor implements ProcessorInterface
             $user->getUserIdentifier()
         ));
 
-        return $this->removeProcessor->process($data, $operation, $uriVariables, $context);
+        $result = $this->removeProcessor->process($data, $operation, $uriVariables, $context);
+
+        foreach ($affectedTargets as [$targetUser, $authorWasPro]) {
+            $this->recalculateTargetRating($targetUser, $authorWasPro);
+        }
+
+        return $result;
+    }
+
+    private function recalculateTargetRating(User $targetUser, bool $authorWasPro): void
+    {
+        $reviewRepository = $this->entityManager->getRepository(Review::class);
+        $reviews = array_values(array_filter(
+            $reviewRepository->findBy(['target' => $targetUser]),
+            fn (Review $item): bool => $item->getAuthor() !== null
+                && $this->isUserProfessional($item->getAuthor()) === $authorWasPro
+        ));
+        $count = count($reviews);
+        $average = 0.0;
+        if ($count > 0) {
+            $totalScore = array_reduce($reviews, fn (int $carry, Review $item) => $carry + $item->getScore(), 0);
+            $average = round($totalScore / $count, 1);
+        }
+
+        if ($authorWasPro) {
+            $clientProfile = $targetUser->getClientProfile();
+            if ($clientProfile) {
+                $clientProfile->setRating($average);
+                $clientProfile->setReviewCount($count);
+                $this->entityManager->persist($clientProfile);
+            }
+        } else {
+            $proProfile = $targetUser->getProfessionalProfile();
+            if ($proProfile) {
+                $proProfile->setRating($average);
+                $proProfile->setReviewCount($count);
+                $this->entityManager->persist($proProfile);
+            }
+        }
+
+        $this->entityManager->flush();
+    }
+
+    private function isUserProfessional(User $user): bool
+    {
+        return in_array('ROLE_PROFESSIONAL', $user->getRoles(), true) || $user->getProfessionalProfile() !== null;
     }
 
     /**
@@ -113,4 +164,3 @@ final class RequestDeleteProcessor implements ProcessorInterface
         return $result;
     }
 }
-

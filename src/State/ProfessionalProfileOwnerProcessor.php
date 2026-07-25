@@ -73,6 +73,16 @@ final class ProfessionalProfileOwnerProcessor implements ProcessorInterface
         $currentNormalizedPhone = $this->phoneComparisonService->normalizeForComparison($data->getPhoneNumber());
         $phoneChanged = $previousNormalizedPhone !== $currentNormalizedPhone;
 
+        // CIF validation (solo si llega un CIF) — antes de cualquier flush de roles.
+        $taxId = $data->getTaxId();
+        if ($taxId !== null && trim($taxId) !== '') {
+            if (!CifValidator::isValidCif($taxId)) {
+                throw new BadRequestHttpException('El CIF no es correcto.');
+            }
+
+            $data->setVerifiedTaxId(true);
+        }
+
         $tier = $data->getTierRequested();
         
         if ($tier) {
@@ -105,18 +115,7 @@ final class ProfessionalProfileOwnerProcessor implements ProcessorInterface
 
             $user->setRoles(array_unique($roles));
             $this->entityManager->persist($user);
-            $this->entityManager->flush();
             $this->logger->info("Usuario {$user->getUserIdentifier()} ha solicitado el nivel {$tier} en su perfil profesional.");
-        }
-
-        // CIF validation (solo si llega un CIF)
-        $taxId = $data->getTaxId();
-        if ($taxId !== null && trim($taxId) !== '') {
-            if (!CifValidator::isValidCif($taxId)) {
-                throw new BadRequestHttpException('El CIF no es correcto.');
-            }
-
-            $data->setVerifiedTaxId(true);
         }
 
         if ($operation instanceof Post) {

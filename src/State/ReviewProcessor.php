@@ -8,10 +8,12 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Entity\Review;
 use App\Entity\User;
+use App\Enum\RequestStatus;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 final class ReviewProcessor implements ProcessorInterface
 {
@@ -34,14 +36,40 @@ final class ReviewProcessor implements ProcessorInterface
 
         $currentUser = $this->security->getUser();
 
-        if (!$currentUser) {
+        if (!$currentUser instanceof User) {
             $this->logger->warning('Intento de crear una reseña sin estar logueado.');
             throw new AccessDeniedHttpException('Debes estar logueado para crear una reseña.');
         }
 
-        if ($currentUser instanceof User) {
-            $data->setAuthor($currentUser);
+        $request = $data->getRequest();
+        $target = $data->getTarget();
+        if ($request === null || $target === null) {
+            throw new BadRequestHttpException('La reseña debe incluir solicitud y destinatario.');
         }
+
+        if (!in_array($request->getStatus(), [RequestStatus::ACCEPTED, RequestStatus::COMPLETED], true)) {
+            throw new BadRequestHttpException('Solo puedes valorar trabajos aceptados o completados.');
+        }
+
+        $clientUser = $request->getClient()?->getUser();
+        $assignedProUser = $request->getAssignedProfessional()?->getUser();
+        if ($clientUser === null || $assignedProUser === null) {
+            throw new BadRequestHttpException('La solicitud no tiene las partes necesarias para valorar.');
+        }
+
+        $isClientAuthor = $currentUser === $clientUser;
+        $isProAuthor = $currentUser === $assignedProUser;
+        if (!$isClientAuthor && !$isProAuthor) {
+            $this->logger->warning("Usuario {$currentUser->getUserIdentifier()} intentó crear una reseña en una solicitud ajena.");
+            throw new AccessDeniedHttpException('Solo las partes de la solicitud pueden crear una reseña.');
+        }
+
+        $expectedTarget = $isClientAuthor ? $assignedProUser : $clientUser;
+        if ($target !== $expectedTarget) {
+            throw new BadRequestHttpException('El destinatario de la reseña no es válido para esta solicitud.');
+        }
+
+        $data->setAuthor($currentUser);
 
         $this->entityManager->persist($data);
         $this->entityManager->flush();
@@ -59,9 +87,14 @@ final class ReviewProcessor implements ProcessorInterface
         }
 
         $targetUser = $review->getTarget();
+        $authorIsPro = $this->isUserProfessional($author);
         $reviewRepository = $this->entityManager->getRepository(Review::class);
 
-        $reviews = $reviewRepository->findBy(['target' => $targetUser]);
+        // Facet: reviews written by professionals update client rating; by clients update pro rating.
+        $reviews = array_values(array_filter(
+            $reviewRepository->findBy(['target' => $targetUser]),
+            fn (Review $item): bool => $this->isUserProfessional($item->getAuthor()) === $authorIsPro
+        ));
         $count = count($reviews);
         $average = 0.0;
 
@@ -69,8 +102,6 @@ final class ReviewProcessor implements ProcessorInterface
             $totalScore = array_reduce($reviews, fn (int $carry, Review $item) => $carry + $item->getScore(), 0);
             $average = round($totalScore / $count, 1);
         }
-
-        $authorIsPro = $this->isUserProfessional($author);
 
         if ($authorIsPro) {
             $clientProfile = $targetUser->getClientProfile();

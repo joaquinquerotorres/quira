@@ -131,11 +131,11 @@ final class StripeWebhookProcessor
             return;
         }
 
-        $subId = $object->subscription ?? null;
+        $subId = StripeService::extractInvoiceSubscriptionId($object);
         $this->subscriptionSyncService->syncFromInvoice($object);
         $this->logger->info('stripe.webhook.invoice_handled', $context + [
             'invoice_id' => $object->id,
-            'invoice_subscription' => \is_string($subId) ? $subId : ($subId?->id ?? null),
+            'invoice_subscription' => $subId,
         ]);
     }
 

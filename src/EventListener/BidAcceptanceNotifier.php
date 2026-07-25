@@ -24,7 +24,17 @@ final class BidAcceptanceNotifier
 
     public function patchPersist(Bid $bid, LifecycleEventArgs $event): void
     {
-        if ($bid->getStatus() !== BidStatus::ACCEPTED) {
+        $em = $event->getObjectManager();
+        if ($em instanceof \Doctrine\ORM\EntityManagerInterface) {
+            $changeSet = $em->getUnitOfWork()->getEntityChangeSet($bid);
+            if (!isset($changeSet['status'])) {
+                return;
+            }
+            $newStatus = $changeSet['status'][1] ?? null;
+            if ($newStatus !== BidStatus::ACCEPTED && $newStatus !== BidStatus::ACCEPTED->value) {
+                return;
+            }
+        } elseif ($bid->getStatus() !== BidStatus::ACCEPTED) {
             $this->logger->info("El estado de la oferta no es ACCEPTED. Saltando notificación.");
             return;
         }
@@ -35,8 +45,7 @@ final class BidAcceptanceNotifier
             return;
         }
 
-        $request = $bid->getRequest();
-        $clientProfile = $request?->getClient();
+        $clientProfile = $request->getClient();
 
         if (null === $clientProfile) {
             $this->logger->error("❌ Error: El cliente no tiene un perfil de cliente asociado.");
@@ -60,6 +69,8 @@ final class BidAcceptanceNotifier
             return;
         }
 
+        $amountEuros = number_format(($bid->getPriceQuote() ?? 0) / 100, 2, '.', '');
+
         try {
             $this->notificationService->send(
                 $proUser,
@@ -67,7 +78,7 @@ final class BidAcceptanceNotifier
                 sprintf(
                     '%s ha aceptado tu oferta de %s€ para "%s".',
                     $clientProfile->getFullName() ?? 'Un cliente',
-                    $bid->getPriceQuote(),
+                    $amountEuros,
                     $request->getTitle()
                 ),
                 'BID_ACCEPTED',

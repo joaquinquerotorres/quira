@@ -65,6 +65,11 @@ final class BidAcceptanceProcessor implements ProcessorInterface
                 throw new BadRequestHttpException('Esta oferta no está asociada a una solicitud.');
             }
 
+            if ($request->getStatus() !== RequestStatus::PENDING) {
+                $this->logger->warning('Intento de aceptar una oferta para una solicitud que no está pendiente.');
+                throw new BadRequestHttpException('Solo se pueden aceptar ofertas de solicitudes pendientes.');
+            }
+
             /** @var User|null $user */
             $user = $this->security->getUser();
             $clientProfile = $user->getClientProfile();
@@ -84,6 +89,13 @@ final class BidAcceptanceProcessor implements ProcessorInterface
             $bid->setStatus(BidStatus::ACCEPTED);
             $request->setStatus(RequestStatus::ACCEPTED);
             $request->setAssignedProfessional($proProfile);
+
+            foreach ($request->getBids() as $siblingBid) {
+                if ($siblingBid !== $bid && $siblingBid->getStatus() === BidStatus::PENDING) {
+                    $siblingBid->setStatus(BidStatus::REJECTED);
+                }
+            }
+
             $this->logger->info("Usuario {$user->getUserIdentifier()} ha aceptado la oferta con ID {$bid->getId()} para la solicitud '{$request->getTitle()}'.");
         }
 

@@ -72,6 +72,20 @@ final class RequestQuestionNotifier
 
     public function postUpdate(RequestQuestion $question, LifecycleEventArgs $event): void
     {
+        $em = $event->getObjectManager();
+        if ($em instanceof \Doctrine\ORM\EntityManagerInterface) {
+            $changeSet = $em->getUnitOfWork()->getEntityChangeSet($question);
+            if (!isset($changeSet['answerText'])) {
+                return;
+            }
+            $previous = $changeSet['answerText'][0] ?? null;
+            $current = $changeSet['answerText'][1] ?? null;
+            // Solo notificar cuando la respuesta pasa de vacía a no vacía.
+            if (($previous !== null && trim((string) $previous) !== '') || $current === null || trim((string) $current) === '') {
+                return;
+            }
+        }
+
         $proUser = $question->getAuthor();
         $answerText = $question->getAnswerText();
         $request = $question->getRequest();

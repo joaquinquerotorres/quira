@@ -61,7 +61,10 @@ class MediaService
         $newFilename = $safeFilename . '.' . $extension;
 
         try {
-            file_put_contents($this->targetDirectory . '/' . $newFilename, $fileData);
+            $written = file_put_contents($this->targetDirectory . '/' . $newFilename, $fileData);
+            if ($written === false) {
+                throw new \Exception("Error saving the $type.");
+            }
         } catch (FileException $e) {
              throw new \Exception("Error saving the $type.");
         }

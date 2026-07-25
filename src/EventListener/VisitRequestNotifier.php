@@ -80,6 +80,18 @@ final class VisitRequestNotifier
 
     public function postUpdate(VisitRequest $visit, LifecycleEventArgs $event): void
     {
+        $em = $event->getObjectManager();
+        if ($em instanceof \Doctrine\ORM\EntityManagerInterface) {
+            $changeSet = $em->getUnitOfWork()->getEntityChangeSet($visit);
+            if (!isset($changeSet['status'])) {
+                return;
+            }
+            $newStatus = $changeSet['status'][1] ?? null;
+            if ($newStatus !== VisitRequest::STATUS_ACCEPTED && $newStatus !== VisitRequest::STATUS_REJECTED) {
+                return;
+            }
+        }
+
         $request = $visit->getRequest();
         $proProfile = $visit->getProfessional();
 

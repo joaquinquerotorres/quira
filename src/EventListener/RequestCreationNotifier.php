@@ -6,6 +6,7 @@ namespace App\EventListener;
 
 use App\Entity\Request;
 use App\Enum\NotificationAudience;
+use App\Enum\RiskLevel;
 use App\Repository\ProfessionalProfileRepository;
 use App\Service\NotificationService;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsEntityListener;
@@ -37,7 +38,7 @@ final class RequestCreationNotifier
 
         $this->logger->info("📣 NUEVA SOLICITUD: Notificando {$count} profesionales en la categoría {$category}...");
 
-        $prefix = ($request->getRiskLevel() === 'HIGH') ? '⚠️ URGENTE: ' : '🔔 ';
+        $prefix = ($request->getRiskLevel() === RiskLevel::HIGH) ? '⚠️ URGENTE: ' : '🔔 ';
         foreach ($matchingPros as $proProfile) {
             if ($proProfile->getNotifyRequestActivity() === false) {
                 $this->logger->info("🔕 El profesional {$proProfile->getFullName()} ha desactivado las notificaciones de nuevas solicitudes. Saltando...");

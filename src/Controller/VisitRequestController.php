@@ -184,6 +184,10 @@ final class VisitRequestController extends AbstractController
             return new JsonResponse(['message' => 'Solo el cliente dueño de la solicitud puede gestionar la visita.'], Response::HTTP_FORBIDDEN);
         }
 
+        if ($visit->getStatus() !== VisitRequest::STATUS_PENDING) {
+            return new JsonResponse(['message' => 'Solo se pueden aceptar o rechazar visitas pendientes.'], Response::HTTP_BAD_REQUEST);
+        }
+
         $visit->setStatus($newStatus);
         $visit->touch();
         $this->em->flush();

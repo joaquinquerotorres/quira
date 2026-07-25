@@ -21,5 +21,10 @@ final class TestStripeService extends StripeService
         $this->cancelCalledWithCustomerIds[] = $customerId;
         // no-op (avoid network)
     }
+
+    public function cancelSubscriptionsImmediatelyForCustomer(string $customerId): void
+    {
+        // no-op (avoid network)
+    }
 }
 

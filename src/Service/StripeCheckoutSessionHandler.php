@@ -43,11 +43,15 @@ final class StripeCheckoutSessionHandler
         $stripeSession = $this->stripeService->getSessionWithSubscription($session->id);
         $subscription = $stripeSession->subscription;
 
-        if ($subscription === null || is_string($subscription) || !isset($subscription->current_period_end)) {
+        if ($subscription === null || is_string($subscription)) {
             throw new \InvalidArgumentException('Could not get subscription period');
         }
 
-        $currentPeriodEnd = (int) $subscription->current_period_end;
+        $currentPeriodEnd = StripeService::extractSubscriptionPeriodEnd($subscription);
+        if ($currentPeriodEnd === null) {
+            throw new \InvalidArgumentException('Could not get subscription period');
+        }
+
         $paidThroughAt = \DateTimeImmutable::createFromFormat('U', (string) $currentPeriodEnd);
 
         if ($paidThroughAt === false) {

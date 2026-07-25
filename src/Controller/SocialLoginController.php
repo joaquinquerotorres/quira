@@ -45,7 +45,12 @@ class SocialLoginController extends AbstractController
             return new JsonResponse(['error' => $e->getMessage()], 401);
         }
 
-        $email = $firebaseUser['email'];
+        $email = $firebaseUser['email'] ?? null;
+        if (!is_string($email) || trim($email) === '') {
+            $this->logger->warning('❌ El token social no incluye un email válido.');
+            return new JsonResponse(['error' => 'El proveedor social no devolvió un email válido.'], 400);
+        }
+
         $userRepository = $this->em->getRepository(User::class);
     
         $user = $userRepository->findOneBy(['email' => $email]);

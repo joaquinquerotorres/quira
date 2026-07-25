@@ -135,6 +135,18 @@ class VerificationController extends AbstractController
         if ($otherProfilePhone !== null && $otherProfilePhone !== '' && $otherProfileVerified) {
             $normalizedOther = $this->phoneVerificationService->normalizePhone($otherProfilePhone);
             if ($normalizedOther === $normalizedPhone) {
+                $targetProfile = match ($profile) {
+                    'professional' => $proProfile,
+                    default => $clientProfile,
+                };
+                if ($targetProfile !== null && !$targetProfile->isVerifiedPhone()) {
+                    $targetProfile->setVerifiedPhone(true);
+                    if ($proProfile !== null) {
+                        $this->professionalVerificationService->recalculateIsVerified($proProfile, $user);
+                    }
+                    $this->em->flush();
+                }
+
                 return new JsonResponse([
                     'success' => true,
                     'skipped' => true,

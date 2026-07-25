@@ -26,6 +26,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: BidRepository::class)]
+#[ORM\UniqueConstraint(name: 'uniq_bid_request_professional', columns: ['request_id', 'professional_id'])]
 #[ApiResource(
     operations: [
         new GetCollection(normalizationContext: ['groups' => ['bid:read']]),

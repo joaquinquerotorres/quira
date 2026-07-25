@@ -86,6 +86,15 @@ final class BidProfessionalProcessor implements ProcessorInterface
                 throw new AccessDeniedHttpException('No puedes hacer una oferta para tu propia solicitud.');
             }
 
+            $existingBid = $this->bidRepository->findOneBy([
+                'request' => $request,
+                'professional' => $user,
+            ]);
+            if ($existingBid !== null) {
+                $this->logger->warning("Usuario {$user->getUserIdentifier()} intentó crear una segunda oferta para la solicitud {$request->getId()}.");
+                throw new BadRequestHttpException('Ya has enviado una oferta para esta solicitud.');
+            }
+
             $professionalProfile = $user->getProfessionalProfile();
             if ($professionalProfile === null) {
                 $this->logger->error("El usuario {$user->getUserIdentifier()} no tiene un perfil profesional asociado.");

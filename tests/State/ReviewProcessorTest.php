@@ -9,31 +9,34 @@ use App\Entity\ProfessionalProfile;
 use App\Entity\Review;
 use App\Entity\Request;
 use App\Entity\User;
+use App\Enum\RequestStatus;
 use App\State\ReviewProcessor;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 final class ReviewProcessorTest extends TestCase
 {
     public function testSetsAuthorAndPersists(): void
     {
-        $author = new User();
-        $author->setEmail('author@test.com');
-        $author->setRoles(['ROLE_USER']);
-
-        $target = new User();
-        $target->setEmail('target@test.com');
-        $clientProfile = new ClientProfile();
-        $clientProfile->setFullName('Target User');
-        $clientProfile->setUser($target);
-        $target->setClientProfile($clientProfile);
-
+        $clientUser = new User();
+        $clientUser->setEmail('client@test.com');
+        $clientUser->setRoles(['ROLE_USER']);
         $clientProfile = new ClientProfile();
         $clientProfile->setFullName('Cliente');
-        $clientProfile->setUser($target);
+        $clientProfile->setUser($clientUser);
+        $clientUser->setClientProfile($clientProfile);
+
+        $proUser = new User();
+        $proUser->setEmail('pro@test.com');
+        $proUser->setRoles(['ROLE_PROFESSIONAL']);
+        $proProfile = new ProfessionalProfile();
+        $proProfile->setFullName('Pro');
+        $proProfile->setUser($proUser);
+        $proUser->setProfessionalProfile($proProfile);
 
         $request = new Request();
         $request->setTitle('Test');
@@ -41,12 +44,14 @@ final class ReviewProcessorTest extends TestCase
         $request->setEstimatedPriceMin(100);
         $request->setEstimatedPriceMax(100);
         $request->setClient($clientProfile);
+        $request->setAssignedProfessional($proProfile);
+        $request->setStatus(RequestStatus::COMPLETED);
 
         $review = new Review();
         $review->setScore(5);
         $review->setComment('Excelente');
         $review->setRequest($request);
-        $review->setTarget($target);
+        $review->setTarget($proUser);
 
         $repo = $this->createMock(\Doctrine\ORM\EntityRepository::class);
         $repo->method('findBy')->willReturn([$review]);
@@ -55,14 +60,14 @@ final class ReviewProcessorTest extends TestCase
         $em->method('getRepository')->with(Review::class)->willReturn($repo);
 
         $security = $this->createMock(Security::class);
-        $security->method('getUser')->willReturn($author);
+        $security->method('getUser')->willReturn($clientUser);
 
         $logger = $this->createMock(LoggerInterface::class);
 
         $processor = new ReviewProcessor($logger, $em, $security);
         $result = $processor->process($review, new \ApiPlatform\Metadata\Post());
 
-        $this->assertSame($author, $result->getAuthor());
+        $this->assertSame($clientUser, $result->getAuthor());
     }
 
     public function testThrowsWhenNotLoggedIn(): void
@@ -79,6 +84,92 @@ final class ReviewProcessorTest extends TestCase
 
         $this->expectException(AccessDeniedHttpException::class);
         $this->expectExceptionMessage('Debes estar logueado');
+        $processor->process($review, new \ApiPlatform\Metadata\Post());
+    }
+
+    public function testThrowsWhenAuthorIsNotParty(): void
+    {
+        $outsider = new User();
+        $outsider->setEmail('outsider@test.com');
+        $outsider->setRoles(['ROLE_USER']);
+
+        $clientUser = new User();
+        $clientUser->setEmail('client@test.com');
+        $clientProfile = new ClientProfile();
+        $clientProfile->setFullName('Cliente');
+        $clientProfile->setUser($clientUser);
+        $clientUser->setClientProfile($clientProfile);
+
+        $proUser = new User();
+        $proUser->setEmail('pro@test.com');
+        $proProfile = new ProfessionalProfile();
+        $proProfile->setFullName('Pro');
+        $proProfile->setUser($proUser);
+        $proUser->setProfessionalProfile($proProfile);
+
+        $request = new Request();
+        $request->setTitle('Test');
+        $request->setAddress('Calle');
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
+        $request->setClient($clientProfile);
+        $request->setAssignedProfessional($proProfile);
+        $request->setStatus(RequestStatus::COMPLETED);
+
+        $review = new Review();
+        $review->setScore(5);
+        $review->setRequest($request);
+        $review->setTarget($proUser);
+
+        $em = $this->createMock(EntityManagerInterface::class);
+        $security = $this->createMock(Security::class);
+        $security->method('getUser')->willReturn($outsider);
+        $logger = $this->createMock(LoggerInterface::class);
+
+        $processor = new ReviewProcessor($logger, $em, $security);
+
+        $this->expectException(AccessDeniedHttpException::class);
+        $processor->process($review, new \ApiPlatform\Metadata\Post());
+    }
+
+    public function testThrowsWhenRequestNotReviewable(): void
+    {
+        $clientUser = new User();
+        $clientUser->setEmail('client@test.com');
+        $clientProfile = new ClientProfile();
+        $clientProfile->setFullName('Cliente');
+        $clientProfile->setUser($clientUser);
+        $clientUser->setClientProfile($clientProfile);
+
+        $proUser = new User();
+        $proUser->setEmail('pro@test.com');
+        $proProfile = new ProfessionalProfile();
+        $proProfile->setFullName('Pro');
+        $proProfile->setUser($proUser);
+        $proUser->setProfessionalProfile($proProfile);
+
+        $request = new Request();
+        $request->setTitle('Test');
+        $request->setAddress('Calle');
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
+        $request->setClient($clientProfile);
+        $request->setAssignedProfessional($proProfile);
+        $request->setStatus(RequestStatus::PENDING);
+
+        $review = new Review();
+        $review->setScore(5);
+        $review->setRequest($request);
+        $review->setTarget($proUser);
+
+        $em = $this->createMock(EntityManagerInterface::class);
+        $security = $this->createMock(Security::class);
+        $security->method('getUser')->willReturn($clientUser);
+        $logger = $this->createMock(LoggerInterface::class);
+
+        $processor = new ReviewProcessor($logger, $em, $security);
+
+        $this->expectException(BadRequestHttpException::class);
         $processor->process($review, new \ApiPlatform\Metadata\Post());
     }
 

@@ -81,7 +81,7 @@ class AppFixtures extends Fixture
             $proProfile = new ProfessionalProfile();
             $proProfile->setFullName($faker->company());
             $proProfile->setPhoneNumber($faker->phoneNumber());
-            $proProfile->setSkills($faker->randomElements($availableSkills, rand(1, 3)));
+            $proProfile->setSkills($faker->randomElements($availableSkills));
             $proProfile->setIsVerified(true);
             $proProfile->setAddress($faker->streetAddress() . ", Córdoba");
             $proProfile->setServiceRadiusKm(rand(10, 40));
@@ -349,20 +349,34 @@ class AppFixtures extends Fixture
                 continue;
             }
 
-            $avg = round(array_sum(array_map(fn(Review $r) => $r->getScore(), $reviewsAsTarget)) / count($reviewsAsTarget), 1);
-            $count = count($reviewsAsTarget);
+            $proReviews = [];
+            $clientReviews = [];
+            foreach ($reviewsAsTarget as $review) {
+                $author = $review->getAuthor();
+                $authorIsPro = $author !== null && (
+                    in_array('ROLE_PROFESSIONAL', $author->getRoles(), true)
+                    || $author->getProfessionalProfile() !== null
+                );
+                if ($authorIsPro) {
+                    $clientReviews[] = $review;
+                } else {
+                    $proReviews[] = $review;
+                }
+            }
 
             $proProfile = $user->getProfessionalProfile();
-            if ($proProfile !== null) {
+            if ($proProfile !== null && count($proReviews) > 0) {
+                $avg = round(array_sum(array_map(fn(Review $r) => $r->getScore(), $proReviews)) / count($proReviews), 1);
                 $proProfile->setRating((float) $avg);
-                $proProfile->setReviewCount($count);
+                $proProfile->setReviewCount(count($proReviews));
                 $manager->persist($proProfile);
             }
 
             $clientProfile = $user->getClientProfile();
-            if ($clientProfile !== null) {
+            if ($clientProfile !== null && count($clientReviews) > 0) {
+                $avg = round(array_sum(array_map(fn(Review $r) => $r->getScore(), $clientReviews)) / count($clientReviews), 1);
                 $clientProfile->setRating((float) $avg);
-                $clientProfile->setReviewCount($count);
+                $clientProfile->setReviewCount(count($clientReviews));
                 $manager->persist($clientProfile);
             }
         }

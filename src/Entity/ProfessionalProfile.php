@@ -282,6 +282,8 @@ class ProfessionalProfile
             $this->locationPoint = new Point($location['longitude'], $location['latitude']);
         } elseif ($location instanceof Point) {
             $this->locationPoint = $location;
+        } elseif ($location === null) {
+            $this->locationPoint = null;
         }
 
         return $this;
@@ -373,12 +375,6 @@ class ProfessionalProfile
 
     public function getReviewCount(): int
     {
-        // Si hay usuario asociado, calculamos el número de reviews recibidas en tiempo real.
-        // Esto evita depender de que reviewCount se mantenga manualmente al crear nuevas reseñas.
-        if ($this->user !== null) {
-            return $this->user->getReviewsReceived()->count();
-        }
-
         return $this->reviewCount;
     }
 
@@ -488,6 +484,12 @@ class ProfessionalProfile
 
         $result = [];
         foreach ($this->user->getReviewsReceived() as $review) {
+            // Solo reseñas de trabajos donde este perfil era el profesional asignado.
+            $request = $review->getRequest();
+            if ($request === null || $request->getAssignedProfessional() !== $this) {
+                continue;
+            }
+
             $createdAt = $review->getCreatedAt();
             $result[] = [
                 'id' => $review->getId(),

@@ -318,7 +318,10 @@ class Request
         }
 
         $this->aiDiagnosis = $aiDiagnosis;
-        $this->pricingType = $this->extractPricingType($aiDiagnosis);
+        $extractedPricingType = $this->extractPricingType($aiDiagnosis);
+        if ($extractedPricingType !== null) {
+            $this->pricingType = $extractedPricingType;
+        }
 
         return $this;
     }
@@ -432,6 +435,8 @@ class Request
             $this->locationPoint = new Point($location['longitude'], $location['latitude']);
         } elseif ($location instanceof Point) {
             $this->locationPoint = $location;
+        } elseif ($location === null) {
+            $this->locationPoint = null;
         }
 
         return $this;

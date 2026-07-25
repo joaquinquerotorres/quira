@@ -55,13 +55,14 @@ class StripeCancelSubscriptionController extends AbstractController
 
         $customerId = $user->getStripeCustomerId();
 
-        if ($customerId !== null) {
-            try {
-                $this->stripeService->cancelActiveSubscriptionsForCustomer($customerId);
-            } catch (ApiErrorException $e) {
-                // Si falla Stripe, no cambiamos el estado local y devolvemos igualmente éxito
-                // para no romper la UX; el frontend seguirá mostrando el estado según su flag.
-            }
+        if ($customerId === null) {
+            throw new BadRequestHttpException('No hay cliente de Stripe asociado a este usuario.');
+        }
+
+        try {
+            $this->stripeService->cancelActiveSubscriptionsForCustomer($customerId);
+        } catch (ApiErrorException $e) {
+            throw new BadRequestHttpException('No se pudo cancelar la suscripción en Stripe. Inténtalo de nuevo más tarde.');
         }
 
         $profile->setSubscriptionCancelAtPeriodEnd(true);

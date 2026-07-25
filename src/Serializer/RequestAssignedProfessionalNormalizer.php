@@ -41,7 +41,11 @@ final class RequestAssignedProfessionalNormalizer implements NormalizerInterface
 
         $assigned = $object->getAssignedProfessional();
         if ($assigned !== null && isset($data['assignedProfessional']) && \is_array($data['assignedProfessional'])) {
-            $data['assignedProfessional']['phoneNumber'] = $assigned->getPhoneNumber();
+            if ($this->canViewAssignedProfessionalPhone($object)) {
+                $data['assignedProfessional']['phoneNumber'] = $assigned->getPhoneNumber();
+            } else {
+                unset($data['assignedProfessional']['phoneNumber']);
+            }
         }
 
         if (!$this->security->isGranted(RequestAddressVoter::VIEW_PRECISE_ADDRESS, $object)) {
@@ -61,6 +65,23 @@ final class RequestAssignedProfessionalNormalizer implements NormalizerInterface
         }
 
         return $data;
+    }
+
+    private function canViewAssignedProfessionalPhone(Request $request): bool
+    {
+        $user = $this->security->getUser();
+        if (!$user instanceof User) {
+            return false;
+        }
+
+        $clientUser = $request->getClient()?->getUser();
+        if ($clientUser === $user) {
+            return true;
+        }
+
+        $assigned = $request->getAssignedProfessional();
+
+        return $assigned !== null && $assigned->getUser() === $user;
     }
 
     private function canViewClientPhone(Request $request): bool

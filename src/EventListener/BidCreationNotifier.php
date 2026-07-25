@@ -64,6 +64,8 @@ final class BidCreationNotifier
             return;
         }
 
+        $amountEuros = number_format(($bid->getPriceQuote() ?? 0) / 100, 2, '.', '');
+
         try {
             $this->notificationService->send(
                 $clientUser,
@@ -71,7 +73,7 @@ final class BidCreationNotifier
                 sprintf(
                     '%s te ha enviado una oferta de %s€ para "%s".',
                     $proProfile->getFullName() ?? 'Un profesional',
-                    $bid->getPriceQuote(),
+                    $amountEuros,
                     $request->getTitle()
                 ),
                 'BID_RECEIVED',
@@ -79,7 +81,7 @@ final class BidCreationNotifier
                 $request->getId(),
                 [
                     'professionalName' => $proProfile->getFullName() ?? 'Un profesional',
-                    'amount' => (string) $bid->getPriceQuote(),
+                    'amount' => $amountEuros,
                     'requestTitle' => $request->getTitle() ?? '',
                 ]
             );

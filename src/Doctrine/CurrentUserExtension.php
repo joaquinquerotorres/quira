@@ -250,6 +250,21 @@ final class CurrentUserExtension implements QueryCollectionExtensionInterface, Q
                     ->setParameter('search_title', '%' . $searchTitle . '%');
             }
         }
+
+        if ($resourceClass === VisitRequest::class) {
+            $proProfile = $user->getProfessionalProfile();
+            $queryBuilder
+                ->leftJoin(sprintf('%s.request', $rootAlias), 'visit_req')
+                ->leftJoin('visit_req.client', 'visit_client')
+                ->andWhere(
+                    $queryBuilder->expr()->orX(
+                        'visit_client.user = :current_user',
+                        sprintf('%s.professional = :current_pro_profile', $rootAlias)
+                    )
+                )
+                ->setParameter('current_user', $user)
+                ->setParameter('current_pro_profile', $proProfile);
+        }
     }
 
     private function isProfessional(User $user): bool
