@@ -42,19 +42,23 @@ final class RequestAssignedProfessionalNormalizerTest extends TestCase
 
     public function testNormalizeAddsPhoneNumberToAssignedProfessional(): void
     {
-        $user = new User();
-        $user->setEmail('pro@test.com');
-        $user->setPassword('hash');
+        $proUser = new User();
+        $proUser->setEmail('pro@test.com');
+        $proUser->setPassword('hash');
 
         $proProfile = new ProfessionalProfile();
         $proProfile->setFullName('Pro Test');
         $proProfile->setPhoneNumber('+34600111222');
-        $proProfile->setUser($user);
-        $user->setProfessionalProfile($proProfile);
+        $proProfile->setUser($proUser);
+        $proUser->setProfessionalProfile($proProfile);
 
+        $clientUser = new User();
+        $clientUser->setEmail('client@test.com');
+        $clientUser->setPassword('hash');
         $clientProfile = new ClientProfile();
         $clientProfile->setFullName('Client');
-        $clientProfile->setUser(new User());
+        $clientProfile->setUser($clientUser);
+        $clientUser->setClientProfile($clientProfile);
 
         $request = new Request();
         $request->setTitle('Test request');
@@ -78,12 +82,69 @@ final class RequestAssignedProfessionalNormalizerTest extends TestCase
             ->willReturn($innerResult);
         $this->inner->method('supportsNormalization')->willReturn(true);
 
-        $normalizer = $this->createNormalizer();
+        $security = $this->createMock(Security::class);
+        $security->method('isGranted')->willReturn(true);
+        $security->method('getUser')->willReturn($clientUser);
+
+        $normalizer = new RequestAssignedProfessionalNormalizer($this->inner, $security, $this->visitRequestRepository);
         $result = $normalizer->normalize($request);
 
         $this->assertIsArray($result);
         $this->assertArrayHasKey('assignedProfessional', $result);
         $this->assertSame('+34600111222', $result['assignedProfessional']['phoneNumber']);
+    }
+
+    public function testNormalizeDoesNotAddAssignedProfessionalPhoneForOutsider(): void
+    {
+        $proUser = new User();
+        $proUser->setEmail('pro@test.com');
+        $proUser->setPassword('hash');
+
+        $proProfile = new ProfessionalProfile();
+        $proProfile->setFullName('Pro Test');
+        $proProfile->setPhoneNumber('+34600111222');
+        $proProfile->setUser($proUser);
+        $proUser->setProfessionalProfile($proProfile);
+
+        $clientUser = new User();
+        $clientUser->setEmail('client@test.com');
+        $clientProfile = new ClientProfile();
+        $clientProfile->setFullName('Client');
+        $clientProfile->setUser($clientUser);
+
+        $outsider = new User();
+        $outsider->setEmail('outsider@test.com');
+
+        $request = new Request();
+        $request->setTitle('Test request');
+        $request->setAddress('Calle 1');
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
+        $request->setClient($clientProfile);
+        $request->setAssignedProfessional($proProfile);
+
+        $innerResult = [
+            '@id' => '/api/requests/1',
+            'assignedProfessional' => [
+                '@id' => '/api/professional_profiles/92',
+                'fullName' => 'Pro Test',
+                'phoneNumber' => '+34600111222',
+            ],
+        ];
+
+        $this->inner->method('normalize')->willReturn($innerResult);
+        $this->inner->method('supportsNormalization')->willReturn(true);
+
+        $security = $this->createMock(Security::class);
+        $security->method('isGranted')->willReturn(true);
+        $security->method('getUser')->willReturn($outsider);
+
+        $normalizer = new RequestAssignedProfessionalNormalizer($this->inner, $security, $this->visitRequestRepository);
+        $result = $normalizer->normalize($request);
+
+        $this->assertIsArray($result);
+        $this->assertArrayHasKey('assignedProfessional', $result);
+        $this->assertArrayNotHasKey('phoneNumber', $result['assignedProfessional']);
     }
 
     public function testNormalizeDoesNotAddPhoneWhenAssignedProfessionalIsNull(): void
