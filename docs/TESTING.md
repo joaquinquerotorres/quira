@@ -96,6 +96,10 @@ Los tests en `tests/Api/` ejercitan endpoints reales (API Platform / controllers
   - Verifica `POST /api/stripe/cancel-subscription` (marca `subscriptionCancelAtPeriodEnd` sin cambiar `paidThroughAt` ni roles).
   - En `test` se usa un fake de Stripe para evitar red.
 
+- **ProfileNotificationPrefsApiTest**
+  - Verifica `PATCH /api/professional_profiles/{id}` con preferencias `notify*` (merge-patch, dueño).
+  - Verifica que `GET /api/users/{id}` incluye `professionalProfile.notifyRequestActivity|notifyBidActivity|notifyReviews` en `user:read`.
+
 ## Tests de comandos
 
 - **CalibratePricingCommandTest**

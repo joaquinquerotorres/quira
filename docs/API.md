@@ -14,20 +14,14 @@ Autenticación: Bearer JWT en header Authorization
 
 ### User
 - GET/POST /api/users, GET/PUT/PATCH/DELETE /api/users/{id}
-- En **`user:read`**, el nodo **`professionalProfile`** (si existe) incluye **`paidThroughAt`** (ISO 8601 o null) y **`subscriptionCancelAtPeriodEnd`** (boolean). Son la fuente de verdad para saber si la suscripción está vigente en el cliente; los roles `ROLE_PRO` / `ROLE_SOLVER` pueden persistir tras caducar el pago.
-
-### ClientProfile
-- GET/PATCH/PUT /api/client_profiles/{id}
-- Campos de valoración: `rating`, `reviewCount` (unificados; el API expone `rating` en cliente y profesional).
-- Teléfono cliente:
-  - El backend decide el valor final de `verifiedPhone` (no confía en el payload).
-  - Si cambia `phoneNumber` y coincide con `ProfessionalProfile.phoneNumber` verificado del mismo usuario, autoverifica (`verifiedPhone=true`).
-  - Si no coincide (o el profesional no está verificado), guarda `verifiedPhone=false`.
-  - La comparación normaliza teléfonos y usa los últimos 9 dígitos (casos `+34 600 111 222` y `600111222` se consideran equivalentes).
+- En **`user:read`**, el nodo **`professionalProfile`** (si existe) incluye **`paidThroughAt`** (ISO 8601 o null), **`subscriptionCancelAtPeriodEnd`** (boolean) y las preferencias **`notifyRequestActivity`**, **`notifyBidActivity`**, **`notifyReviews`**. `paidThroughAt` / `subscriptionCancelAtPeriodEnd` son la fuente de verdad para saber si la suscripción está vigente en el cliente; los roles `ROLE_PRO` / `ROLE_SOLVER` pueden persistir tras caducar el pago. El nodo **`clientProfile`** también expone las mismas tres preferencias de notificación.
 
 ### ProfessionalProfile
 - GET/POST /api/professional_profiles, PATCH/PUT /api/professional_profiles/{id}
 - Campos de valoración: `rating`, `reviewCount`; en lectura también `reviews[]` (array embebido con id, score, comment, authorName, createdAt).
+- Preferencias de notificación (escritura en `pro:write`, lectura también en `user:read` cuando el perfil va embebido en `GET /api/users/{id}`):
+  - `notifyRequestActivity`, `notifyBidActivity`, `notifyReviews` (boolean, default `true`).
+  - `PATCH /api/professional_profiles/{id}` con `Content-Type: application/merge-patch+json` (o `application/json`) y body parcial; solo el dueño (`object.getUser() == user`).
 - `address`:
   - Se admite en escritura (`POST` y `PATCH`).
   - Es obligatorio en backend para alta/edición del perfil profesional.
@@ -41,6 +35,18 @@ Autenticación: Bearer JWT en header Authorization
   - Si envías `taxId` desde la UI, el backend valida el CIF matemáticamente.
   - Si el CIF es inválido responde con `400` y el mensaje `El CIF no es correcto.` y no se guarda el perfil.
   - Tras una validación correcta, `verifiedTaxId` se guarda como `true`.
+
+### ClientProfile
+- GET/PATCH/PUT /api/client_profiles/{id}
+- Campos de valoración: `rating`, `reviewCount` (unificados; el API expone `rating` en cliente y profesional).
+- Preferencias de notificación (escritura en `client:write`, lectura también en `user:read`):
+  - `notifyRequestActivity`, `notifyBidActivity`, `notifyReviews` (boolean, default `true`).
+  - `PATCH /api/client_profiles/{id}` con merge-patch; solo el dueño.
+- Teléfono cliente:
+  - El backend decide el valor final de `verifiedPhone` (no confía en el payload).
+  - Si cambia `phoneNumber` y coincide con `ProfessionalProfile.phoneNumber` verificado del mismo usuario, autoverifica (`verifiedPhone=true`).
+  - Si no coincide (o el profesional no está verificado), guarda `verifiedPhone=false`.
+  - La comparación normaliza teléfonos y usa los últimos 9 dígitos (casos `+34 600 111 222` y `600111222` se consideran equivalentes).
 
 ### Request
 - GET/POST /api/requests, GET/PATCH /api/requests/{id}

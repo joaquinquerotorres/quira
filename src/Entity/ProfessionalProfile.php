@@ -144,15 +144,15 @@ class ProfessionalProfile
     private int $reviewCount = 0;
 
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
-    #[Groups(['pro:read', 'pro:write'])] 
+    #[Groups(['pro:read', 'pro:write', 'user:read'])]
     private bool $notifyRequestActivity = true;
 
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
-    #[Groups(['pro:read', 'pro:write'])]
+    #[Groups(['pro:read', 'pro:write', 'user:read'])]
     private bool $notifyBidActivity = true;
 
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
-    #[Groups(['pro:read', 'pro:write'])]
+    #[Groups(['pro:read', 'pro:write', 'user:read'])]
     private bool $notifyReviews = true;
 
     #[ORM\OneToOne(inversedBy: 'professionalProfile', targetEntity: User::class)]

@@ -67,15 +67,15 @@ class ClientProfile
     private int $reviewCount = 0;
 
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
-    #[Groups(['client:read', 'client:write'])] 
+    #[Groups(['client:read', 'client:write', 'user:read'])]
     private bool $notifyRequestActivity = true;
 
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
-    #[Groups(['client:read', 'client:write'])] 
+    #[Groups(['client:read', 'client:write', 'user:read'])]
     private bool $notifyBidActivity = true;
 
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
-    #[Groups(['client:read', 'client:write'])] 
+    #[Groups(['client:read', 'client:write', 'user:read'])]
     private bool $notifyReviews = true;
 
     #[ORM\OneToOne(inversedBy: 'clientProfile', targetEntity: User::class)]

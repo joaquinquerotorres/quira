@@ -93,8 +93,10 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
 - Un mismo `User` puede ser cliente y profesional: el **evento** pasa `NotificationAudience::Client` o `::Professional` a `NotificationService::send()`, así un Free recibe **email** por `NOTIFICATIONS_FREE` cuando actúa como pro y **push** por `NOTIFICATIONS_CLIENT` cuando la notificación es sobre su actividad como cliente.
 
 ### Preferencias por perfil (base de datos)
-- `ClientProfile`: `notifyRequestActivity`, `notifyBidActivity`, `notifyReviews` — los listeners comprueban estos flags **antes** de llamar al servicio (no se han eliminado).
-- `ProfessionalProfile`: los mismos tres campos, usados según el tipo de aviso (nuevas solicitudes, aceptación de oferta, visitas, respuestas en Q&A, reseñas como pro).
+- `ClientProfile` / `ProfessionalProfile`: `notifyRequestActivity`, `notifyBidActivity`, `notifyReviews` — los listeners comprueban estos flags **antes** de llamar al servicio.
+- Expuestos en `GET /api/users/{id}` (`user:read`) y editables con `PATCH` del perfil correspondiente (`client:write` / `pro:write`).
+- `ProfessionalProfile`: usados según el tipo de aviso (nuevas solicitudes, aceptación de oferta, visitas, respuestas en Q&A, reseñas como pro).
+- `ClientProfile`: dudas sobre solicitudes, nuevas ofertas y valoraciones recibidas como cliente.
 
 ### Eventos que disparan notificaciones
 - Nueva bid en una request del cliente

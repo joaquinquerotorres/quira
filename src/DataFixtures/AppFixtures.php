@@ -82,6 +82,7 @@ class AppFixtures extends Fixture
             $proProfile = new ProfessionalProfile();
             $proProfile->setFullName($faker->company());
             $proProfile->setPhoneNumber($faker->phoneNumber());
+            $proProfile->setBio($faker->paragraph(3));
             $skillCount = $faker->numberBetween(3, min(5, \count($availableSkills)));
             $proProfile->setSkills($faker->randomElements($availableSkills, $skillCount));
             $proProfile->setIsVerified(true);
