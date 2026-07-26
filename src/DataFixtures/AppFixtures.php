@@ -340,9 +340,9 @@ class AppFixtures extends Fixture
 
             /** @var Request $wonRequest */
             $wonRequest = $item['request'];
-            /** @var ProfessionalProfile $wonPro */
+            /** @var ProfessionalProfile|null $wonPro */
             $wonPro = $item['professional'];
-            if ($wonPro === null) {
+            if (!$wonPro instanceof ProfessionalProfile) {
                 continue;
             }
 
