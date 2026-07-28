@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Service;
 
 use App\Service\PredictMediaFetcher;
+use App\Service\PredictMediaLimits;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Symfony\Component\HttpClient\MockHttpClient;
@@ -83,6 +84,31 @@ final class PredictMediaFetcherTest extends TestCase
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('vacío');
+        $fetcher->fetchAsDataUrl(
+            'https://example.supabase.co/storage/v1/object/public/requests/1_video.mp4',
+            'video'
+        );
+    }
+
+    public function testRejectsOversizedVideo(): void
+    {
+        $binary = str_repeat('x', PredictMediaLimits::VIDEO_BYTES + 1);
+        $client = new MockHttpClient([
+            new MockResponse($binary, [
+                'http_code' => 200,
+                'response_headers' => ['content-type' => 'video/mp4'],
+            ]),
+        ]);
+
+        $fetcher = new PredictMediaFetcher(
+            'https://example.supabase.co',
+            'requests',
+            $client,
+            new NullLogger(),
+        );
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('demasiado grande');
         $fetcher->fetchAsDataUrl(
             'https://example.supabase.co/storage/v1/object/public/requests/1_video.mp4',
             'video'

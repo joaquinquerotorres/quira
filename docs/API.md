@@ -143,6 +143,10 @@ Autenticación: Bearer JWT en header Authorization
 - POST `/api/predict` - Diagnóstico con Gemini. Preferido: body pequeño con URLs de Supabase.
   - Campos preferidos: `description`, `location`, `imageUrl`, `audioUrl`, `videoUrl` (HTTPS del bucket de requests).
   - Flujo: el cliente sube el fichero con `POST /api/upload-ticket/request-media` + PUT; luego llama a `/predict` solo con la `publicUrl`.
+  - **Tamaños máximos** (mismo tope en Wi‑Fi y datos móviles; el ticket incluye `maxBytes`):
+    - imagen / `photo`: **10 MB**
+    - audio: **12 MB**
+    - vídeo: **40 MB**
   - Crea una `PredictTask` y despacha `AnalyzePredictMessage` (Messenger **async**). Responde `202` `{ taskId, status }` mientras el worker procesa; el cliente consulta `GET /api/predict/tasks/{publicId}`. (Si el mensaje se procesara en sync, podría devolver `200` con `result` al instante.)
   - GET `/api/predict/tasks/{publicId}` — estado (`pending` | `processing` | `completed` | `failed`) y `result` / `error`. Solo el dueño de la tarea.
   - El handler descarga el media (`PredictMediaFetcher`, anti-SSRF al bucket configurado), llama a Gemini (`GEMINI_MODEL`) y persiste el resultado. Moderación integrada (`safe`, `safety_reason`).
@@ -203,7 +207,7 @@ Autenticación: Bearer JWT en header Authorization
 
 ### Upload
 - POST /api/upload-ticket/avatar - URL firmada avatar
-- POST /api/upload-ticket/request-media - URL firmada media
+- POST /api/upload-ticket/request-media - URL firmada media (`type`: `photo`|`audio`|`video`). Respuesta: `signedUrl`, `publicUrl`, `expiresIn`, **`maxBytes`** (10 MB / 12 MB / 40 MB). Usar el mismo tope en Wi‑Fi y datos móviles; comprimir si hace falta, no un hard-cap artificial distinto.
 - POST /api/users/avatar - Subir avatar directo
 
 ### Otros

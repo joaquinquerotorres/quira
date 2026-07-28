@@ -14,10 +14,6 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 final class PredictMediaFetcher
 {
-    private const MAX_IMAGE_BYTES = 10_000_000;
-    private const MAX_AUDIO_BYTES = 12_000_000;
-    private const MAX_VIDEO_BYTES = 40_000_000;
-
     public function __construct(
         #[Autowire('%env(SUPABASE_URL)%')]
         private readonly string $supabaseUrl,
@@ -36,10 +32,10 @@ final class PredictMediaFetcher
         $this->assertAllowedPublicUrl($publicUrl);
 
         $maxBytes = match ($kind) {
-            'image' => self::MAX_IMAGE_BYTES,
-            'audio' => self::MAX_AUDIO_BYTES,
-            'video' => self::MAX_VIDEO_BYTES,
-            default => self::MAX_IMAGE_BYTES,
+            'image' => PredictMediaLimits::IMAGE_BYTES,
+            'audio' => PredictMediaLimits::AUDIO_BYTES,
+            'video' => PredictMediaLimits::VIDEO_BYTES,
+            default => PredictMediaLimits::IMAGE_BYTES,
         };
 
         try {
