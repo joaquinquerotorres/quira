@@ -40,13 +40,44 @@ El **`docker/entrypoint.sh`**:
 
 El **`Caddyfile`** sirve `public/` como document root (equivalente a Nginx + PHP-FPM).
 
-#### PHP: cuerpos grandes y `/api/predict`
+#### PHP: `/api/predict` y cuerpos grandes
 
-La imagen copia **`docker/php/zz-quira.ini`** a `$PHP_INI_DIR/conf.d/` (FrankenPHP usa ese PHP). Ajusta **`max_execution_time`**, **`max_input_time`**, **`post_max_size`** y **`memory_limit`** para JSON con **vídeo/audio en base64**: en redes lentas (p. ej. 4G) la subida del body puede superar el **30 s por defecto de PHP** mientras Symfony lee `php://input`, antes de llegar al controlador.
+**Camino actual (URLs):** el cliente sube el binario a Supabase; `/api/predict` solo recibe URLs. El body JSON es pequeño. El handler descarga el fichero y llama a Gemini (`PredictMediaFetcher` + `AnalyzePredictMessage`). Migración `predict_task` requerida.
 
-**Clientes (app móvil / axios):** en esta ruta conviene un **timeout HTTP alto** (p. ej. 120–300 s), alineado con el tiempo de subida + respuesta de Gemini.
+**Messenger (async):** `AnalyzePredictMessage` va al transporte **`async`** (tabla `messenger_messages`). Hace falta un **segundo servicio** en Railway con la misma imagen y `CONTAINER_ROLE=worker` (ver sección *Worker Messenger* más abajo). Sin ese worker, `POST /api/predict` responde `202` y las tareas se quedan en `pending`/`processing`.
 
-**Proxy:** si delante del contenedor hay un **timeout de request** más bajo (panel de Railway u otro), la petición puede cortarse aunque PHP permita más; revisa la capa externa si siguen apareciendo `ERR_NETWORK` o cortes sin respuesta.
+**Legacy (base64 en el body):** la imagen Docker copia **`docker/php/zz-quira.ini`**. Ajusta **`max_execution_time`**, **`max_input_time`**, **`post_max_size`** y **`memory_limit`**. En 4G la subida del body puede superar 30 s mientras Symfony lee `php://input`.
+
+**Clientes:** timeout de `POST /predict` ~120 s (`PREDICT_REQUEST_TIMEOUT_MS`); si hay `202`, polling hasta `PREDICT_POLL_TIMEOUT_MS`.
+
+**Proxy:** si delante del contenedor hay un **timeout de request** más bajo, la petición puede cortarse; revisa la capa externa si siguen apareciendo `ERR_NETWORK`.
+
+### 4b. Worker Messenger (Railway)
+
+`POST /api/predict` encola `AnalyzePredictMessage`. Un contenedor aparte consume la cola:
+
+1. En el mismo proyecto Railway: **New Service** → **GitHub Repo** (mismo repo/rama que la API) **o** duplicar el servicio API.
+2. Misma imagen Dockerfile. Variables:
+   - Copia las de la API (como mínimo `DATABASE_URL`, `APP_SECRET`, `APP_ENV`, `GEMINI_*`, `SUPABASE_*`, JWT).
+   - `CONTAINER_ROLE=worker`
+   - `RUN_MIGRATIONS=0` (las migraciones las hace solo el servicio web).
+3. **Start command vacío** (usa el `ENTRYPOINT`): con `CONTAINER_ROLE=worker` ejecuta  
+   `php bin/console messenger:consume async --time-limit=3600 …`.
+4. Quita dominio público / healthcheck HTTP si Railway lo exige y falla (el worker no escucha en `PORT`).
+5. Opcional: `MESSENGER_TIME_LIMIT`, `MESSENGER_MEMORY_LIMIT`, `MESSENGER_SLEEP`.
+
+Comprueba en logs del worker: `Starting Messenger worker` y mensajes `Received message App\Message\AnalyzePredictMessage`.
+
+Variables útiles para Railway:
+
+| Variable | Uso |
+|----------|-----|
+| `JWT_GENERATE_KEYS` | `1` (default) genera claves si faltan; `0` falla si no existen |
+| `JWT_ENFORCE_STATIC_KEYS` | `1` exige claves persistentes y no permite generación automática |
+| `RUN_MIGRATIONS` | `1` (default) ejecuta migraciones al boot; `0` en el **worker** |
+| `CONTAINER_ROLE` | `web` (default) o `worker` (consume Messenger) |
+| `DB_WAIT_RETRIES` | Número de intentos de espera a MySQL (default 20) |
+| `DB_WAIT_SECONDS` | Segundos entre intentos (default 2) |
 
 ### 5. JWT y despliegues
 
@@ -58,16 +89,6 @@ Opciones recomendadas:
 - Inyectar los PEM como variables/secret y escribirlos en un script de arranque (avanzado; Lexik está configurado con rutas a ficheros).
 
 Mantén el mismo `JWT_PASSPHRASE` entre despliegues si reutilizas claves.
-
-Variables útiles para Railway:
-
-| Variable | Uso |
-|----------|-----|
-| `JWT_GENERATE_KEYS` | `1` (default) genera claves si faltan; `0` falla si no existen |
-| `JWT_ENFORCE_STATIC_KEYS` | `1` exige claves persistentes y no permite generación automática |
-| `RUN_MIGRATIONS` | `1` (default) ejecuta migraciones al boot; `0` las desactiva si ya las haces fuera |
-| `DB_WAIT_RETRIES` | Número de intentos de espera a MySQL (default 20) |
-| `DB_WAIT_SECONDS` | Segundos entre intentos (default 2) |
 
 ### 6. Firebase u otros ficheros secretos
 
@@ -129,6 +150,8 @@ El remitente (p. ej. `no-reply@…`) debe estar verificado en Brevo.
 ### Correo transaccional y Messenger
 
 `SendEmailMessage` va siempre al transporte **`sync`** (misma petición HTTP). Así no depende de `APP_ENV` ni de un worker: antes, con **async** y sin `messenger:consume`, los correos podían acumularse en `messenger_messages` **sin error visible**. Comprueba en Railway que **`MAILER_DSN`** no sea el valor por defecto del repo (`null://null`): en ese caso el envío “termina bien” pero **no sale ningún correo**; revisa logs (advertencia explícita) o el panel de Brevo.
+
+`AnalyzePredictMessage` (análisis IA) va a **`async`**. Necesitas el servicio worker (`CONTAINER_ROLE=worker`) o las tareas quedarán en cola sin completar. Ver §4b.
 
 ---
 

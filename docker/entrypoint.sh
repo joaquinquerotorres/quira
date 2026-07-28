@@ -121,4 +121,20 @@ fi
 
 php bin/console cache:warmup --env=prod --no-debug --no-ansi
 
+# Worker de Messenger (segundo servicio en Railway):
+# CONTAINER_ROLE=worker → consume cola async (predict, Chat/SMS notifier).
+# La API web deja CONTAINER_ROLE vacío o "web".
+CONTAINER_ROLE="${CONTAINER_ROLE:-web}"
+if [ "$CONTAINER_ROLE" = "worker" ]; then
+	echo "Starting Messenger worker (async)…" >&2
+	# time-limit: Railway reinicia el proceso periódicamente (evita fugas de memoria).
+	exec php bin/console messenger:consume async \
+		--time-limit="${MESSENGER_TIME_LIMIT:-3600}" \
+		--memory-limit="${MESSENGER_MEMORY_LIMIT:-128M}" \
+		--sleep="${MESSENGER_SLEEP:-1}" \
+		-vv \
+		--env=prod \
+		--no-ansi
+fi
+
 exec frankenphp run --config /etc/caddy/Caddyfile

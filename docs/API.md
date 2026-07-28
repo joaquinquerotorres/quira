@@ -140,19 +140,19 @@ Autenticación: Bearer JWT en header Authorization
 **Reconciliación (operaciones / cron):** `php bin/console stripe:reconcile-subscriptions` (opción `--user-id=` para uno solo). Compara suscripciones en Stripe con la BD por si faltó un webhook.
 
 ### Predict (IA)
-- POST `/api/predict` - Diagnóstico con Gemini (body: description, image, audio, video, location opcional). Usa el modelo **`GEMINI_MODEL`** e incluye moderación integrada (`safe`, `safety_reason`).
-  - El body puede ser **muy grande** (vídeo en base64). En **móvil / 4G** la subida tarda; el cliente debe usar **timeout HTTP generoso** (p. ej. ≥ 120 s). En producción Docker, los límites PHP ampliados están en `docker/php/zz-quira.ini` (ver `docs/DEPLOY.md`).
-  - `image`, `audio`, `video` pueden enviarse como **Data URL** (`data:<mime>;base64,<data>`) o base64 “crudo”.
-  - Mimes recomendados:
-    - `image/jpeg`
-    - `audio/mpeg` (si envías `audio/mp3` se normaliza)
-    - `video/mp4`
-  - Respuesta típica:
+- POST `/api/predict` - Diagnóstico con Gemini. Preferido: body pequeño con URLs de Supabase.
+  - Campos preferidos: `description`, `location`, `imageUrl`, `audioUrl`, `videoUrl` (HTTPS del bucket de requests).
+  - Flujo: el cliente sube el fichero con `POST /api/upload-ticket/request-media` + PUT; luego llama a `/predict` solo con la `publicUrl`.
+  - Crea una `PredictTask` y despacha `AnalyzePredictMessage` (Messenger **async**). Responde `202` `{ taskId, status }` mientras el worker procesa; el cliente consulta `GET /api/predict/tasks/{publicId}`. (Si el mensaje se procesara en sync, podría devolver `200` con `result` al instante.)
+  - GET `/api/predict/tasks/{publicId}` — estado (`pending` | `processing` | `completed` | `failed`) y `result` / `error`. Solo el dueño de la tarea.
+  - El handler descarga el media (`PredictMediaFetcher`, anti-SSRF al bucket configurado), llama a Gemini (`GEMINI_MODEL`) y persiste el resultado. Moderación integrada (`safe`, `safety_reason`).
+  - Legacy (evitar): `image` / `audio` / `video` en base64 o Data URL → análisis síncrono sin tarea (payload enorme; ver `docs/DEPLOY.md`).
+  - Respuesta típica en `result` (o cuerpo plano legacy):
     - `title`, `description`, `summary_text`
     - `category` (PLUMBING, ELECTRICITY, etc.)
     - `sub_category` (alineada con la columna Subcategoria del CSV `config/gemini_pricing.csv`)
     - `risk_level` (LOW, MEDIUM, HIGH)
-    - `safe`, `safety_reason` (resultado de moderación previa al diagnóstico)
+    - `safe`, `safety_reason`
     - `estimated_price_min`, `estimated_price_max` (en céntimos)
     - `urgency`, `schedule_intent`
 

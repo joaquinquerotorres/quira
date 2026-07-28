@@ -95,10 +95,15 @@ class UploadTicketController extends AbstractController
             );
         }
 
+        $contentType = $data['contentType'] ?? '';
+        if (!is_string($contentType)) {
+            $contentType = '';
+        }
+
         $userId = (int) $user->getId();
 
         try {
-            $ticket = $this->uploadTicketService->createRequestMediaUploadTicket($userId, $type);
+            $ticket = $this->uploadTicketService->createRequestMediaUploadTicket($userId, $type, $contentType);
         } catch (\Throwable $e) {
             $this->logger->error('Error generando ticket de request media: ' . $e->getMessage());
             return new JsonResponse(

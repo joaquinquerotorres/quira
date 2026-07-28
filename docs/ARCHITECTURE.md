@@ -35,6 +35,7 @@
 | RequestQuestion | Pregunta/respuesta en una solicitud |
 | Notification | Notificación in-app |
 | GeminiCache | Caché de contexto para Gemini |
+| PredictTask | Tarea de análisis IA: URLs de media, estado, resultado JSON (flujo híbrido) |
 | StripeWebhookEvent | Id de evento Stripe (`evt_*`) procesado (idempotencia webhooks) |
 | VerificationToken | Token de verificación de email |
 | RefreshToken | Token JWT refresh |
@@ -66,11 +67,12 @@
 | NotificationService | WhatsApp, push FCM, email (elige canal según roles/perfil y preferencias, con fallback escalonado) |
 | GeminiService | Diagnose/predict con `GEMINI_MODEL` + CSV/cache; moderación integrada en el propio `diagnose` (`safe`/`safety_reason`) |
 | GeminiCacheService | Gestión de cache persistente de contexto Gemini (tabla de precios y reglas) |
+| PredictMediaFetcher | Descarga media de URLs públicas Supabase (anti-SSRF) a Data URL para Gemini |
+| SupabaseUploadTicketService | URLs firmadas Supabase |
 | SocialAuthService | Verificación Firebase |
 | EmailVerificationService | Emails de verificación |
 | PhoneVerificationService | OTP por SMS/sandbox, verificación por perfil (cliente/profesional) |
-| MediaService | Guardado de media |
-| SupabaseUploadTicketService | URLs firmadas Supabase |
+| MediaService | Guardado de media (legacy local) |
 
 ## Comandos consola relevantes
 

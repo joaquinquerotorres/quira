@@ -46,12 +46,22 @@ final class SupabaseUploadTicketService
      * @param 'photo'|'audio'|'video' $type
      * @return array{signedUrl: string, publicUrl: string, path: string}
      */
-    public function createRequestMediaUploadTicket(int $userId, string $type): array
+    public function createRequestMediaUploadTicket(int $userId, string $type, string $contentType = ''): array
     {
         $ext = match ($type) {
-            'photo' => 'jpg',
-            'audio' => 'm4a',
-            'video' => 'mp4',
+            'photo' => $this->extensionFromContentType($contentType !== '' ? $contentType : 'image/jpeg', 'image'),
+            'audio' => match (true) {
+                str_contains($contentType, 'webm') => 'webm',
+                str_contains($contentType, 'mpeg') || str_contains($contentType, 'mp3') => 'mp3',
+                str_contains($contentType, 'wav') => 'wav',
+                str_contains($contentType, 'ogg') => 'ogg',
+                default => 'm4a',
+            },
+            'video' => match (true) {
+                str_contains($contentType, 'webm') => 'webm',
+                str_contains($contentType, 'quicktime') => 'mov',
+                default => 'mp4',
+            },
             default => 'bin',
         };
         $pathWithinBucket = sprintf('%d_%s_%s.%s', $userId, $type, uniqid('', true), $ext);
