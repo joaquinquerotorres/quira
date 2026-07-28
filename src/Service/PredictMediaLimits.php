@@ -34,7 +34,6 @@ final class PredictMediaLimits
             'photo', 'image' => self::IMAGE_BYTES,
             'audio' => self::AUDIO_BYTES,
             'video' => self::VIDEO_BYTES,
-            default => throw new \InvalidArgumentException(sprintf('Tipo de media no soportado: %s', $type)),
         };
     }
 
