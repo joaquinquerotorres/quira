@@ -127,10 +127,13 @@ php bin/console cache:warmup --env=prod --no-debug --no-ansi
 CONTAINER_ROLE="${CONTAINER_ROLE:-web}"
 if [ "$CONTAINER_ROLE" = "worker" ]; then
 	echo "Starting Messenger worker (async)…" >&2
-	# time-limit: Railway reinicia el proceso periódicamente (evita fugas de memoria).
-	exec php bin/console messenger:consume async \
+	# max_execution_time=0: el worker vive minutos/horas; zz-quira.ini pone 300s
+	# (pensado para HTTP /predict) y mata el proceso en idle → FATAL cada ~5 min.
+	# time-limit: salida limpia periódica; en Railway usar restartPolicyType=ALWAYS
+	# (ON_FAILURE no reinicia tras exit 0 del time-limit).
+	exec php -d max_execution_time=0 bin/console messenger:consume async \
 		--time-limit="${MESSENGER_TIME_LIMIT:-3600}" \
-		--memory-limit="${MESSENGER_MEMORY_LIMIT:-128M}" \
+		--memory-limit="${MESSENGER_MEMORY_LIMIT:-256M}" \
 		--sleep="${MESSENGER_SLEEP:-1}" \
 		-vv \
 		--env=prod \
