@@ -68,6 +68,7 @@
 | GeminiService | Diagnose/predict con `GEMINI_MODEL` + CSV/cache; moderación integrada en el propio `diagnose` (`safe`/`safety_reason`) |
 | GeminiCacheService | Gestión de cache persistente de contexto Gemini (tabla de precios y reglas) |
 | PredictMediaFetcher | Descarga media de URLs públicas Supabase (anti-SSRF) a Data URL para Gemini |
+| PredictMediaLimits | Topes de tamaño (imagen 10 MB, audio 12 MB, vídeo 40 MB); expuestos en upload-ticket |
 | SupabaseUploadTicketService | URLs firmadas Supabase |
 | SocialAuthService | Verificación Firebase |
 | EmailVerificationService | Emails de verificación |

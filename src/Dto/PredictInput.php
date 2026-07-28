@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Dto;
 
+use App\Service\PredictMediaLimits;
 use Symfony\Component\Validator\Constraints as Assert;
 
 class PredictInput
@@ -13,14 +14,23 @@ class PredictInput
         #[Assert\Length(max: 5000)]
         public readonly ?string $description = null,
 
-        // Legacy: base64 / data URL (evitar en cliente; preferir *Url)
-        #[Assert\Length(max: 10000000, maxMessage: 'La imagen es demasiado grande (Máx 7MB)')]
+        // Legacy: base64 / data URL (evitar en cliente; preferir *Url).
+        #[Assert\Length(
+            max: PredictMediaLimits::LEGACY_IMAGE_BASE64_CHARS,
+            maxMessage: 'La imagen es demasiado grande (Máx 10MB)'
+        )]
         public readonly ?string $image = null,
 
-        #[Assert\Length(max: 5000000, maxMessage: 'El audio es demasiado grande (Máx 3MB)')]
+        #[Assert\Length(
+            max: PredictMediaLimits::LEGACY_AUDIO_BASE64_CHARS,
+            maxMessage: 'El audio es demasiado grande (Máx 12MB)'
+        )]
         public readonly ?string $audio = null,
 
-        #[Assert\Length(max: 50000000, maxMessage: 'El video es demasiado grande (Máx 35MB)')]
+        #[Assert\Length(
+            max: PredictMediaLimits::LEGACY_VIDEO_BASE64_CHARS,
+            maxMessage: 'El video es demasiado grande (Máx 40MB)'
+        )]
         public readonly ?string $video = null,
 
         #[Assert\Length(max: 255)]

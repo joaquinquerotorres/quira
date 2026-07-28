@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Service\PredictMediaLimits;
 use App\Service\SupabaseUploadTicketService;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -70,7 +71,10 @@ class UploadTicketController extends AbstractController
     /**
      * Obtiene un ticket para subir media de una request (photo, audio, video).
      * Body: { "type": "photo" | "audio" | "video" }
-     * El cliente hace PUT a signedUrl; luego envía publicUrl en POST /api/requests (photoUrl, audioUrl, videoUrl).
+     * El cliente hace PUT a signedUrl; luego envía publicUrl en POST /api/requests (photoUrl, audioUrl, videoUrl)
+     * o en POST /api/predict (imageUrl / audioUrl / videoUrl).
+     *
+     * Respuesta incluye maxBytes (límite del análisis IA; mismo tope en Wi‑Fi y datos móviles).
      */
     #[Route('/api/upload-ticket/request-media', name: 'api_upload_ticket_request_media', methods: ['POST'])]
     public function requestMedia(Request $request): JsonResponse
@@ -116,6 +120,7 @@ class UploadTicketController extends AbstractController
             'signedUrl' => $ticket['signedUrl'],
             'publicUrl' => $ticket['publicUrl'],
             'expiresIn' => 300,
+            'maxBytes' => PredictMediaLimits::maxBytesFor($type),
         ]);
     }
 }

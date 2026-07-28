@@ -49,6 +49,7 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
 
 ### Endpoint
 - Flujo preferido: cliente sube media a Supabase (`upload-ticket`) → `POST /api/predict` con `imageUrl` / `audioUrl` / `videoUrl` (+ `description` / `location`). Crea `PredictTask` + `AnalyzePredictMessage` (Messenger **async**; worker Railway con `CONTAINER_ROLE=worker`). Polling: `GET /api/predict/tasks/{publicId}`.
+- Límites de archivo (uniformes Wi‑Fi / datos; expuestos como `maxBytes` en el ticket): imagen **10 MB**, audio **12 MB**, vídeo **40 MB** (`PredictMediaLimits` / `PredictMediaFetcher`).
 - Legacy: `image` / `audio` / `video` en base64 (payload grande; `docker/php/zz-quira.ini`). No usar en clientes nuevos.
 - El texto de `description` en predict está limitado a **5000** caracteres; el mismo límite aplica a **`clientOriginalDescription`** en la entidad `Request` (texto original del cliente guardado al crear/actualizar la solicitud).
 
