@@ -62,9 +62,10 @@ El **`Caddyfile`** sirve `public/` como document root (equivalente a Nginx + PHP
    - `CONTAINER_ROLE=worker`
    - `RUN_MIGRATIONS=0` (las migraciones las hace solo el servicio web).
 3. **Start command vacío** (usa el `ENTRYPOINT`): con `CONTAINER_ROLE=worker` ejecuta  
-   `php bin/console messenger:consume async --time-limit=3600 …`.
-4. Quita dominio público / healthcheck HTTP si Railway lo exige y falla (el worker no escucha en `PORT`).
-5. Opcional: `MESSENGER_TIME_LIMIT`, `MESSENGER_MEMORY_LIMIT`, `MESSENGER_SLEEP`.
+   `php -d max_execution_time=0 bin/console messenger:consume async --time-limit=3600 …`.
+4. **Restart policy = `ALWAYS`** (no `ON_FAILURE`). El worker sale con código 0 al cumplir `--time-limit`; con `ON_FAILURE` Railway no lo vuelve a levantar y deja de consumir la cola.
+5. Quita dominio público / healthcheck HTTP si Railway lo exige y falla (el worker no escucha en `PORT`).
+6. Opcional: `MESSENGER_TIME_LIMIT`, `MESSENGER_MEMORY_LIMIT`, `MESSENGER_SLEEP`.
 
 Comprueba en logs del worker: `Starting Messenger worker` y mensajes `Received message App\Message\AnalyzePredictMessage`.
 
