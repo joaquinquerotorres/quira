@@ -12,6 +12,7 @@ use App\Repository\PredictTaskRepository;
 use App\Service\GeminiCacheService;
 use App\Service\GeminiService;
 use App\Service\PredictMediaFetcher;
+use App\Service\PricingClampService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -28,6 +29,7 @@ class PredictController extends AbstractController
         private readonly LoggerInterface $logger,
         private readonly GeminiService $geminiService,
         private readonly GeminiCacheService $geminiCacheService,
+        private readonly PricingClampService $pricingClampService,
         private readonly PredictMediaFetcher $mediaFetcher,
         private readonly EntityManagerInterface $entityManager,
         private readonly PredictTaskRepository $predictTaskRepository,
@@ -135,7 +137,7 @@ class PredictController extends AbstractController
     {
         try {
             set_time_limit(300);
-            $cacheId = $this->geminiCacheService->getActiveCacheId();
+            $cacheId = $this->geminiCacheService->getActiveCacheId($input->location);
             $suggestion = $this->geminiService->diagnose(
                 $input->description,
                 $input->image,
@@ -143,6 +145,10 @@ class PredictController extends AbstractController
                 $input->video,
                 $input->location,
                 $cacheId
+            );
+            $suggestion = $this->pricingClampService->clampDiagnosis(
+                $suggestion,
+                $input->location
             );
 
             return $this->json($suggestion);

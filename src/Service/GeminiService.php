@@ -91,21 +91,16 @@ class GeminiService
             - Si no se te indica explícitamente la ubicación, ASUME SIEMPRE: "Córdoba, Andalucía, España".
             
             INSTRUCCIÓN DE COTIZACIÓN GEOGRÁFICA (ESPAÑA):
-            - Ajusta los precios (min/max) basándote en el coste de vida de la ciudad/región.
-            - Considera estas reglas:
-              * "Madrid", "Barcelona", "Bilbao" => mano de obra MUY ALTA.
-              * "Valencia", "Sevilla", "Málaga", "Zaragoza", "Palma de Mallorca" => mano de obra ALTA.
-              * "Córdoba", "Granada", "Cádiz", "Almería", "Jaén", "Huelva" => mano de obra MEDIA (usa especialmente filas de zona ANDALUCÍA si existen).
-              * Ciudades pequeñas/pueblos => mano de obra MEDIA/BAJA (usa filas "Nacional" sin sobrecostes).
-            - Si la ciudad está en Andalucía (ej: Córdoba, Sevilla, Málaga, Granada...), PRIORIZA filas con Zona = "Andalucía". 
-              Solo usa filas de Zona "Nacional" cuando no exista una fila específica para Andalucía.
-
-            Actúa como un experto cotizador de servicios del hogar, mantenimiento y reformas.
-            NO asumas siempre que es una avería.
-            Puede ser:
-            1. Una REPARACIÓN (algo roto, fuga, chispazo).
-            2. Una INSTALACIÓN (montar muebles, colgar lámparas, instalar grifo).
-            3. Una MEJORA (pintar una pared, jardinería, limpieza a fondo).
+            - Usa SIEMPRE la TABLA MAESTRA DE PRECIOS del CONTEXTO CACHEADO (si existe) o las reglas de fallback del mismo.
+            - Elige filas cuya Zona encaje con la ubicación (prioridad: ciudad → región → España/Nacional).
+            - Ajusta ligeramente dentro del rango de la fila según coste de vida:
+              * "Madrid", "Barcelona", "Bilbao" => hacia el máximo del rango.
+              * "Valencia", "Sevilla", "Málaga", "Zaragoza", "Palma" => zona media-alta del rango.
+              * "Córdoba" y resto de Andalucía interior => rangos Córdoba/Andalucía tal cual.
+            - El rango [estimated_price_min, estimated_price_max] debe estar DENTRO o MUY CERCA de [Precio_Min, Precio_Max] de la fila elegida.
+            - Urgencias ("IMMEDIATE"): hasta +30% sobre Precio_Max (nunca > 1.3 * Precio_Max).
+            - Si pricing_type = "VISIT_REQUIRED", estimated_price_min y estimated_price_max = 0.
+            - Devuelve SIEMPRE precios en CÉNTIMOS (enteros).
 
             CATEGORÍAS DISPONIBLES (Elige estrictamente una):
             - MASONRY (Albañilería/Reformas)
@@ -116,14 +111,6 @@ class GeminiService
             - PAINTING (Pintura)
             - GARDENING (Jardinería)
             - CLEANING (Limpieza)
-
-            REGLAS DE PRECIOS (MUY ESTRICTAS):
-            - Usa SIEMPRE la tabla de precios reales y las reglas de analogía que tienes en tu CONTEXTO CACHEADO.
-            - El rango final [estimated_price_min, estimated_price_max] debe estar DENTRO o MUY CERCA del rango [Precio_Min, Precio_Max] de la fila de la tabla que elijas:
-              * En trabajos normales, mantente dentro del rango de la tabla.
-              * En urgencias ("IMMEDIATE"), puedes incrementar el rango hasta un máximo del 30% respecto al Precio_Max original, pero nunca superar 1.3 * Precio_Max.
-            - NO inventes rangos totalmente nuevos si existen filas similares en la tabla.
-            - Devuelve SIEMPRE los precios en CÉNTIMOS (enteros).
 
             ────────────────────────────────────────
             CAMPO "pricing_type"
@@ -166,16 +153,6 @@ class GeminiService
             * "¿Qué tipo de grifo tienes?" → irrelevante para cotizar
             * Cualquier pregunta cuya respuesta ya sea visible en la imagen/video
 
-            ────────────────────────────────────────
-            REGLAS DE PRECIOS (MUY ESTRICTAS)
-            ────────────────────────────────────────
-            - Usa SIEMPRE la tabla de precios reales y las reglas de analogía de tu CONTEXTO CACHEADO.
-            - El rango [estimated_price_min, estimated_price_max] debe estar DENTRO o MUY CERCA del rango [Precio_Min, Precio_Max] de la fila de la tabla que elijas.
-            - En urgencias ("IMMEDIATE"), puedes incrementar hasta un máximo del 30% sobre Precio_Max, pero nunca superar 1.3 * Precio_Max.
-            - NO inventes rangos nuevos si existen filas similares en la tabla.
-            - Devuelve SIEMPRE los precios en CÉNTIMOS (enteros).
-            - Si pricing_type = "VISIT_REQUIRED", devuelve estimated_price_min y estimated_price_max = 0.
-
             REGLAS DE DECISIÓN DE CATEGORÍA:
             - Brochas, rodillos, paredes descoloridas -> PAINTING
             - Plantas, podas, tierra, exteriores -> GARDENING
@@ -204,7 +181,7 @@ class GeminiService
                 'description': 'Descripción técnica del trabajo y herramientas/materiales probables.',
                 'summary_text': 'Resumen en 1 frase de lo que has entendido del audio/texto del usuario (ej: "Entendido, tienes una fuga de agua importante en el lavabo")',
                 'category': 'La categoría técnica en MAYÚSCULAS (ej: PLUMBING)',
-                'sub_category': 'Subcategoría textual lo más cercana posible a una de las filas de la columna "Subcategoria" del CSV de precios (ej: "Instalación de termo eléctrico 80L", "Cambio de mecanismos (enchufe/tecla)"). Si no encuentras una coincidencia clara, devuelve una descripción corta estándar que luego pueda mapearse manualmente.',
+                'sub_category': 'Subcategoría textual lo más cercana posible a una de las filas de la columna "Subcategoria" de la tabla de precios (ej: "Instalación de termo eléctrico 80L", "Cambio de mecanismos (enchufe/tecla)"). Si no encuentras una coincidencia clara, devuelve una descripción corta estándar que luego pueda mapearse manualmente.',
                 'risk_level': 'LOW (Estético/Jardín/Limpieza), MEDIUM (Reparaciones estándar), HIGH (Gas/Electricidad/Estructural)',
                 'pricing_type': 'FIXED | RANGE | VISIT_REQUIRED',
                 'clarifying_questions': [],
@@ -284,14 +261,20 @@ class GeminiService
         }
     }
 
-    public function createCache(): ?string
+    /**
+     * Crea cachedContents en Gemini con identidad + categorías + tabla de precios + reglas de analogía.
+     * Las reglas de cotización viven aquí (prefijo cacheado); el prompt de diagnose solo aporta el caso + geo.
+     *
+     * @param string $catalogCsv CSV (cabecera + filas) del slice de PricingCatalogService
+     * @param string|null $modelOverride modelo sin prefijo models/ (debe coincidir con generateContent)
+     */
+    public function createCache(string $catalogCsv, ?string $modelOverride = null): ?string
     {
+        $model = $this->normalizeModelName($modelOverride ?? $this->model);
         $url = 'https://generativelanguage.googleapis.com/v1beta/cachedContents?key=' . $this->apiKey;
-        $csvPath = \dirname(__DIR__, 2) . '/config/gemini_pricing.csv';
-        $csvContents = @file_get_contents($csvPath);
-        if ($csvContents === false) {
-            $this->logger->error("❌ No se pudo leer config/gemini_pricing.csv. Usando tabla de precios vacía en el contexto de Gemini.");
-            $csvContents = "Categoria,Subcategoria,Zona,Precio_Min,Precio_Max,Unidad,Complejidad\n";
+
+        if (trim($catalogCsv) === '') {
+            $catalogCsv = "Categoria,Subcategoria,Zona,Precio_Min,Precio_Max,Unidad,Complejidad\n";
         }
 
         $staticContext = <<<CONTEXT
@@ -300,6 +283,7 @@ class GeminiService
 
             CONTEXTO DE OPERACIÓN:
             Operas en el contexto de Quira, priorizando la precisión técnica y la seguridad del usuario. Utilizas la evidencia multimodal (video, audio, imagen) para generar diagnósticos que ayuden a los profesionales a entender el trabajo antes de asistir.
+            NO asumas siempre que es una avería. Puede ser REPARACIÓN, INSTALACIÓN o MEJORA.
 
             DESCRIPCIÓN DETALLADA DE CATEGORÍAS TÉCNICAS:
             - PLUMBING (Fontanería): Incluye redes de agua sanitaria, evacuación, grifería, sanitarios, sistemas de filtración (ósmosis/descalcificación) y detección de fugas.
@@ -311,41 +295,47 @@ class GeminiService
             - GARDENING (Jardinería): Diseño de paisajes, mantenimiento de césped, podas en altura, sistemas de riego automatizado y tratamientos fitosanitarios.
             - CLEANING (Limpieza): Limpiezas de choque post-obra, higienización de tapicerías, limpieza de cristales en altura y mantenimiento regular.
 
-            TABLA MAESTRA DE PRECIOS QUIRA (desde CSV externo):
-            $csvContents
+            TABLA MAESTRA DE PRECIOS QUIRA (slice por zona; precios en céntimos):
+            $catalogCsv
+
+            REGLAS DE PRECIOS (MUY ESTRICTAS):
+            - Usa SIEMPRE esta tabla. El rango [estimated_price_min, estimated_price_max] debe estar DENTRO o MUY CERCA de [Precio_Min, Precio_Max] de la fila elegida.
+            - NO inventes rangos nuevos si existen filas similares.
+            - Urgencias IMMEDIATE: hasta +30% sobre Precio_Max (máx. 1.3×).
+            - VISIT_REQUIRED ⇒ estimated_price_min = estimated_price_max = 0.
+            - Devuelve precios en CÉNTIMOS (enteros).
 
             LOGICA DE FALLBACK Y ANALOGÍA:
-            - Si el servicio no es exacto: identifica la categoría y aplica el rango de un servicio de similar dificultad dentro de la MISMA categoría y, si es posible, de la misma zona (Andalucía/Nacional).
-            - Solo si no hay ninguna analogía razonable en la tabla:
-              * Usa precios por hora: Técnicos (PLUMBING, ELECTRICITY, HVAC, MASONRY) 4800-7200 cént/h. 
-                Soporte (PAINTING, GARDENING, CLEANING, DIY) 1800-3800 cént/h.
-              * Limita el número de horas a un rango realista para trabajos domésticos estándar (por ejemplo 1-2h, 2-4h, 4-6h) y ajusta el rango de precio en consecuencia.
-            - Urgencias: Si el usuario requiere asistencia inmediata y el servicio tiene carácter urgente (fuga grave, riesgo eléctrico, etc.), incrementa los rangos hasta un 30% máximo respecto al rango base y márcalo como 'IMMEDIATE'.
+            - Si el servicio no es exacto: misma categoría y, si es posible, misma zona; aplica el rango de un servicio de similar dificultad.
+            - Solo si no hay analogía razonable:
+              * Técnicos (PLUMBING, ELECTRICITY, HVAC, MASONRY): 4800-7200 cént/h.
+              * Soporte (PAINTING, GARDENING, CLEANING, DIY): 1800-3800 cént/h.
+              * Horas realistas domésticas (1-2h, 2-4h, 4-6h).
 
             REGLAS DE SEGURIDAD Y PRECISIÓN:
             1. Prioridad: Video > Imagen > Audio > Texto.
-            2. Si detectas cables pelados o chispas: RIESGO ALTO.
-            3. Si detectas fugas de agua cerca de electricidad: RIESGO ALTO.
-            4. Siempre devuelve el JSON completo con precios en céntimos (enteros).
+            2. Cables pelados o chispas: RIESGO ALTO.
+            3. Fugas de agua cerca de electricidad: RIESGO ALTO.
+            4. Siempre JSON completo con precios en céntimos.
         CONTEXT;
-        
-         try {
+
+        try {
             $payload = [
-                "model" => "models/" . $this->model,
-                "displayName" => "Quira Knowledge Base",
-                "contents" => [
-                    ["parts" => [["text" => $staticContext]], "role" => "user"]
+                'model' => 'models/' . $model,
+                'displayName' => 'Quira Knowledge Base',
+                'contents' => [
+                    ['parts' => [['text' => $staticContext]], 'role' => 'user'],
                 ],
-                "ttl" => "3600s" 
+                'ttl' => '3600s',
             ];
 
             $response = $this->client->request('POST', $url, ['json' => $payload]);
             $data = $response->toArray();
-            
-            return $data['name']; 
 
+            return isset($data['name']) && is_string($data['name']) ? $data['name'] : null;
         } catch (\Exception $e) {
-            $this->logger->error("❌ Error al crear la cache en Gemini: " . $e->getMessage());
+            $this->logger->error('❌ Error al crear la cache en Gemini: ' . $e->getMessage());
+
             return null;
         }
     }
@@ -517,8 +507,11 @@ class GeminiService
                 $fallbackUrl = preg_replace('#/models/[^:]+:generateContent\\?key=#', '/models/' . $fallbackModel . ':generateContent?key=', $url);
                 if (is_string($fallbackUrl)) {
                     $this->logger->warning("⚠️ Fallback a modelo {$fallbackModel} por error con {$this->model}: " . $e->getMessage());
+                    // cachedContent es por modelo: no reutilizarlo en el fallback.
+                    $fallbackPayload = $payload;
+                    unset($fallbackPayload['cachedContent']);
                     $response = $this->client->request('POST', $fallbackUrl, [
-                        'json' => $payload,
+                        'json' => $fallbackPayload,
                         'headers' => ['Content-Type' => 'application/json'],
                     ]);
                     $data = $response->toArray();

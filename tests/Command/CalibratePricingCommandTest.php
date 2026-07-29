@@ -6,9 +6,12 @@ namespace App\Tests\Command;
 
 use App\Command\CalibratePricingCommand;
 use App\Entity\Bid;
+use App\Entity\PricingRate;
 use App\Enum\BidStatus;
 use App\Enum\RequestStatus;
 use App\Enum\RiskLevel;
+use App\Repository\PricingRateRepository;
+use App\Service\GeminiCacheService;
 use App\Tests\Api\ApiTestCase;
 use PHPUnit\Framework\Attributes\Group;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -35,9 +38,8 @@ final class CalibratePricingCommandTest extends ApiTestCase
             notifyRequestActivity: false,
         );
 
-        $subCategory = 'TEST_SUBCATEGORY_CALIBRATE';
+        $subCategory = 'TEST_SUBCATEGORY_CALIBRATE_' . bin2hex(random_bytes(4));
 
-        // Need >=3 jobs for factor generation.
         for ($i = 0; $i < 3; $i++) {
             $req = $this->createRequest(
                 clientProfile: $clientProfile,
@@ -63,28 +65,27 @@ final class CalibratePricingCommandTest extends ApiTestCase
         }
         $this->em->flush();
 
-        $csvPath = \dirname(__DIR__, 2) . '/config/gemini_pricing.csv';
-        $original = file_get_contents($csvPath);
-        $this->assertIsString($original);
+        /** @var PricingRateRepository $repo */
+        $repo = static::getContainer()->get(PricingRateRepository::class);
+        /** @var GeminiCacheService $cache */
+        $cache = static::getContainer()->get(GeminiCacheService::class);
 
-        try {
-            $command = static::getContainer()->get(CalibratePricingCommand::class);
-            $tester = new CommandTester($command);
-            $exit = $tester->execute([
-                '--since' => '2000-01-01',
-            ]);
+        $command = static::getContainer()->get(CalibratePricingCommand::class);
+        $tester = new CommandTester($command);
+        $exit = $tester->execute([
+            '--since' => '2000-01-01',
+        ]);
 
-            $this->assertSame(0, $exit);
+        $this->assertSame(0, $exit);
 
-            $updated = file_get_contents($csvPath);
-            $this->assertIsString($updated);
-            $this->assertStringContainsString(',' . $subCategory . ',Córdoba,', $updated);
-            // Complejidad derivada de HIGH => Alta (última columna)
-            $this->assertStringContainsString(',' . $subCategory . ',Córdoba,', $updated);
-            $this->assertStringContainsString(',Alta', $updated);
-        } finally {
-            file_put_contents($csvPath, $original);
-        }
+        $rate = $repo->findOneBy(['subcategory' => $subCategory, 'zone' => 'Córdoba']);
+        $this->assertInstanceOf(PricingRate::class, $rate);
+        $this->assertSame('Alta', $rate->getComplexity());
+        $this->assertSame('Córdoba', $rate->getZone());
+        $this->assertGreaterThan(0, $rate->getPriceMin());
+        $this->assertGreaterThan($rate->getPriceMin(), $rate->getPriceMax());
+
+        // invalidateAll is invoked; calling again should be safe
+        $this->assertGreaterThanOrEqual(0, $cache->invalidateAll());
     }
 }
-
