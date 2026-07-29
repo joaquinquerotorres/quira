@@ -41,8 +41,10 @@ final class PricingSeedFromCsvCommand extends Command
         $io = new SymfonyStyle($input, $output);
         $replace = (bool) $input->getOption('replace');
         $written = $this->pricingCatalogService->seedFromCsv($replace);
-        $this->geminiCacheService->invalidateAll();
-        $io->success(sprintf('Importadas/actualizadas %d filas de precios. Caché Gemini invalidada.', $written));
+        if ($written > 0) {
+            $this->geminiCacheService->invalidateAll();
+        }
+        $io->success(sprintf('Importadas/actualizadas %d filas de precios.%s', $written, $written > 0 ? ' Caché Gemini invalidada.' : ' (tabla ya tenía datos; usa --replace para forzar)'));
 
         return Command::SUCCESS;
     }
