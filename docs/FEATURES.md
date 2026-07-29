@@ -58,14 +58,13 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
 - Comprobación de seguridad (fraude de contacto, contenido ofensivo) integrada en `GeminiService::diagnose()` (Paso 1 de moderación). La respuesta incluye `safe` y `safety_reason`; si `safe=false`, el backend marca la request para revisión (`PENDING_APPROVAL`).
 - Caché de contexto (GeminiCache) para tablas de precios y reglas (si falla la creación, la predicción sigue funcionando)
 
-### Tabla de precios (CSV) y Córdoba
+### Tabla de precios (BD) y Córdoba
 
-- La tabla maestra de precios se define en `config/gemini_pricing.csv` con columnas:
-  - `Categoria`, `Subcategoria`, `Zona`, `Precio_Min`, `Precio_Max`, `Unidad`, `Complejidad`.
-- `GeminiService::createCache()` lee este CSV y lo inyecta como contexto persistente en Gemini.
-- Por defecto, si no se indica ubicación, el diagnóstico asume **Córdoba, Andalucía, España** y:
-  - Prioriza filas de zona `Andalucía` si existen.
-  - Usa filas `Nacional` como fallback sin sobrecostes de gran ciudad.
+- Fuente de verdad: tabla **`pricing_rate`** (céntimos). El CSV `config/gemini_pricing.csv` es **seed** (`app:pricing:seed-from-csv`; se importa solo si la tabla está vacía, o con `--replace`).
+- `PricingCatalogService` resuelve zonas según ubicación (Córdoba → Córdoba+Andalucía+España; otras ciudades andaluzas → Andalucía+España; Madrid/Barcelona/Bilbao → España) y genera el slice CSV inyectado en la caché Gemini.
+- `GeminiCacheService` guarda en BD solo el **ID** remoto de `cachedContents` + `content_hash` + `model` + `zone_key`. Si Google falla, `diagnose` continúa **sin** `cachedContent`.
+- Tras `app:calibrate-pricing`, se actualizan filas en BD y se invalidan cachés locales.
+- Por defecto, si no se indica ubicación, el diagnóstico asume **Córdoba, Andalucía, España**.
 
 ### Calibración automática de precios
 
@@ -76,14 +75,11 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
 - El comando `app:calibrate-pricing`:
   - Agrupa por `sub_category` (no solo por categoría) y acumula también el `risk_level` dominante de esa subcategoría.
   - Calcula la desviación entre el rango medio de IA y el precio medio aceptado.
-  - Propone y aplica un factor de ajuste por subcategoría (clamp entre 0.7 y 1.3) directamente sobre `config/gemini_pricing.csv` para las filas existentes.
-  - Si Gemini ha devuelto una `sub_category` que aún no existe en el CSV:
-    - El comando añade una nueva línea con:
-      - `Zona = "Córdoba"` (enfoque actual de lanzamiento).
-      - `Precio_Min` / `Precio_Max` generados alrededor del precio medio aceptado (±20 %).
-      - `Complejidad` derivada del riesgo predominante (`LOW` → Baja, `MEDIUM` → Media, `HIGH` → Alta).
-- De esta forma, la tabla se va afinando y ampliando automáticamente con nuevas subcategorías basadas en los precios reales aceptados en la plataforma, empezando por Córdoba y pudiendo extenderse al resto de España añadiendo filas/zona según se escale.
-
+  - Propone y aplica un factor de ajuste por subcategoría (clamp entre 0.7 y 1.3) sobre filas de **`pricing_rate`**.
+  - Si Gemini ha devuelto una `sub_category` que aún no existe:
+    - Añade fila con `Zona = Córdoba`, rango ±20 % del aceptado, `Complejidad` según riesgo.
+  - Invalida cachés Gemini locales para forzar recreación con el catálogo nuevo.
+- El CSV en repo puede regenerarse/exportarse más adelante; no se modifica en caliente en producción.
 ## Notificaciones
 
 ### Canales (variables de entorno)

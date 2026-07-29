@@ -34,7 +34,8 @@
 | Review | Reseña sobre cliente o profesional |
 | RequestQuestion | Pregunta/respuesta en una solicitud |
 | Notification | Notificación in-app |
-| GeminiCache | Caché de contexto para Gemini |
+| GeminiCache | Registro local del cachedContent remoto de Gemini (id, model, contentHash, zoneKey, expiresAt) |
+| PricingRate | Tarifa de catálogo (antes CSV): categoría, subcategoría, zona, min/max céntimos |
 | PredictTask | Tarea de análisis IA: URLs de media, estado, resultado JSON (flujo híbrido) |
 | StripeWebhookEvent | Id de evento Stripe (`evt_*`) procesado (idempotencia webhooks) |
 | VerificationToken | Token de verificación de email |
@@ -66,7 +67,8 @@
 | ProfessionalSubscriptionService | `hasActivePaidSubscription` / límites efectivos FREE según `paidThroughAt` |
 | NotificationService | WhatsApp, push FCM, email (elige canal según roles/perfil y preferencias, con fallback escalonado) |
 | GeminiService | Diagnose/predict con `GEMINI_MODEL` + CSV/cache; moderación integrada en el propio `diagnose` (`safe`/`safety_reason`) |
-| GeminiCacheService | Gestión de cache persistente de contexto Gemini (tabla de precios y reglas) |
+| GeminiCacheService | cachedContents Gemini: lookup por model+hash+zona, lock MySQL, degradación sin caché |
+| PricingCatalogService | Catálogo BD, seed CSV, slice por ubicación, content hash |
 | PredictMediaFetcher | Descarga media de URLs públicas Supabase (anti-SSRF) a Data URL para Gemini |
 | PredictMediaLimits | Topes de tamaño (imagen 10 MB, audio 12 MB, vídeo 40 MB); expuestos en upload-ticket |
 | SupabaseUploadTicketService | URLs firmadas Supabase |
@@ -78,9 +80,10 @@
 ## Comandos consola relevantes
 
 - `stripe:reconcile-subscriptions`: sincroniza desde la API de Stripe todos los usuarios con `stripe_customer_id` (o `--user-id=`), por si faltó un webhook.
-- `app:calibrate-pricing`: analiza las `Request` con diagnosis de IA (incluyendo `sub_category` y `risk_level`) y pujas aceptadas, y ajusta el CSV `config/gemini_pricing.csv`:
-  - Reescala los rangos de precio existentes por subcategoría (factor limitado a ±30 %).
-  - Crea nuevas filas cuando detecta subcategorías nuevas, usando como base la categoría de la request, el precio medio aceptado, la zona `"Córdoba"` y una complejidad derivada del riesgo predominante.
+- `app:calibrate-pricing`: analiza requests con diagnosis IA + pujas aceptadas y ajusta `pricing_rate` (invalida caché Gemini):
+  - Reescala rangos por subcategoría (factor limitado a ±30 %).
+  - Crea filas nuevas (zona Córdoba, complejidad según riesgo).
+- `app:pricing:seed-from-csv`: importa `config/gemini_pricing.csv` → `pricing_rate` (solo si vacío, o `--replace`).
 
 ## State Processors
 

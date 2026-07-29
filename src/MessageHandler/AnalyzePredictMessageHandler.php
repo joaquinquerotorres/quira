@@ -60,7 +60,7 @@ final class AnalyzePredictMessageHandler
                 $video = $this->mediaFetcher->fetchAsDataUrl($task->getVideoUrl(), 'video');
             }
 
-            $cacheId = $this->geminiCacheService->getActiveCacheId();
+            $cacheId = $this->geminiCacheService->getActiveCacheId($task->getLocation());
             $suggestion = $this->geminiService->diagnose(
                 $task->getDescription(),
                 $image,

@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Entity\PricingRate;
 use App\Entity\Request;
 use App\Enum\BidStatus;
+use App\Repository\PricingRateRepository;
+use App\Service\GeminiCacheService;
+use App\Service\PricingCatalogService;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -17,14 +20,15 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'app:calibrate-pricing',
-    description: 'Genera un ajuste automático del CSV de precios de Gemini en base a las pujas aceptadas.',
+    description: 'Ajusta tarifas en BD (pricing_rate) según pujas aceptadas e invalida la caché Gemini.',
 )]
 final class CalibratePricingCommand extends Command
 {
     public function __construct(
         private readonly EntityManagerInterface $em,
-        #[Autowire('%kernel.project_dir%')]
-        private readonly string $projectDir,
+        private readonly PricingRateRepository $pricingRateRepository,
+        private readonly PricingCatalogService $pricingCatalogService,
+        private readonly GeminiCacheService $geminiCacheService,
     ) {
         parent::__construct();
     }
@@ -43,7 +47,7 @@ final class CalibratePricingCommand extends Command
                 'dry-run',
                 null,
                 InputOption::VALUE_NONE,
-                'Solo muestra el informe sin modificar el CSV.'
+                'Solo muestra el informe sin modificar la BD.'
             );
     }
 
@@ -55,14 +59,14 @@ final class CalibratePricingCommand extends Command
         if ($sinceOpt) {
             $since = new \DateTimeImmutable($sinceOpt . ' 00:00:00');
         } else {
-            $firstDayLastMonth = new \DateTimeImmutable('first day of last month 00:00:00');
-            $since = $firstDayLastMonth;
+            $since = new \DateTimeImmutable('first day of last month 00:00:00');
         }
 
-        $io->title('Calibración automática de precios (Gemini CSV)');
+        $io->title('Calibración automática de precios (BD pricing_rate)');
         $io->writeln(sprintf('Analizando requests desde: <info>%s</info>', $since->format('Y-m-d')));
 
-        // 1) Recoger datos: requests con diagnosis de IA + puja aceptada.
+        $this->pricingCatalogService->ensureSeeded();
+
         $qb = $this->em->createQueryBuilder();
         $qb
             ->select('r', 'b')
@@ -79,10 +83,11 @@ final class CalibratePricingCommand extends Command
 
         if (count($requests) === 0) {
             $io->warning('No se encontraron requests con pujas aceptadas en el rango indicado.');
+
             return Command::SUCCESS;
         }
 
-        // 2) Agregar estadísticas por subcategoría (usando la sub_category devuelta por Gemini).
+        /** @var array<string, array{count: int, sum_ai_mid: float, sum_accepted: float, category: string, risk_counts: array{LOW: int, MEDIUM: int, HIGH: int}}> $stats */
         $stats = [];
         foreach ($requests as $request) {
             $diag = $request->getAiDiagnosis() ?? [];
@@ -94,7 +99,6 @@ final class CalibratePricingCommand extends Command
                 continue;
             }
             if (!\is_string($subCategory) || $subCategory === '') {
-                // Requests antiguas sin sub_category o diagnosis incompleta: las ignoramos para calibración fina.
                 continue;
             }
             $aiMid = ($min + $max) / 2.0;
@@ -135,8 +139,9 @@ final class CalibratePricingCommand extends Command
             }
         }
 
-        if (empty($stats)) {
+        if ($stats === []) {
             $io->warning('No se pudieron calcular estadísticas (diagnosis incompletas o sin pujas aceptadas válidas).');
+
             return Command::SUCCESS;
         }
 
@@ -157,137 +162,74 @@ final class CalibratePricingCommand extends Command
         }
         $io->table(['Subcategoría', 'Nº trabajos', 'AI medio', 'Aceptado medio', 'Desviación'], $rows);
 
-        // 3) Leer CSV actual.
-        $csvPath = $this->projectDir . '/config/gemini_pricing.csv';
-        if (!is_file($csvPath)) {
-            $io->error(sprintf('No se ha encontrado el CSV de precios en %s', $csvPath));
-            return Command::FAILURE;
-        }
-
-        $original = file($csvPath, FILE_IGNORE_NEW_LINES);
-        if ($original === false || count($original) === 0) {
-            $io->error('No se pudo leer gemini_pricing.csv o está vacío.');
-            return Command::FAILURE;
-        }
-
-        // 4) Calcular factores por subcategoría y aplicarlos a las filas del CSV.
-        //    Para no sobre-reaccionar: clamp entre 0.7 y 1.3.
         $factors = [];
         foreach ($stats as $subCategoryKey => $s) {
-            $count = $s['count'];
-            if ($count < 3) {
-                // Muy pocos datos, no ajustamos esa subcategoría aún.
+            if ($s['count'] < 3) {
                 continue;
             }
-            $avgAiMid = $s['sum_ai_mid'] / $count;
-            $avgAccepted = $s['sum_accepted'] / $count;
+            $avgAiMid = $s['sum_ai_mid'] / $s['count'];
+            $avgAccepted = $s['sum_accepted'] / $s['count'];
             if ($avgAiMid <= 0 || $avgAccepted <= 0) {
                 continue;
             }
-            $rawFactor = $avgAccepted / $avgAiMid;
-            $factor = max(0.7, min(1.3, $rawFactor));
-            $factors[$subCategoryKey] = $factor;
+            $factors[$subCategoryKey] = max(0.7, min(1.3, $avgAccepted / $avgAiMid));
         }
 
-        if (empty($factors)) {
-            $io->warning('No hay suficientes datos por subcategoría como para proponer ajustes (mínimo 3 trabajos por subcategoría).');
+        if ($factors === []) {
+            $io->warning('No hay suficientes datos por subcategoría (mínimo 3 trabajos).');
+
             return Command::SUCCESS;
         }
 
-        $io->section('Factores de ajuste propuestos por subcategoría');
-        $rows = [];
+        $io->section('Factores de ajuste propuestos');
+        $factorRows = [];
         foreach ($factors as $subCategoryKey => $factor) {
-            $rows[] = [$subCategoryKey, sprintf('x %.3f', $factor), sprintf('%+.1f %%', ($factor - 1.0) * 100)];
+            $factorRows[] = [$subCategoryKey, sprintf('x %.3f', $factor), sprintf('%+.1f %%', ($factor - 1.0) * 100)];
         }
-        $io->table(['Subcategoría (Gemini)', 'Factor', 'Variación'], $rows);
+        $io->table(['Subcategoría', 'Factor', 'Variación'], $factorRows);
 
-        // Procesar líneas del CSV (sin tocar cabecera) y registrar qué subcategorías existen ya.
-        $newLines = [];
-        $header = array_shift($original);
-        $newLines[] = $header;
+        if ($input->getOption('dry-run')) {
+            $io->warning('Dry-run: no se modificó la BD ni la caché Gemini.');
 
-        $existingSubcategories = [];
+            return Command::SUCCESS;
+        }
 
-        foreach ($original as $line) {
-            if (trim($line) === '') {
-                $newLines[] = $line;
+        $updated = 0;
+        $created = 0;
+        $existingBySub = [];
+        foreach ($this->pricingRateRepository->findAllOrdered() as $rate) {
+            $existingBySub[$rate->getSubcategory()] = true;
+            if (!isset($factors[$rate->getSubcategory()])) {
                 continue;
             }
-            $cols = str_getcsv($line);
-            if (count($cols) < 7) {
-                $newLines[] = $line;
-                continue;
-            }
-
-            [$categoria, $subcategoria, $zona, $minStr, $maxStr, $unidad, $complejidad] = $cols;
-            $subcategoriaTrim = trim($subcategoria);
-
-            if ($subcategoriaTrim !== '') {
-                $existingSubcategories[$subcategoriaTrim] = true;
-            }
-
-            // Solo ajustar si tenemos factor para esa subcategoría (por nombre).
-            if (!isset($factors[$subcategoriaTrim])) {
-                $newLines[] = $line;
-                continue;
-            }
-
-            $factor = $factors[$subcategoriaTrim];
-            $min = (int) $minStr;
-            $max = (int) $maxStr;
-            if ($min <= 0 || $max <= 0) {
-                $newLines[] = $line;
-                continue;
-            }
-
-            $newMin = (int) round($min * $factor);
-            $newMax = (int) round($max * $factor);
+            $factor = $factors[$rate->getSubcategory()];
+            $newMin = (int) round($rate->getPriceMin() * $factor);
+            $newMax = (int) round($rate->getPriceMax() * $factor);
             if ($newMin < 0) {
                 $newMin = 0;
             }
             if ($newMax <= $newMin) {
                 $newMax = $newMin + 1;
             }
-
-            $newCols = [
-                $categoria,
-                $subcategoriaTrim,
-                $zona,
-                (string) $newMin,
-                (string) $newMax,
-                $unidad,
-                $complejidad,
-            ];
-            $newLines[] = implode(',', $newCols);
+            $rate->setPriceMin($newMin);
+            $rate->setPriceMax($newMax);
+            ++$updated;
         }
 
-        // 4b) Añadir líneas nuevas para subcategorías que no existan aún en el CSV.
         foreach ($factors as $subCategoryKey => $factor) {
-            if (isset($existingSubcategories[$subCategoryKey])) {
+            if (isset($existingBySub[$subCategoryKey])) {
                 continue;
             }
-
-            // Usar categoría (enum) asociada a esta subcategoría como base.
-            $baseCategory = $stats[$subCategoryKey]['category'] ?? 'DIY';
+            $baseCode = $stats[$subCategoryKey]['category'] ?? 'DIY';
             $count = $stats[$subCategoryKey]['count'];
             $avgAccepted = $stats[$subCategoryKey]['sum_accepted'] / max(1, $count);
-
-            // Crear un rango razonable alrededor del precio medio aceptado (±20%).
             $newMin = (int) round($avgAccepted * 0.8);
             $newMax = (int) round($avgAccepted * 1.2);
-            if ($newMin < 0) {
-                $newMin = 0;
-            }
             if ($newMax <= $newMin) {
                 $newMax = $newMin + 1;
             }
 
-            // Zona: estamos centrados en Córdoba → zona "Córdoba".
-            $zona = 'Córdoba';
-            $unidad = 'Servicio';
-
-            // Complejidad en base al riesgo predominante de esa subcategoría.
-            $riskCounts = $stats[$subCategoryKey]['risk_counts'] ?? ['LOW' => 0, 'MEDIUM' => 0, 'HIGH' => 0];
+            $riskCounts = $stats[$subCategoryKey]['risk_counts'];
             arsort($riskCounts);
             $topRisk = array_key_first($riskCounts);
             $complejidad = match ($topRisk) {
@@ -296,43 +238,29 @@ final class CalibratePricingCommand extends Command
                 default => 'Baja',
             };
 
-            $newLines[] = implode(',', [
-                $baseCategory,
-                $subCategoryKey,
-                $zona,
-                (string) $newMin,
-                (string) $newMax,
-                $unidad,
-                $complejidad,
-            ]);
+            $rate = new PricingRate();
+            $rate->setCategoryCode($baseCode);
+            $rate->setCategoryLabel($this->pricingCatalogService->labelForCode($baseCode));
+            $rate->setSubcategory($subCategoryKey);
+            $rate->setZone('Córdoba');
+            $rate->setPriceMin(max(0, $newMin));
+            $rate->setPriceMax($newMax);
+            $rate->setUnit('Servicio');
+            $rate->setComplexity($complejidad);
+            $this->em->persist($rate);
+            ++$created;
         }
 
-        if ($input->getOption('dry-run')) {
-            $io->warning('Dry-run activado: no se ha modificado el CSV. Vista previa de las primeras filas ajustadas:');
-            $preview = array_slice($newLines, 0, 10);
-            foreach ($preview as $l) {
-                $io->writeln($l);
-            }
-            return Command::SUCCESS;
-        }
+        $this->em->flush();
+        $invalidated = $this->geminiCacheService->invalidateAll();
 
-        // 5) Backup y escritura.
-        $backupPath = $csvPath . '.' . (new \DateTimeImmutable())->format('Ymd_His') . '.bak';
-        if (!@copy($csvPath, $backupPath)) {
-            $io->warning(sprintf('No se pudo crear backup en %s. Se continuará igualmente.', $backupPath));
-        } else {
-            $io->writeln(sprintf('Backup creado en: <info>%s</info>', $backupPath));
-        }
-
-        $result = @file_put_contents($csvPath, implode(PHP_EOL, $newLines) . PHP_EOL);
-        if ($result === false) {
-            $io->error('Error al escribir el CSV actualizado.');
-            return Command::FAILURE;
-        }
-
-        $io->success('CSV de precios actualizado correctamente. Recuerda regenerar la cache de Gemini para que use estos nuevos rangos.');
+        $io->success(sprintf(
+            'Tarifas actualizadas: %d ajustadas, %d nuevas. Cachés Gemini invalidadas: %d.',
+            $updated,
+            $created,
+            $invalidated
+        ));
 
         return Command::SUCCESS;
     }
 }
-

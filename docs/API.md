@@ -154,7 +154,7 @@ Autenticación: Bearer JWT en header Authorization
   - Respuesta típica en `result` (o cuerpo plano legacy):
     - `title`, `description`, `summary_text`
     - `category` (PLUMBING, ELECTRICITY, etc.)
-    - `sub_category` (alineada con la columna Subcategoria del CSV `config/gemini_pricing.csv`)
+    - `sub_category` (alineada con la columna/subcategoría del catálogo `pricing_rate`)
     - `risk_level` (LOW, MEDIUM, HIGH)
     - `safe`, `safety_reason`
     - `estimated_price_min`, `estimated_price_max` (en céntimos)

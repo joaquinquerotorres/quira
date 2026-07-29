@@ -135,7 +135,7 @@ class PredictController extends AbstractController
     {
         try {
             set_time_limit(300);
-            $cacheId = $this->geminiCacheService->getActiveCacheId();
+            $cacheId = $this->geminiCacheService->getActiveCacheId($input->location);
             $suggestion = $this->geminiService->diagnose(
                 $input->description,
                 $input->image,

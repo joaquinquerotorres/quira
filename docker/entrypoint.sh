@@ -117,6 +117,8 @@ fi
 
 if [ "$RUN_MIGRATIONS" = "1" ]; then
 	php bin/console doctrine:migrations:migrate --no-interaction --env=prod --no-ansi
+	# Catálogo de precios en BD (idempotente si ya hay filas)
+	php bin/console app:pricing:seed-from-csv --no-ansi || true
 fi
 
 php bin/console cache:warmup --env=prod --no-debug --no-ansi
