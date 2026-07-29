@@ -33,6 +33,10 @@ final class GeminiServiceCreateCacheTest extends TestCase
             $text = $payload['contents'][0]['parts'][0]['text'] ?? '';
             self::assertStringContainsString('Fontanería,Test,Córdoba,1000,2000,Unidad,Baja', $text);
             self::assertStringContainsString('REGLAS DE PRECIOS', $text);
+            self::assertStringContainsString('APPLIANCES (Electrodomésticos)', $text);
+            self::assertStringContainsString('PEST_CONTROL (Control de Plagas)', $text);
+            self::assertStringContainsString('SMART_HOME (Domótica y Seguridad)', $text);
+            self::assertStringContainsString('CARE (Cuidados', $text);
 
             return new MockResponse(json_encode([
                 'name' => 'cachedContents/test-cache-id',

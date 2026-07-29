@@ -28,4 +28,45 @@ enum Category: string
     case BEAUTY = 'BEAUTY';
     case PETS = 'PETS';
     case CARE = 'CARE';
+
+    /** Etiqueta española (catálogo / UI). */
+    public function label(): string
+    {
+        return match ($this) {
+            self::PLUMBING => 'Fontanería',
+            self::ELECTRICITY => 'Electricidad',
+            self::MASONRY => 'Albañilería',
+            self::HVAC => 'Climatización',
+            self::DIY => 'Manitas',
+            self::PAINTING => 'Pintura',
+            self::GARDENING => 'Jardinería',
+            self::CLEANING => 'Limpieza',
+            self::APPLIANCES => 'Electrodomésticos',
+            self::MOVING => 'Mudanzas y Portes',
+            self::LOCKSMITH => 'Cerrajería',
+            self::POOL => 'Mantenimiento de Piscinas',
+            self::SEWING => 'Costura y Arreglos',
+            self::BLINDS => 'Persianas y Toldos',
+            self::GLAZING => 'Cristalería',
+            self::FURNITURE => 'Restauración de Muebles',
+            self::CLEAROUT => 'Vaciado de Pisos',
+            self::PEST_CONTROL => 'Control de Plagas',
+            self::SMART_HOME => 'Domótica y Seguridad',
+            self::BEAUTY => 'Belleza',
+            self::PETS => 'Mascotas',
+            self::CARE => 'Cuidados',
+        };
+    }
+
+    public static function tryFromLabel(string $label): ?self
+    {
+        $needle = trim($label);
+        foreach (self::cases() as $case) {
+            if ($case->label() === $needle) {
+                return $case;
+            }
+        }
+
+        return null;
+    }
 }

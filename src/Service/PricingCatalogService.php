@@ -15,58 +15,6 @@ final class PricingCatalogService
 {
     public const RULES_VERSION = 'pricing-rules-v3';
 
-    /** @var array<string, string> */
-    private const CODE_TO_LABEL = [
-        'PLUMBING' => 'Fontanería',
-        'ELECTRICITY' => 'Electricidad',
-        'MASONRY' => 'Albañilería',
-        'HVAC' => 'Climatización',
-        'DIY' => 'Manitas',
-        'PAINTING' => 'Pintura',
-        'GARDENING' => 'Jardinería',
-        'CLEANING' => 'Limpieza',
-        'APPLIANCES' => 'Electrodomésticos',
-        'MOVING' => 'Mudanzas y Portes',
-        'LOCKSMITH' => 'Cerrajería',
-        'POOL' => 'Mantenimiento de Piscinas',
-        'SEWING' => 'Costura y Arreglos',
-        'BLINDS' => 'Persianas y Toldos',
-        'GLAZING' => 'Cristalería',
-        'FURNITURE' => 'Restauración de Muebles',
-        'CLEAROUT' => 'Vaciado de Pisos',
-        'PEST_CONTROL' => 'Control de Plagas',
-        'SMART_HOME' => 'Domótica y Seguridad',
-        'BEAUTY' => 'Belleza',
-        'PETS' => 'Mascotas',
-        'CARE' => 'Cuidados',
-    ];
-
-    /** @var array<string, string> */
-    private const LABEL_TO_CODE = [
-        'Fontanería' => 'PLUMBING',
-        'Electricidad' => 'ELECTRICITY',
-        'Albañilería' => 'MASONRY',
-        'Climatización' => 'HVAC',
-        'Manitas' => 'DIY',
-        'Pintura' => 'PAINTING',
-        'Jardinería' => 'GARDENING',
-        'Limpieza' => 'CLEANING',
-        'Electrodomésticos' => 'APPLIANCES',
-        'Mudanzas y Portes' => 'MOVING',
-        'Cerrajería' => 'LOCKSMITH',
-        'Mantenimiento de Piscinas' => 'POOL',
-        'Costura y Arreglos' => 'SEWING',
-        'Persianas y Toldos' => 'BLINDS',
-        'Cristalería' => 'GLAZING',
-        'Restauración de Muebles' => 'FURNITURE',
-        'Vaciado de Pisos' => 'CLEAROUT',
-        'Control de Plagas' => 'PEST_CONTROL',
-        'Domótica y Seguridad' => 'SMART_HOME',
-        'Belleza' => 'BEAUTY',
-        'Mascotas' => 'PETS',
-        'Cuidados' => 'CARE',
-    ];
-
     public function __construct(
         private readonly PricingRateRepository $pricingRateRepository,
     ) {
@@ -75,25 +23,26 @@ final class PricingCatalogService
     public function labelForCode(string $code): string
     {
         $code = strtoupper(trim($code));
+        $category = Category::tryFrom($code);
 
-        return self::CODE_TO_LABEL[$code] ?? $code;
+        return $category?->label() ?? $code;
     }
 
     public function codeForLabel(string $label): string
     {
         $label = trim($label);
-        if (isset(self::LABEL_TO_CODE[$label])) {
-            return self::LABEL_TO_CODE[$label];
+        $fromLabel = Category::tryFromLabel($label);
+        if ($fromLabel !== null) {
+            return $fromLabel->value;
         }
 
         $upper = strtoupper($label);
-        foreach (Category::cases() as $case) {
-            if ($case->value === $upper) {
-                return $case->value;
-            }
+        $fromCode = Category::tryFrom($upper);
+        if ($fromCode !== null) {
+            return $fromCode->value;
         }
 
-        return 'DIY';
+        return Category::DIY->value;
     }
 
     /**

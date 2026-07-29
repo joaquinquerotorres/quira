@@ -19,6 +19,7 @@ Autenticación: Bearer JWT en header Authorization
 ### ProfessionalProfile
 - GET/POST /api/professional_profiles, PATCH/PUT /api/professional_profiles/{id}
 - Campos de valoración: `rating`, `reviewCount`; en lectura también `reviews[]` (array embebido con id, score, comment, authorName, createdAt).
+- `skills`: array de códigos `Category` (los 22 valores del enum; ver predict/`Category` más abajo). Usado para matching de mercado y directorio.
 - Preferencias de notificación (escritura en `pro:write`, lectura también en `user:read` cuando el perfil va embebido en `GET /api/users/{id}`):
   - `notifyRequestActivity`, `notifyBidActivity`, `notifyReviews` (boolean, default `true`).
   - `PATCH /api/professional_profiles/{id}` con `Content-Type: application/merge-patch+json` (o `application/json`) y body parcial; solo el dueño (`object.getUser() == user`).
@@ -62,6 +63,7 @@ Autenticación: Bearer JWT en header Authorization
   - `estimatedPriceMax` (int, céntimos): máximo estimado generado por IA (rango orientativo). La UI lo convierte a euros dividiendo entre 100.
   - `aiDiagnosis` (opcional): JSON del diagnóstico IA. Si llega como `{ "min": ..., "max": ... }` (céntimos), el backend lo normaliza a `estimated_price_min/estimated_price_max`.
   - `pricingType` (`FIXED`, `RANGE`, `VISIT_REQUIRED`): tipología de pricing sugerida por IA, persistida en la request para guiar pujas y visitas.
+  - `category`: enum `Category` (22 códigos; mismos que predict / `skills` del profesional).
   - `photoUrl`, `audioUrl`, `videoUrl`: media principal de la solicitud.
   - `extraPhotoUrls[]`, `extraAudioUrls[]`, `extraVideoUrls[]`: arrays opcionales de URLs de media adicional (**sin tope en backend**; el frontend puede limitar a 3). En preguntas, `answerMediaUrls` sí tiene `Assert\Count` máx. 3.
   - `desiredExecutionTime`: disponibilidad preferida para realizar el trabajo (sin fecha exacta). Valores permitidos:
@@ -153,7 +155,11 @@ Autenticación: Bearer JWT en header Authorization
   - Legacy (evitar): `image` / `audio` / `video` en base64 o Data URL → análisis **síncrono** sin tarea (mismo clamp; payload enorme; ver `docs/DEPLOY.md`).
   - Respuesta típica en `result` (o cuerpo plano legacy):
     - `title`, `description`, `summary_text`
-    - `category` (PLUMBING, ELECTRICITY, …)
+    - `category`: uno de los 22 códigos de `Category` —
+      `PLUMBING`, `ELECTRICITY`, `MASONRY`, `HVAC`, `DIY`, `PAINTING`, `GARDENING`, `CLEANING`,
+      `APPLIANCES`, `MOVING`, `LOCKSMITH`, `POOL`, `SEWING`, `BLINDS`, `GLAZING`, `FURNITURE`,
+      `CLEAROUT`, `PEST_CONTROL`, `SMART_HOME`, `BEAUTY`, `PETS`, `CARE`
+      (etiquetas ES en `Category::label()` / `PricingCatalogService`)
     - `sub_category` (alineada con subcategoría de `pricing_rate` cuando es posible)
     - `risk_level` (LOW, MEDIUM, HIGH)
     - `pricing_type` (`FIXED` | `RANGE` | `VISIT_REQUIRED`)

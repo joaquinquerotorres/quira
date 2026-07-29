@@ -34,7 +34,7 @@ El **`docker/entrypoint.sh`**:
 
 1. Verifica claves JWT; por defecto, si faltan se generan (compatibilidad). Puedes exigir modo estricto con `JWT_ENFORCE_STATIC_KEYS=1`.
 2. Espera a MySQL con retry/backoff vía **PDO** (`SELECT 1`; no usa `doctrine:query:sql`).
-3. Ejecuta migraciones si `RUN_MIGRATIONS=1` (por defecto). El catálogo `pricing_rate` se carga en la propia migración (sin seed CSV).
+3. Ejecuta migraciones si `RUN_MIGRATIONS=1` (por defecto). El catálogo `pricing_rate` se carga/recarga en migraciones (`Version20260729120000`, luego `Version20260729200000` con 151 tarifas / 22 categorías); sin seed CSV.
 4. Ejecuta `cache:warmup` en `prod`.
 5. Si `CONTAINER_ROLE=worker` → `messenger:consume async` (`php -d max_execution_time=0`); si no → **FrankenPHP** en **`PORT`**.
 
