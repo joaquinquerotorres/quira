@@ -23,17 +23,21 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ORM\Entity(repositoryClass: ReviewRepository::class)]
 #[ApiResource(
     operations: [
-        new Get(),
-        new GetCollection(),
+        new Get(security: "is_granted('ROLE_USER')"),
+        new GetCollection(security: "is_granted('ROLE_USER')"),
         new Post(
             denormalizationContext: ['groups' => ['review:write']],
             security: "is_granted('ROLE_USER')",
             processor: ReviewProcessor::class
-        )
+        ),
     ],
     normalizationContext: ['groups' => ['review:read']]
 )]
-#[ApiFilter(SearchFilter::class, properties: ['request' => 'exact', 'author' => 'exact'])]
+#[ApiFilter(SearchFilter::class, properties: [
+    'request' => 'exact',
+    'author' => 'exact',
+    'target' => 'exact',
+])]
 #[ORM\UniqueConstraint(name: 'unique_review_per_job', columns: ['request_id', 'author_id'])]
 class Review
 {
@@ -183,6 +187,7 @@ class Review
         }
         if ($diff->days < 30) {
             $weeks = (int) floor($diff->days / 7);
+
             return $weeks === 1 ? 'Hace 1 semana' : "Hace {$weeks} semanas";
         }
 
@@ -200,7 +205,32 @@ class Review
     #[SerializedName('author')]
     public function getAuthorDisplayName(): string
     {
-        $user = $this->author;
+        return $this->displayNameForUser($this->author);
+    }
+
+    #[Groups(['review:read'])]
+    #[SerializedName('targetName')]
+    public function getTargetDisplayName(): string
+    {
+        return $this->displayNameForUser($this->target);
+    }
+
+    #[Groups(['review:read'])]
+    #[SerializedName('requestTitle')]
+    public function getRequestTitle(): ?string
+    {
+        return $this->request?->getTitle();
+    }
+
+    #[Groups(['review:read'])]
+    #[SerializedName('authorIsProfessional')]
+    public function isAuthorProfessional(): bool
+    {
+        return $this->author?->isProfessionalActor() ?? false;
+    }
+
+    private function displayNameForUser(?User $user): string
+    {
         if ($user === null) {
             return 'Anónimo';
         }

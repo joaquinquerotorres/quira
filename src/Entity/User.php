@@ -191,6 +191,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return array_unique($roles);
     }
 
+    /**
+     * Faceta profesional para reseñas / ratings (alineado con ReviewProcessor).
+     * ROLE_PROFESSIONAL o perfil profesional existente.
+     */
+    public function isProfessionalActor(): bool
+    {
+        return \in_array('ROLE_PROFESSIONAL', $this->getRoles(), true)
+            || $this->getProfessionalProfile() !== null;
+    }
+
     public function setRoles(array $roles): self
     {
         $this->roles = $roles;

@@ -88,4 +88,48 @@ final class ReviewTest extends TestCase
 
         $this->assertSame('15/01/2024', $review->getDate());
     }
+
+    public function testGetTargetDisplayNameAndRequestTitle(): void
+    {
+        $target = new User();
+        $target->setEmail('target@test.com');
+        $clientProfile = new ClientProfile();
+        $clientProfile->setFullName('Destino Cliente');
+        $clientProfile->setUser($target);
+        $target->setClientProfile($clientProfile);
+
+        $request = new \App\Entity\Request();
+        $request->setTitle('Arreglo de grifo');
+
+        $review = new Review();
+        $review->setTarget($target);
+        $review->setRequest($request);
+
+        self::assertSame('Destino Cliente', $review->getTargetDisplayName());
+        self::assertSame('Arreglo de grifo', $review->getRequestTitle());
+    }
+
+    public function testAuthorIsProfessionalUsesUserHelper(): void
+    {
+        $author = new User();
+        $author->setEmail('pro@test.com');
+        $author->setRoles(['ROLE_USER', 'ROLE_PROFESSIONAL']);
+        $proProfile = new ProfessionalProfile();
+        $proProfile->setFullName('Pro');
+        $proProfile->setUser($author);
+        $author->setProfessionalProfile($proProfile);
+
+        $review = new Review();
+        $review->setAuthor($author);
+
+        self::assertTrue($review->isAuthorProfessional());
+        self::assertTrue($author->isProfessionalActor());
+
+        $clientOnly = new User();
+        $clientOnly->setEmail('client@test.com');
+        $clientOnly->setRoles(['ROLE_USER']);
+        $review2 = new Review();
+        $review2->setAuthor($clientOnly);
+        self::assertFalse($review2->isAuthorProfessional());
+    }
 }
