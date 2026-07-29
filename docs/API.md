@@ -119,7 +119,14 @@ Autenticación: Bearer JWT en header Authorization
     - `"A convenir al aceptar la oferta"`
 
 ### Review
-- GET/POST /api/reviews, GET /api/reviews/{id}
+- GET/POST `/api/reviews`, GET `/api/reviews/{id}` (JWT `ROLE_USER`)
+- Filtros SearchFilter: `request`, `author`, `target` (exact; IRI `/api/users/{id}` o `/api/requests/{id}`)
+- Colección e ítem restringidos por `CurrentUserExtension`: solo reseñas donde el usuario es **author** o **target** (no dump global). Admin sin restricción.
+- Uso típico app (Perfil → Valoraciones):
+  - Recibidas: `GET /api/reviews?target=/api/users/{me}`
+  - Hechas: `GET /api/reviews?author=/api/users/{me}`
+  - ¿Ya valoré este trabajo?: `GET /api/reviews?request=/api/requests/{id}&author=/api/users/{me}`
+- Campos `review:read` útiles: `id`, `score`/`rating`, `comment`/`text`, `createdAt`/`date`, `author` (nombre string), `targetName`, `requestTitle`, `authorIsProfessional` (bool; faceta pro vs cliente, misma regla que el recálculo de ratings), `target` (IRI), `request` (preview).
 
 ### Notification
 - GET/PATCH /api/notifications, GET /api/notifications/{id}

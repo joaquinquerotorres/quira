@@ -6,6 +6,7 @@ namespace App\Tests\Doctrine;
 
 use App\Doctrine\CurrentUserExtension;
 use App\Entity\Bid;
+use App\Entity\Review;
 use App\Service\ProfessionalSubscriptionService;
 use App\Entity\ClientProfile;
 use App\Entity\ProfessionalProfile;
@@ -111,6 +112,30 @@ final class CurrentUserExtensionTest extends KernelTestCase
         $dql = $qb->getDQL();
         $this->assertStringContainsString(':has_paid_subscription_item', $dql);
         $this->assertTrue((bool) $qb->getParameter('has_paid_subscription_item')?->getValue());
+    }
+
+    public function testReviewCollectionRestrictsToAuthorOrTarget(): void
+    {
+        $user = $this->createProUser();
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $security = $this->createMock(Security::class);
+        $security->method('getUser')->willReturn($user);
+        $security->method('isGranted')->with('ROLE_ADMIN')->willReturn(false);
+
+        $extension = new CurrentUserExtension($security, new RequestStack(), new ProfessionalSubscriptionService());
+
+        $qb = $em->createQueryBuilder()
+            ->select('r')
+            ->from(Review::class, 'r');
+
+        $qng = new \ApiPlatform\Doctrine\Orm\Util\QueryNameGenerator();
+        $extension->applyToCollection($qb, $qng, Review::class);
+
+        $dql = $qb->getDQL();
+        $this->assertStringContainsString('author', $dql);
+        $this->assertStringContainsString('target', $dql);
+        $this->assertStringContainsString('OR', strtoupper($dql));
+        $this->assertSame($user, $qb->getParameter('review_current_user')?->getValue());
     }
 
     private function createProUser(): User

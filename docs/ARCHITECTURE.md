@@ -35,7 +35,7 @@
 | Bid | Oferta de profesional: precio, comentario, estado (`PENDING`/`ACCEPTED`/`REJECTED`/`COMPLETED`). Sin `origin` ni FK a visita |
 | VisitRequest | Visita de valoración: `Request` + `ProfessionalProfile`, `status` (PENDING/ACCEPTED/REJECTED), `note`, timestamps |
 | CalendarEvent | Evento de agenda del profesional (dueño vía `CalendarEventOwnerProcessor`) |
-| Review | Reseña sobre cliente o profesional |
+| Review | Reseña (author/target User + Request); listado acotado a author\|target = yo; filtros request/author/target |
 | RequestQuestion | Pregunta/respuesta en una solicitud (`answerMediaUrls` máx. 3) |
 | Notification | Notificación in-app |
 | GeminiCache | Registro local del `cachedContent` remoto de Gemini (`cacheId`, `model`, `contentHash`, `zoneKey`, `expiresAt`) |

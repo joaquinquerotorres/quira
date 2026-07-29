@@ -11,6 +11,7 @@ use ApiPlatform\Metadata\Operation;
 use App\Entity\Bid;
 use App\Entity\CalendarEvent;
 use App\Entity\Request;
+use App\Entity\Review;
 use App\Entity\User;
 use App\Entity\VisitRequest;
 use App\Enum\BidStatus;
@@ -277,6 +278,19 @@ final class CurrentUserExtension implements QueryCollectionExtensionInterface, Q
             $queryBuilder
                 ->andWhere(sprintf('%s.professional = :calendar_pro_profile', $rootAlias))
                 ->setParameter('calendar_pro_profile', $proProfile);
+        }
+
+        if ($resourceClass === Review::class) {
+            // Colección e ítem: solo reseñas donde el usuario es autor o destinatario.
+            // Compatible con ?request=&author= (¿ya valoré?) y ?target= / ?author= del perfil.
+            $queryBuilder
+                ->andWhere(
+                    $queryBuilder->expr()->orX(
+                        sprintf('%s.author = :review_current_user', $rootAlias),
+                        sprintf('%s.target = :review_current_user', $rootAlias)
+                    )
+                )
+                ->setParameter('review_current_user', $user);
         }
     }
 

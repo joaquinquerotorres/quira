@@ -124,6 +124,6 @@ final class ReviewProcessor implements ProcessorInterface
 
     private function isUserProfessional(User $user): bool
     {
-        return in_array('ROLE_PROFESSIONAL', $user->getRoles(), true) || $user->getProfessionalProfile() !== null;
+        return $user->isProfessionalActor();
     }
 }
