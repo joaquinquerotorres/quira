@@ -9,6 +9,7 @@ use App\Repository\PredictTaskRepository;
 use App\Service\GeminiCacheService;
 use App\Service\GeminiService;
 use App\Service\PredictMediaFetcher;
+use App\Service\PricingClampService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -22,6 +23,7 @@ final class AnalyzePredictMessageHandler
         private readonly PredictMediaFetcher $mediaFetcher,
         private readonly GeminiService $geminiService,
         private readonly GeminiCacheService $geminiCacheService,
+        private readonly PricingClampService $pricingClampService,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -68,6 +70,10 @@ final class AnalyzePredictMessageHandler
                 $video,
                 $task->getLocation(),
                 $cacheId
+            );
+            $suggestion = $this->pricingClampService->clampDiagnosis(
+                $suggestion,
+                $task->getLocation()
             );
 
             $task->markCompleted($suggestion);

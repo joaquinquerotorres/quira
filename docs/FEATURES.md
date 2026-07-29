@@ -63,6 +63,7 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
 - Fuente de verdad: tabla **`pricing_rate`** (céntimos). Los datos iniciales se cargan en la migración Doctrine (sin CSV en runtime).
 - `PricingCatalogService` resuelve zonas según ubicación (Córdoba → Córdoba+Andalucía+España; otras ciudades andaluzas → Andalucía+España; Madrid/Barcelona/Bilbao → España) y genera el slice CSV inyectado en la caché Gemini.
 - `GeminiCacheService` guarda en BD solo el **ID** remoto de `cachedContents` + `content_hash` + `model` + `zone_key`. Si Google falla, `diagnose` continúa **sin** `cachedContent`.
+- **Híbrido A+C:** tras `diagnose`, `PricingClampService` acota `estimated_price_min/max` al rango de la fila `pricing_rate` coincidente (por `sub_category` + zona). `VISIT_REQUIRED` / `0/0` no se tocan; urgencias `IMMEDIATE` permiten hasta +30 % sobre `price_max`. Si no hay match de catálogo, se deja la estimación de Gemini.
 - Tras `app:calibrate-pricing`, se actualizan filas en BD y se invalidan cachés locales.
 - Por defecto, si no se indica ubicación, el diagnóstico asume **Córdoba, Andalucía, España**.
 

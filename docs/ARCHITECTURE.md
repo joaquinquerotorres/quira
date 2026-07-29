@@ -69,6 +69,7 @@
 | GeminiService | Diagnose/predict con `GEMINI_MODEL` + catálogo/cache; moderación integrada en el propio `diagnose` (`safe`/`safety_reason`) |
 | GeminiCacheService | cachedContents Gemini: lookup por model+hash+zona, lock MySQL, degradación sin caché |
 | PricingCatalogService | Catálogo BD, slice por ubicación, content hash |
+| PricingClampService | Post-diagnose: acota precios al rango `pricing_rate` (híbrido A+C) |
 | PredictMediaFetcher | Descarga media de URLs públicas Supabase (anti-SSRF) a Data URL para Gemini |
 | PredictMediaLimits | Topes de tamaño (imagen 10 MB, audio 12 MB, vídeo 40 MB); expuestos en upload-ticket |
 | SupabaseUploadTicketService | URLs firmadas Supabase |
