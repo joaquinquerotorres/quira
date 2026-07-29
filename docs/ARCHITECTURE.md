@@ -54,7 +54,7 @@
 - Bid N:1 Request, N:1 User (profesional)
 - VisitRequest N:1 Request, N:1 ProfessionalProfile
 - Review N:1 Request, N:1 User (autor y target)
-- CalendarEvent N:1 ProfessionalProfile (u owner según entidad)
+- CalendarEvent N:1 Request, N:1 ProfessionalProfile (única por par request+pro)
 
 ### Enums
 
