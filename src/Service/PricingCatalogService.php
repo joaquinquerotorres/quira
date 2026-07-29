@@ -13,31 +13,7 @@ use App\Repository\PricingRateRepository;
  */
 final class PricingCatalogService
 {
-    public const RULES_VERSION = 'pricing-rules-v2';
-
-    /** @var array<string, string> */
-    private const CODE_TO_LABEL = [
-        'PLUMBING' => 'Fontanería',
-        'ELECTRICITY' => 'Electricidad',
-        'MASONRY' => 'Albañilería',
-        'HVAC' => 'Climatización',
-        'DIY' => 'Manitas',
-        'PAINTING' => 'Pintura',
-        'GARDENING' => 'Jardinería',
-        'CLEANING' => 'Limpieza',
-    ];
-
-    /** @var array<string, string> */
-    private const LABEL_TO_CODE = [
-        'Fontanería' => 'PLUMBING',
-        'Electricidad' => 'ELECTRICITY',
-        'Albañilería' => 'MASONRY',
-        'Climatización' => 'HVAC',
-        'Manitas' => 'DIY',
-        'Pintura' => 'PAINTING',
-        'Jardinería' => 'GARDENING',
-        'Limpieza' => 'CLEANING',
-    ];
+    public const RULES_VERSION = 'pricing-rules-v3';
 
     public function __construct(
         private readonly PricingRateRepository $pricingRateRepository,
@@ -47,25 +23,26 @@ final class PricingCatalogService
     public function labelForCode(string $code): string
     {
         $code = strtoupper(trim($code));
+        $category = Category::tryFrom($code);
 
-        return self::CODE_TO_LABEL[$code] ?? $code;
+        return $category?->label() ?? $code;
     }
 
     public function codeForLabel(string $label): string
     {
         $label = trim($label);
-        if (isset(self::LABEL_TO_CODE[$label])) {
-            return self::LABEL_TO_CODE[$label];
+        $fromLabel = Category::tryFromLabel($label);
+        if ($fromLabel !== null) {
+            return $fromLabel->value;
         }
 
         $upper = strtoupper($label);
-        foreach (Category::cases() as $case) {
-            if ($case->value === $upper) {
-                return $case->value;
-            }
+        $fromCode = Category::tryFrom($upper);
+        if ($fromCode !== null) {
+            return $fromCode->value;
         }
 
-        return 'DIY';
+        return Category::DIY->value;
     }
 
     /**

@@ -25,6 +25,11 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 class AppFixtures extends Fixture
 {
+    /**
+     * Datos de demo. Las skills / categorías de Request usan {@see Category::cases()}
+     * (22 códigos). El catálogo `pricing_rate` no se siembra aquí: viene de migraciones
+     * (`Version20260729120000` + recarga `Version20260729200000`).
+     */
     public function __construct(
         private readonly UserPasswordHasherInterface $hasher
     ) {
@@ -83,7 +88,7 @@ class AppFixtures extends Fixture
             $proProfile->setFullName($faker->company());
             $proProfile->setPhoneNumber($faker->phoneNumber());
             $proProfile->setBio($faker->paragraph(3));
-            $skillCount = $faker->numberBetween(3, min(5, \count($availableSkills)));
+            $skillCount = $faker->numberBetween(3, min(8, \count($availableSkills)));
             $proProfile->setSkills($faker->randomElements($availableSkills, $skillCount));
             $proProfile->setIsVerified(true);
             $proProfile->setAddress($faker->streetAddress() . ", Córdoba");
@@ -163,7 +168,7 @@ class AppFixtures extends Fixture
 
                 $category = Category::cases()[array_rand(Category::cases())];
                 $request->setCategory($category);
-                $request->setTitle("Servicio de " . $category->value . " en Córdoba");
+                $request->setTitle(sprintf('Servicio de %s en Córdoba', $category->label()));
                 $request->setDescription($faker->text(120));
 
                 $risk = $faker->randomElement(RiskLevel::cases());

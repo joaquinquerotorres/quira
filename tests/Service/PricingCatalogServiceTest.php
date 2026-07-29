@@ -22,7 +22,22 @@ final class PricingCatalogServiceTest extends TestCase
         $svc = $this->service();
         self::assertSame('Fontanería', $svc->labelForCode('PLUMBING'));
         self::assertSame('PLUMBING', $svc->codeForLabel('Fontanería'));
+        self::assertSame('APPLIANCES', $svc->codeForLabel('Electrodomésticos'));
+        self::assertSame('Mantenimiento de Piscinas', $svc->labelForCode('POOL'));
+        self::assertSame('PEST_CONTROL', $svc->codeForLabel('Control de Plagas'));
+        self::assertSame('SMART_HOME', $svc->codeForLabel('Domótica y Seguridad'));
+        self::assertSame('CARE', $svc->codeForLabel('Cuidados'));
+        self::assertSame('MOVING', $svc->codeForLabel('MOVING')); // código directo
         self::assertSame('DIY', $svc->codeForLabel('Desconocido'));
+    }
+
+    public function testEveryCategoryCaseHasBidirectionalMapping(): void
+    {
+        $svc = $this->service();
+        foreach (\App\Enum\Category::cases() as $case) {
+            self::assertSame($case->label(), $svc->labelForCode($case->value));
+            self::assertSame($case->value, $svc->codeForLabel($case->label()));
+        }
     }
 
     public function testResolveZonesCordobaIncludesLocalAndRegional(): void

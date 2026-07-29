@@ -65,7 +65,34 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
 
 ### Tabla de precios (BD) y Córdoba
 
-- Fuente de verdad: tabla **`pricing_rate`** (céntimos). Los datos iniciales (tarifas históricas) se cargan en la migración Doctrine; **no hay CSV ni comando seed en runtime**.
+- Fuente de verdad: tabla **`pricing_rate`** (céntimos). Los datos iniciales se cargan en migraciones Doctrine (`Version20260729120000` + recarga ampliada `Version20260729200000`, **22 categorías / 151 tarifas**); **no hay CSV ni comando seed en runtime**. Las fixtures (`AppFixtures`) no tocan `pricing_rate`.
+- Categorías del enum `Category` (código → `Category::label()`):
+
+| Código | Etiqueta |
+|--------|----------|
+| `PLUMBING` | Fontanería |
+| `ELECTRICITY` | Electricidad |
+| `MASONRY` | Albañilería |
+| `HVAC` | Climatización |
+| `DIY` | Manitas |
+| `PAINTING` | Pintura |
+| `GARDENING` | Jardinería |
+| `CLEANING` | Limpieza |
+| `APPLIANCES` | Electrodomésticos |
+| `MOVING` | Mudanzas y Portes |
+| `LOCKSMITH` | Cerrajería |
+| `POOL` | Mantenimiento de Piscinas |
+| `SEWING` | Costura y Arreglos |
+| `BLINDS` | Persianas y Toldos |
+| `GLAZING` | Cristalería |
+| `FURNITURE` | Restauración de Muebles |
+| `CLEAROUT` | Vaciado de Pisos |
+| `PEST_CONTROL` | Control de Plagas |
+| `SMART_HOME` | Domótica y Seguridad |
+| `BEAUTY` | Belleza |
+| `PETS` | Mascotas |
+| `CARE` | Cuidados |
+
 - `PricingCatalogService` resuelve zonas según ubicación y genera el slice CSV **en memoria** inyectado en la caché Gemini:
   - Córdoba → `Córdoba`, `Andalucía`, `España`
   - Otras ciudades andaluzas → `Andalucía`, `España`

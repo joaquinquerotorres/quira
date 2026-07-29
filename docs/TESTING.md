@@ -43,7 +43,7 @@ php bin/phpunit --group database
 | `tests/Validator/` | CleanTextValidatorTest, NoContactInfoValidatorTest, CifValidatorTest |
 | `tests/Serializer/` | PointDenormalizerTest, RequestAssignedProfessionalNormalizerTest |
 | `tests/Dto/` | PredictInputTest, StripeCheckoutInputTest |
-| `tests/Enum/` | BidStatusTest, CategoryTest, RequestStatusTest, RiskLevelTest |
+| `tests/Enum/` | BidStatusTest, CategoryTest (22 casos + `label()` / `tryFromLabel`), RequestStatusTest, RiskLevelTest |
 
 ## Configuración
 
@@ -96,7 +96,7 @@ Los tests en `tests/Api/` ejercitan endpoints reales y validan contratos crític
 ## Tests de IA / precios
 
 - **GeminiServiceTest** / **GeminiServiceCreateCacheTest** — payload `diagnose` / `createCache`.
-- **PricingCatalogServiceTest** — mapeo label/código y `resolveZones`.
+- **PricingCatalogServiceTest** — mapeo label/código (todas las `Category`), `resolveZones`.
 - **PricingClampServiceTest** — híbrido A+C (VISIT_REQUIRED, IMMEDIATE +30 %, match por zona/subcategoría, sin match).
 - **PredictMediaFetcherTest** / **PredictMediaLimitsTest** — anti-SSRF y topes de tamaño.
 
