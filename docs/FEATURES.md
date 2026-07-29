@@ -22,6 +22,11 @@
 
 **Permisos operativos (pujas, HIGH, visitas por pricing_type, límite mensual):** el servidor usa **`professionalProfile.paidThroughAt`** (y la lógica en `ProfessionalSubscriptionService`), no solo el rol. Suscripción de pago **vigente** = `paidThroughAt` no nulo y **posterior a ahora**. `paidThroughAt === null` se trata como sin periodo de pago conocido (mismas restricciones que caducado para esas reglas).
 
+### Recuperación de contraseña
+- `POST /api/users/forgot-password` con `{"email": "..."}` — siempre responde éxito genérico (no filtra si el email existe); si hay usuario, envía enlace con token (`FRONTEND_URL`).
+- `POST /api/users/reset-password` con `{"token": "...", "password": "..."}` — valida token y actualiza hash.
+- Rutas **públicas** (sin JWT). Implementación: `PasswordResetService` + `VerificationToken`.
+
 ## Stripe (suscripciones)
 
 ### Tiers
@@ -60,12 +65,21 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
 
 ### Tabla de precios (BD) y Córdoba
 
-- Fuente de verdad: tabla **`pricing_rate`** (céntimos). Los datos iniciales se cargan en la migración Doctrine (sin CSV en runtime).
-- `PricingCatalogService` resuelve zonas según ubicación (Córdoba → Córdoba+Andalucía+España; otras ciudades andaluzas → Andalucía+España; Madrid/Barcelona/Bilbao → España) y genera el slice CSV inyectado en la caché Gemini.
+- Fuente de verdad: tabla **`pricing_rate`** (céntimos). Los datos iniciales (tarifas históricas) se cargan en la migración Doctrine; **no hay CSV ni comando seed en runtime**.
+- `PricingCatalogService` resuelve zonas según ubicación y genera el slice CSV **en memoria** inyectado en la caché Gemini:
+  - Córdoba → `Córdoba`, `Andalucía`, `España`
+  - Otras ciudades andaluzas → `Andalucía`, `España`
+  - Madrid / Barcelona / Bilbao → `España`
+  - Resto / desconocido → `España`, `Andalucía`, `Córdoba`
+  - Sin ubicación (null/vacío) → mismo slice que Córdoba
 - `GeminiCacheService` guarda en BD solo el **ID** remoto de `cachedContents` + `content_hash` + `model` + `zone_key`. Si Google falla, `diagnose` continúa **sin** `cachedContent`.
-- **Híbrido A+C:** tras `diagnose`, `PricingClampService` acota `estimated_price_min/max` al rango de la fila `pricing_rate` coincidente (por `sub_category` + zona). `VISIT_REQUIRED` / `0/0` no se tocan; urgencias `IMMEDIATE` permiten hasta +30 % sobre `price_max`. Si no hay match de catálogo, se deja la estimación de Gemini.
+- **Híbrido A+C** (tras `diagnose`, en predict async y legacy):
+  - `PricingClampService` busca fila por `sub_category` + zona (prioridad de zonas; fallback case-insensitive / sin exigir categoría exacta).
+  - Si hay match: acota `estimated_price_min/max` a `[price_min, price_max]`; con `urgency = IMMEDIATE` el techo es `1.3 × price_max`.
+  - `pricing_type = VISIT_REQUIRED` → fuerza `estimated_price_min/max = 0`.
+  - Estimación ya en `0/0` (sin visita) o **sin match** de catálogo → no modifica los precios de Gemini.
+  - Metadatos opcionales en el JSON: `pricing_clamped`, `catalog_price_min/max`, `catalog_zone`, `catalog_subcategory`.
 - Tras `app:calibrate-pricing`, se actualizan filas en BD y se invalidan cachés locales.
-- Por defecto, si no se indica ubicación, el diagnóstico asume **Córdoba, Andalucía, España**.
 
 ### Calibración automática de precios
 

@@ -50,6 +50,7 @@ php bin/console lexik:jwt:generate-keypair
 | Variable | Descripción |
 |----------|-------------|
 | `FIREBASE_CREDENTIALS` | Ruta al JSON de credenciales del service account |
+| `FIREBASE_CREDENTIALS_B64` | (Opcional, deploy) mismo JSON en base64; el entrypoint lo materializa en disco |
 
 Usado para: Auth (verificación de token social), notificaciones push (FCM).
 
@@ -77,6 +78,33 @@ Usado para: Auth (verificación de token social), notificaciones push (FCM).
 |----------|-------------|
 | `GEMINI_API_KEY` | API key de Google AI Studio |
 | `GEMINI_MODEL` | Modelo usado por `diagnose`/`POST /api/predict` (default `gemini-2.5-flash`). Si falla, el backend reintenta con un flash de respaldo. La moderación de seguridad va integrada (`safe`/`safety_reason`). Preferir predict por URL (`imageUrl`/`audioUrl`/`videoUrl`) tras subir a Supabase. |
+
+### Notificaciones (canal por faceta)
+
+Valores: `PUSH`, `EMAIL` o `WHATSAPP` (mayúsculas o minúsculas).
+
+| Variable | Descripción |
+|----------|-------------|
+| `NOTIFICATIONS_PRO` | Canal en faceta profesional con `ROLE_PRO` |
+| `NOTIFICATIONS_SOLVER` | Faceta profesional con `ROLE_SOLVER` |
+| `NOTIFICATIONS_FREE` | Faceta profesional con `ROLE_FREE` (u otros sin PRO/SOLVER) |
+| `NOTIFICATIONS_CLIENT` | Faceta cliente |
+
+### Messenger / async
+
+| Variable | Descripción |
+|----------|-------------|
+| `MESSENGER_TRANSPORT_DSN` | Transporte Doctrine por defecto (`doctrine://default?auto_setup=0`). En producción Railway el worker consume el transporte `async` (ver `docs/DEPLOY.md`). |
+
+### Observabilidad / URLs
+
+| Variable | Descripción |
+|----------|-------------|
+| `DEFAULT_URI` | URI base Symfony (dev) |
+| `SENTRY_DSN` | DSN Sentry (opcional; vacío = desactivado) |
+| `EMAIL_LOGO_URL` | Logo en plantillas de email (opcional) |
+
+Variables solo de contenedor Railway (`CONTAINER_ROLE`, `RUN_MIGRATIONS`, `JWT_GENERATE_KEYS`, `MESSENGER_TIME_LIMIT`, …): ver `docs/DEPLOY.md`.
 
 ### Supabase Storage
 

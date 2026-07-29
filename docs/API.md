@@ -63,7 +63,7 @@ Autenticación: Bearer JWT en header Authorization
   - `aiDiagnosis` (opcional): JSON del diagnóstico IA. Si llega como `{ "min": ..., "max": ... }` (céntimos), el backend lo normaliza a `estimated_price_min/estimated_price_max`.
   - `pricingType` (`FIXED`, `RANGE`, `VISIT_REQUIRED`): tipología de pricing sugerida por IA, persistida en la request para guiar pujas y visitas.
   - `photoUrl`, `audioUrl`, `videoUrl`: media principal de la solicitud.
-  - `extraPhotoUrls[]`, `extraAudioUrls[]`, `extraVideoUrls[]`: arrays opcionales de URLs de media adicional (máx. 3 elementos en total, gestionados por el frontend).
+  - `extraPhotoUrls[]`, `extraAudioUrls[]`, `extraVideoUrls[]`: arrays opcionales de URLs de media adicional (**sin tope en backend**; el frontend puede limitar a 3). En preguntas, `answerMediaUrls` sí tiene `Assert\Count` máx. 3.
   - `desiredExecutionTime`: disponibilidad preferida para realizar el trabajo (sin fecha exacta). Valores permitidos:
     - `"Lo antes posible"`
     - `"Esta semana"`
@@ -147,26 +147,28 @@ Autenticación: Bearer JWT en header Authorization
     - imagen / `photo`: **10 MB**
     - audio: **12 MB**
     - vídeo: **40 MB**
-  - Crea una `PredictTask` y despacha `AnalyzePredictMessage` (Messenger **async**). Responde `202` `{ taskId, status }` mientras el worker procesa; el cliente consulta `GET /api/predict/tasks/{publicId}`. (Si el mensaje se procesara en sync, podría devolver `200` con `result` al instante.)
+  - Crea una `PredictTask` y despacha `AnalyzePredictMessage` al transporte Messenger **`async`** (siempre). Responde **`202`** `{ taskId, status }` mientras el worker procesa; el cliente consulta `GET /api/predict/tasks/{publicId}`.
   - GET `/api/predict/tasks/{publicId}` — estado (`pending` | `processing` | `completed` | `failed`) y `result` / `error`. Solo el dueño de la tarea.
-  - El handler descarga el media (`PredictMediaFetcher`, anti-SSRF al bucket configurado), llama a Gemini (`GEMINI_MODEL`) y persiste el resultado. Moderación integrada (`safe`, `safety_reason`).
-  - Legacy (evitar): `image` / `audio` / `video` en base64 o Data URL → análisis síncrono sin tarea (payload enorme; ver `docs/DEPLOY.md`).
+  - El handler descarga el media (`PredictMediaFetcher`, anti-SSRF), llama a Gemini (`GEMINI_MODEL`), aplica **`PricingClampService`** (híbrido A+C) y persiste el resultado. Moderación integrada (`safe`, `safety_reason`).
+  - Legacy (evitar): `image` / `audio` / `video` en base64 o Data URL → análisis **síncrono** sin tarea (mismo clamp; payload enorme; ver `docs/DEPLOY.md`).
   - Respuesta típica en `result` (o cuerpo plano legacy):
     - `title`, `description`, `summary_text`
-    - `category` (PLUMBING, ELECTRICITY, etc.)
-    - `sub_category` (alineada con la columna/subcategoría del catálogo `pricing_rate`)
+    - `category` (PLUMBING, ELECTRICITY, …)
+    - `sub_category` (alineada con subcategoría de `pricing_rate` cuando es posible)
     - `risk_level` (LOW, MEDIUM, HIGH)
+    - `pricing_type` (`FIXED` | `RANGE` | `VISIT_REQUIRED`)
     - `safe`, `safety_reason`
-    - `estimated_price_min`, `estimated_price_max` (en céntimos)
+    - `estimated_price_min`, `estimated_price_max` (céntimos; pueden venir ya acotados al catálogo)
     - `urgency`, `schedule_intent`
+    - Si hubo match de catálogo: `pricing_clamped` (bool), `catalog_price_min` / `catalog_price_max`, `catalog_zone`, `catalog_subcategory`
 
 ### Visitas de valoración
 
 - POST `/api/requests/{id}/visit-request`
-  - Solo usuarios con `ROLE_PRO`, suscripción **activa** (`paidThroughAt` futuro) y `ProfessionalProfile` asociado.
-  - Solo se permiten visitas para solicitudes `PENDING` con `pricingType = VISIT_REQUIRED` (o `aiDiagnosis.pricing_type` legacy).
-  - En solicitudes `HIGH`, además se exige profesional `ROLE_PRO` con suscripción activa (`paidThroughAt` futuro).
-  - En solicitudes no HIGH, cualquier profesional con acceso al trabajo puede solicitar visita.
+  - Requiere `ROLE_PROFESSIONAL` y `ProfessionalProfile` asociado.
+  - Solo se permiten visitas para solicitudes `PENDING` con `pricingType = VISIT_REQUIRED` (o `aiDiagnosis.pricing_type` / columna `pricingType`).
+  - En solicitudes **`HIGH`**, además se exige `ROLE_PRO` **y** suscripción activa (`paidThroughAt` futuro).
+  - En solicitudes no HIGH, basta con ser profesional con acceso al trabajo.
   - Crea (o reutiliza si ya existe) una `VisitRequest` con `status = PENDING` para la `Request` indicada y el profesional autenticado.
   - Body opcional: `{"note": "Texto opcional del profesional sobre la visita"}`.
 
@@ -186,6 +188,10 @@ Autenticación: Bearer JWT en header Authorization
   - Body:
     - `{"amount": 12000, "comment": "Presupuesto tras visita"}` (amount en céntimos).
   - Crea un `Bid` estándar (sin campo `origin` ni vínculo directo con la visita); la visita queda solo asociada a la Request.
+
+### Recuperación de contraseña
+- POST `/api/users/forgot-password` — body `{"email": "..."}` (público; respuesta genérica).
+- POST `/api/users/reset-password` — body `{"token": "...", "password": "..."}` (público).
 
 ### Verificación
 #### Email
@@ -218,10 +224,11 @@ Autenticación: Bearer JWT en header Authorization
 
 ## Rutas públicas
 
-POST /api/login_check, /api/social/login, /api/users  
-POST /api/stripe/webhook  
-GET /api/verify/email  
-GET /api/docs, /api/contexts
+POST `/api/login_check`, `/api/social/login`, `/api/users`  
+POST `/api/users/forgot-password`, `/api/users/reset-password`  
+POST `/api/stripe/webhook`  
+GET `/api/verify/email`  
+GET `/api/docs`, `/api/contexts`
 
 ## Swagger
 
