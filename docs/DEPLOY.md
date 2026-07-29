@@ -33,10 +33,10 @@ Si en el futuro activas un **Release command** en Railway **y** mantienes el mig
 El **`docker/entrypoint.sh`**:
 
 1. Verifica claves JWT; por defecto, si faltan se generan (compatibilidad). Puedes exigir modo estricto con `JWT_ENFORCE_STATIC_KEYS=1`.
-2. Espera a MySQL con retry (`doctrine:query:sql "SELECT 1"`).
-3. Ejecuta migraciones si `RUN_MIGRATIONS=1` (por defecto).
+2. Espera a MySQL con retry/backoff vía **PDO** (`SELECT 1`; no usa `doctrine:query:sql`).
+3. Ejecuta migraciones si `RUN_MIGRATIONS=1` (por defecto). El catálogo `pricing_rate` se carga en la propia migración (sin seed CSV).
 4. Ejecuta `cache:warmup` en `prod`.
-5. Arranca **FrankenPHP** escuchando en **`PORT`**.
+5. Si `CONTAINER_ROLE=worker` → `messenger:consume async` (`php -d max_execution_time=0`); si no → **FrankenPHP** en **`PORT`**.
 
 El **`Caddyfile`** sirve `public/` como document root (equivalente a Nginx + PHP-FPM).
 
@@ -48,7 +48,7 @@ El **`Caddyfile`** sirve `public/` como document root (equivalente a Nginx + PHP
 
 **Legacy (base64 en el body):** la imagen Docker copia **`docker/php/zz-quira.ini`**. Ajusta **`max_execution_time`**, **`max_input_time`**, **`post_max_size`** y **`memory_limit`**. En 4G la subida del body puede superar 30 s mientras Symfony lee `php://input`.
 
-**Clientes:** timeout de `POST /predict` ~120 s (`PREDICT_REQUEST_TIMEOUT_MS`); si hay `202`, polling hasta `PREDICT_POLL_TIMEOUT_MS`.
+**Clientes (app móvil / front, no variables del backend):** conviene timeout de `POST /predict` ~120 s y, si hay `202`, polling hasta un tope (p. ej. constantes `PREDICT_REQUEST_TIMEOUT_MS` / `PREDICT_POLL_TIMEOUT_MS` en el cliente).
 
 **Proxy:** si delante del contenedor hay un **timeout de request** más bajo, la petición puede cortarse; revisa la capa externa si siguen apareciendo `ERR_NETWORK`.
 
