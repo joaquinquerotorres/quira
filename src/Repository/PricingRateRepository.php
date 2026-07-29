@@ -41,14 +41,6 @@ class PricingRateRepository extends ServiceEntityRepository
         return $rows;
     }
 
-    public function countAll(): int
-    {
-        return (int) $this->createQueryBuilder('p')
-            ->select('COUNT(p.id)')
-            ->getQuery()
-            ->getSingleScalarResult();
-    }
-
     public function findOneByCategorySubcategoryZone(
         string $categoryLabel,
         string $subcategory,

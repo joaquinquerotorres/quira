@@ -60,7 +60,7 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
 
 ### Tabla de precios (BD) y Córdoba
 
-- Fuente de verdad: tabla **`pricing_rate`** (céntimos). El CSV `config/gemini_pricing.csv` es **seed** (`app:pricing:seed-from-csv`; se importa solo si la tabla está vacía, o con `--replace`).
+- Fuente de verdad: tabla **`pricing_rate`** (céntimos). Los datos iniciales se cargan en la migración Doctrine (sin CSV en runtime).
 - `PricingCatalogService` resuelve zonas según ubicación (Córdoba → Córdoba+Andalucía+España; otras ciudades andaluzas → Andalucía+España; Madrid/Barcelona/Bilbao → España) y genera el slice CSV inyectado en la caché Gemini.
 - `GeminiCacheService` guarda en BD solo el **ID** remoto de `cachedContents` + `content_hash` + `model` + `zone_key`. Si Google falla, `diagnose` continúa **sin** `cachedContent`.
 - Tras `app:calibrate-pricing`, se actualizan filas en BD y se invalidan cachés locales.
@@ -79,7 +79,6 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
   - Si Gemini ha devuelto una `sub_category` que aún no existe:
     - Añade fila con `Zona = Córdoba`, rango ±20 % del aceptado, `Complejidad` según riesgo.
   - Invalida cachés Gemini locales para forzar recreación con el catálogo nuevo.
-- El CSV en repo puede regenerarse/exportarse más adelante; no se modifica en caliente en producción.
 ## Notificaciones
 
 ### Canales (variables de entorno)

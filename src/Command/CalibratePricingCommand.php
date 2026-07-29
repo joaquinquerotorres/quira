@@ -65,8 +65,6 @@ final class CalibratePricingCommand extends Command
         $io->title('Calibración automática de precios (BD pricing_rate)');
         $io->writeln(sprintf('Analizando requests desde: <info>%s</info>', $since->format('Y-m-d')));
 
-        $this->pricingCatalogService->ensureSeeded();
-
         $qb = $this->em->createQueryBuilder();
         $qb
             ->select('r', 'b')

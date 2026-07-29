@@ -8,8 +8,7 @@ use App\Repository\PricingRateRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Tarifa de catálogo (antes filas de config/gemini_pricing.csv).
- * Precios en céntimos. Zona legible para Gemini: Córdoba | Andalucía | España | …
+ * Tarifa de catálogo (céntimos). Zona legible para Gemini: Córdoba | Andalucía | España | …
  */
 #[ORM\Entity(repositoryClass: PricingRateRepository::class)]
 #[ORM\Table(name: 'pricing_rate')]
@@ -27,7 +26,7 @@ class PricingRate
     #[ORM\Column(length: 50)]
     private string $categoryCode;
 
-    /** Etiqueta española del CSV / UI (Fontanería, …). */
+    /** Etiqueta española / UI (Fontanería, …). */
     #[ORM\Column(length: 100)]
     private string $categoryLabel;
 

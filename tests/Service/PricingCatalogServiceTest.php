@@ -6,18 +6,15 @@ namespace App\Tests\Service;
 
 use App\Repository\PricingRateRepository;
 use App\Service\PricingCatalogService;
-use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
-use Psr\Log\NullLogger;
 
 final class PricingCatalogServiceTest extends TestCase
 {
     private function service(): PricingCatalogService
     {
         $repo = $this->createStub(PricingRateRepository::class);
-        $em = $this->createStub(EntityManagerInterface::class);
 
-        return new PricingCatalogService($repo, $em, new NullLogger(), \dirname(__DIR__, 2));
+        return new PricingCatalogService($repo);
     }
 
     public function testLabelAndCodeMapping(): void

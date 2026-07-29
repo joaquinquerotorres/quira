@@ -66,9 +66,9 @@
 | StripeSubscriptionSyncService | Alinea `paidThroughAt` y `subscriptionCancelAtPeriodEnd` con objetos Subscription / Invoice de Stripe |
 | ProfessionalSubscriptionService | `hasActivePaidSubscription` / límites efectivos FREE según `paidThroughAt` |
 | NotificationService | WhatsApp, push FCM, email (elige canal según roles/perfil y preferencias, con fallback escalonado) |
-| GeminiService | Diagnose/predict con `GEMINI_MODEL` + CSV/cache; moderación integrada en el propio `diagnose` (`safe`/`safety_reason`) |
+| GeminiService | Diagnose/predict con `GEMINI_MODEL` + catálogo/cache; moderación integrada en el propio `diagnose` (`safe`/`safety_reason`) |
 | GeminiCacheService | cachedContents Gemini: lookup por model+hash+zona, lock MySQL, degradación sin caché |
-| PricingCatalogService | Catálogo BD, seed CSV, slice por ubicación, content hash |
+| PricingCatalogService | Catálogo BD, slice por ubicación, content hash |
 | PredictMediaFetcher | Descarga media de URLs públicas Supabase (anti-SSRF) a Data URL para Gemini |
 | PredictMediaLimits | Topes de tamaño (imagen 10 MB, audio 12 MB, vídeo 40 MB); expuestos en upload-ticket |
 | SupabaseUploadTicketService | URLs firmadas Supabase |
@@ -83,7 +83,6 @@
 - `app:calibrate-pricing`: analiza requests con diagnosis IA + pujas aceptadas y ajusta `pricing_rate` (invalida caché Gemini):
   - Reescala rangos por subcategoría (factor limitado a ±30 %).
   - Crea filas nuevas (zona Córdoba, complejidad según riesgo).
-- `app:pricing:seed-from-csv`: importa `config/gemini_pricing.csv` → `pricing_rate` (solo si vacío, o `--replace`).
 
 ## State Processors
 

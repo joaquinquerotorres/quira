@@ -7,12 +7,9 @@ namespace App\Service;
 use App\Entity\PricingRate;
 use App\Enum\Category;
 use App\Repository\PricingRateRepository;
-use Doctrine\ORM\EntityManagerInterface;
-use Psr\Log\LoggerInterface;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
- * Catálogo de precios (fuente de verdad en BD; CSV solo como seed).
+ * Catálogo de precios (fuente de verdad en BD).
  */
 final class PricingCatalogService
 {
@@ -44,10 +41,6 @@ final class PricingCatalogService
 
     public function __construct(
         private readonly PricingRateRepository $pricingRateRepository,
-        private readonly EntityManagerInterface $em,
-        private readonly LoggerInterface $logger,
-        #[Autowire('%kernel.project_dir%')]
-        private readonly string $projectDir,
     ) {
     }
 
@@ -119,8 +112,6 @@ final class PricingCatalogService
      */
     public function getRatesForLocation(?string $location): array
     {
-        $this->ensureSeeded();
-
         return $this->pricingRateRepository->findByZones($this->resolveZones($location));
     }
 
@@ -143,7 +134,7 @@ final class PricingCatalogService
             ]);
         }
 
-        return implode("\n", $lines) . "\n";
+        return implode("\n", $lines)."\n";
     }
 
     /**
@@ -151,94 +142,15 @@ final class PricingCatalogService
      */
     public function contentHashForLocation(?string $location, string $model): string
     {
-        $payload = self::RULES_VERSION . "\n" . $model . "\n" . $this->toCsvForLocation($location);
+        $payload = self::RULES_VERSION."\n".$model."\n".$this->toCsvForLocation($location);
 
         return hash('sha256', $payload);
-    }
-
-    public function ensureSeeded(): void
-    {
-        if ($this->pricingRateRepository->countAll() > 0) {
-            return;
-        }
-
-        $this->logger->info('pricing_rate vacío: sembrando desde gemini_pricing.csv');
-        $this->seedFromCsv(false);
-    }
-
-    /**
-     * @return int Número de filas escritas/actualizadas
-     */
-    public function seedFromCsv(bool $replaceExisting): int
-    {
-        if (!$replaceExisting && $this->pricingRateRepository->countAll() > 0) {
-            return 0;
-        }
-
-        $csvPath = $this->projectDir . '/config/gemini_pricing.csv';
-        if (!is_file($csvPath)) {
-            throw new \RuntimeException(sprintf('No existe %s', $csvPath));
-        }
-
-        $handle = fopen($csvPath, 'rb');
-        if ($handle === false) {
-            throw new \RuntimeException('No se pudo abrir gemini_pricing.csv');
-        }
-
-        try {
-            $header = fgetcsv($handle, 0, ',', '"', '');
-            if ($header === false) {
-                throw new \RuntimeException('CSV de precios vacío');
-            }
-
-            if ($replaceExisting) {
-                foreach ($this->pricingRateRepository->findAll() as $existing) {
-                    $this->em->remove($existing);
-                }
-                $this->em->flush();
-            }
-
-            $written = 0;
-            while (($cols = fgetcsv($handle, 0, ',', '"', '')) !== false) {
-                if (count($cols) < 7) {
-                    continue;
-                }
-                [$categoria, $subcategoria, $zona, $minStr, $maxStr, $unidad, $complejidad] = $cols;
-                $categoria = trim((string) $categoria);
-                $subcategoria = trim((string) $subcategoria);
-                $zona = trim((string) $zona);
-                if ($categoria === '' || $subcategoria === '' || $zona === '') {
-                    continue;
-                }
-
-                $rate = $this->pricingRateRepository->findOneByCategorySubcategoryZone($categoria, $subcategoria, $zona);
-                if ($rate === null) {
-                    $rate = new PricingRate();
-                    $rate->setCategoryLabel($categoria);
-                    $rate->setSubcategory($subcategoria);
-                    $rate->setZone($zona);
-                    $this->em->persist($rate);
-                }
-
-                $rate->setCategoryCode($this->codeForLabel($categoria));
-                $rate->setPriceMin((int) $minStr);
-                $rate->setPriceMax((int) $maxStr);
-                $rate->setUnit(trim((string) $unidad));
-                $rate->setComplexity(trim((string) $complejidad));
-                ++$written;
-            }
-            $this->em->flush();
-
-            return $written;
-        } finally {
-            fclose($handle);
-        }
     }
 
     private function escapeCsv(string $value): string
     {
         if (str_contains($value, ',') || str_contains($value, '"') || str_contains($value, "\n")) {
-            return '"' . str_replace('"', '""', $value) . '"';
+            return '"'.str_replace('"', '""', $value).'"';
         }
 
         return $value;
