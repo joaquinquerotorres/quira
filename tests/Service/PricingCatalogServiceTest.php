@@ -22,6 +22,9 @@ final class PricingCatalogServiceTest extends TestCase
         $svc = $this->service();
         self::assertSame('Fontanería', $svc->labelForCode('PLUMBING'));
         self::assertSame('PLUMBING', $svc->codeForLabel('Fontanería'));
+        self::assertSame('APPLIANCES', $svc->codeForLabel('Electrodomésticos'));
+        self::assertSame('Mantenimiento de Piscinas', $svc->labelForCode('POOL'));
+        self::assertSame('PEST_CONTROL', $svc->codeForLabel('Control de Plagas'));
         self::assertSame('DIY', $svc->codeForLabel('Desconocido'));
     }
 

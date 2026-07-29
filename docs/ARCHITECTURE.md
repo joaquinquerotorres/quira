@@ -60,7 +60,7 @@
 
 - **BidStatus:** `PENDING`, `ACCEPTED`, `REJECTED`, `COMPLETED`
 - **RequestStatus:** `PENDING`, `PENDING_APPROVAL`, `ACCEPTED`, `COMPLETED`
-- **Category:** `PLUMBING`, `ELECTRICITY`, `MASONRY`, `HVAC`, `DIY`, `PAINTING`, `GARDENING`, `CLEANING`
+- **Category:** `PLUMBING`, `ELECTRICITY`, `MASONRY`, `HVAC`, `DIY`, `PAINTING`, `GARDENING`, `CLEANING`, `APPLIANCES`, `MOVING`, `LOCKSMITH`, `POOL`, `SEWING`, `BLINDS`, `GLAZING`, `FURNITURE`, `CLEAROUT`, `PEST_CONTROL`, `SMART_HOME`, `BEAUTY`, `PETS`, `CARE`
 - **RiskLevel:** `LOW`, `MEDIUM`, `HIGH`
 - **NotificationAudience:** `Client`, `Professional` (faceta del envío en `NotificationService`)
 

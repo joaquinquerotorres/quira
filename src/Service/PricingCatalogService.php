@@ -13,7 +13,7 @@ use App\Repository\PricingRateRepository;
  */
 final class PricingCatalogService
 {
-    public const RULES_VERSION = 'pricing-rules-v2';
+    public const RULES_VERSION = 'pricing-rules-v3';
 
     /** @var array<string, string> */
     private const CODE_TO_LABEL = [
@@ -25,6 +25,20 @@ final class PricingCatalogService
         'PAINTING' => 'Pintura',
         'GARDENING' => 'Jardinería',
         'CLEANING' => 'Limpieza',
+        'APPLIANCES' => 'Electrodomésticos',
+        'MOVING' => 'Mudanzas y Portes',
+        'LOCKSMITH' => 'Cerrajería',
+        'POOL' => 'Mantenimiento de Piscinas',
+        'SEWING' => 'Costura y Arreglos',
+        'BLINDS' => 'Persianas y Toldos',
+        'GLAZING' => 'Cristalería',
+        'FURNITURE' => 'Restauración de Muebles',
+        'CLEAROUT' => 'Vaciado de Pisos',
+        'PEST_CONTROL' => 'Control de Plagas',
+        'SMART_HOME' => 'Domótica y Seguridad',
+        'BEAUTY' => 'Belleza',
+        'PETS' => 'Mascotas',
+        'CARE' => 'Cuidados',
     ];
 
     /** @var array<string, string> */
@@ -37,6 +51,20 @@ final class PricingCatalogService
         'Pintura' => 'PAINTING',
         'Jardinería' => 'GARDENING',
         'Limpieza' => 'CLEANING',
+        'Electrodomésticos' => 'APPLIANCES',
+        'Mudanzas y Portes' => 'MOVING',
+        'Cerrajería' => 'LOCKSMITH',
+        'Mantenimiento de Piscinas' => 'POOL',
+        'Costura y Arreglos' => 'SEWING',
+        'Persianas y Toldos' => 'BLINDS',
+        'Cristalería' => 'GLAZING',
+        'Restauración de Muebles' => 'FURNITURE',
+        'Vaciado de Pisos' => 'CLEAROUT',
+        'Control de Plagas' => 'PEST_CONTROL',
+        'Domótica y Seguridad' => 'SMART_HOME',
+        'Belleza' => 'BEAUTY',
+        'Mascotas' => 'PETS',
+        'Cuidados' => 'CARE',
     ];
 
     public function __construct(

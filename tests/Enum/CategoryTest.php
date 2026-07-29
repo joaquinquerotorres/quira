@@ -11,8 +11,11 @@ final class CategoryTest extends TestCase
 {
     public function testAllCasesExist(): void
     {
-        $this->assertGreaterThanOrEqual(7, count(Category::cases()));
+        $this->assertCount(22, Category::cases());
         $this->assertContains(Category::DIY, Category::cases());
         $this->assertContains(Category::PLUMBING, Category::cases());
+        $this->assertContains(Category::APPLIANCES, Category::cases());
+        $this->assertContains(Category::CARE, Category::cases());
+        $this->assertContains(Category::PEST_CONTROL, Category::cases());
     }
 }

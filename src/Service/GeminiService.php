@@ -111,6 +111,20 @@ class GeminiService
             - PAINTING (Pintura)
             - GARDENING (Jardinería)
             - CLEANING (Limpieza)
+            - APPLIANCES (Electrodomésticos)
+            - MOVING (Mudanzas y Portes)
+            - LOCKSMITH (Cerrajería)
+            - POOL (Mantenimiento de Piscinas)
+            - SEWING (Costura y Arreglos)
+            - BLINDS (Persianas y Toldos)
+            - GLAZING (Cristalería)
+            - FURNITURE (Restauración de Muebles)
+            - CLEAROUT (Vaciado de Pisos / organización)
+            - PEST_CONTROL (Control de Plagas)
+            - SMART_HOME (Domótica y Seguridad)
+            - BEAUTY (Belleza a domicilio)
+            - PETS (Mascotas)
+            - CARE (Cuidados: niños / mayores)
 
             ────────────────────────────────────────
             CAMPO "pricing_type"
@@ -156,12 +170,26 @@ class GeminiService
             REGLAS DE DECISIÓN DE CATEGORÍA:
             - Brochas, rodillos, paredes descoloridas -> PAINTING
             - Plantas, podas, tierra, exteriores -> GARDENING
-            - Suciedad general, cristales, fin de obra -> CLEANING
-            - Cajas/instrucciones -> DIY
+            - Suciedad general, cristales, fin de obra, plancha -> CLEANING
+            - Cajas/instrucciones de montaje -> DIY
             - Cables/enchufes, chispas -> ELECTRICITY
             - Agua/grifos -> PLUMBING
-            - Escombros/ladrillos -> MASONRY
-            - Aire acondicionado/radiadores -> HVAC
+            - Escombros/ladrillos/reformas -> MASONRY
+            - Aire acondicionado/radiadores/aerotermia -> HVAC
+            - Lavadora/frigorífico/horno/lavavajillas -> APPLIANCES
+            - Mudanza/porte de muebles -> MOVING
+            - Puerta atrancada/cerradura/llaves -> LOCKSMITH
+            - Piscina (limpieza, bomba, agua verde) -> POOL
+            - Arreglos de ropa/cremalleras -> SEWING
+            - Toldo/persiana eléctrica/mosquitera -> BLINDS
+            - Cristales de ventana/mampara -> GLAZING
+            - Retapizado/barnizado de mueble -> FURNITURE
+            - Vaciado de piso/organización de armarios -> CLEAROUT
+            - Cucarachas/ratas/termitas/fumigación -> PEST_CONTROL
+            - Alarma/cámaras/cerradura inteligente/domótica -> SMART_HOME
+            - Peluquería/manicura/depilación a domicilio -> BEAUTY
+            - Paseo/cuidado/peluquería de mascotas -> PETS
+            - Canguro/cuidado de mayores -> CARE
             - Ante la duda técnica, usa DIY.
 
             REGLAS DE SEGURIDAD Y "HUMILDAD":
@@ -286,14 +314,28 @@ class GeminiService
             NO asumas siempre que es una avería. Puede ser REPARACIÓN, INSTALACIÓN o MEJORA.
 
             DESCRIPCIÓN DETALLADA DE CATEGORÍAS TÉCNICAS:
-            - PLUMBING (Fontanería): Incluye redes de agua sanitaria, evacuación, grifería, sanitarios, sistemas de filtración (ósmosis/descalcificación) y detección de fugas.
-            - ELECTRICITY (Electricidad): Instalaciones de baja tensión, cuadros eléctricos, mecanismos, iluminación LED, antenas, videoporteros y certificados de eficiencia.
-            - MASONRY (Albañilería): Reformas estructurales, tabiquería, alicatados, solados, enfoscados de cemento, yeso y reparaciones de humedades.
-            - HVAC (Climatización): Aire acondicionado por conductos o split, calderas de gas/gasoil, termos eléctricos, aerotermia y suelo radiante.
-            - DIY (Manitas/Bricolaje): Montaje de mobiliario, instalación de accesorios (cortinas, cuadros), ajuste de carpintería metálica o madera, y reparaciones menores.
-            - PAINTING (Pintura): Pintura plástica, decorativa, eliminación de gotelé, lacado de puertas, tratamiento de maderas y papeles pintados.
-            - GARDENING (Jardinería): Diseño de paisajes, mantenimiento de césped, podas en altura, sistemas de riego automatizado y tratamientos fitosanitarios.
-            - CLEANING (Limpieza): Limpiezas de choque post-obra, higienización de tapicerías, limpieza de cristales en altura y mantenimiento regular.
+            - PLUMBING (Fontanería): Redes de agua sanitaria, evacuación, grifería, sanitarios, filtración (ósmosis/descalcificación) y detección de fugas.
+            - ELECTRICITY (Electricidad): Baja tensión, cuadros, mecanismos, iluminación, antenas, videoporteros, Wallbox y certificados CIE.
+            - MASONRY (Albañilería): Reformas, tabiquería, alicatados, solados, pladur, humedades y reformas de baño/cocina.
+            - HVAC (Climatización): Split/conductos, calderas, aerotermia, radiadores y estufas de pellets.
+            - DIY (Manitas/Bricolaje): Montaje de mobiliario, accesorios, ajustes de carpintería y reparaciones menores.
+            - PAINTING (Pintura): Plástica, gotelé, lacado, fachadas, epoxi y papel pintado.
+            - GARDENING (Jardinería): Césped, podas, riego, fitosanitarios y césped artificial.
+            - CLEANING (Limpieza): Doméstica, fin de obra, tapicerías, oficinas, alquiler turístico y plancha.
+            - APPLIANCES (Electrodomésticos): Diagnóstico y reparación de lavadora, frigorífico, lavavajillas, horno, secadora; instalación empotrados.
+            - MOVING (Mudanzas y Portes): Mudanzas por tamaño, portes unitarios, montaje/desmontaje y mudanzas interprovinciales.
+            - LOCKSMITH (Cerrajería): Aperturas, cerraduras de seguridad, duplicados y cajas fuertes.
+            - POOL (Mantenimiento de Piscinas): Mantenimiento, apertura/cierre, bombas/filtros y agua verde.
+            - SEWING (Costura y Arreglos): Dobladillos, entallados, cremalleras y confección a medida.
+            - BLINDS (Persianas y Toldos): Persianas eléctricas, toldos y mosquiteras.
+            - GLAZING (Cristalería): Cristales de ventana, doble acristalamiento, mamparas y corte a medida.
+            - FURNITURE (Restauración de Muebles): Restauración madera, retapizado y barnizado/lacado.
+            - CLEAROUT (Vaciado de Pisos): Vaciados, trasteros y organización del hogar.
+            - PEST_CONTROL (Control de Plagas): Desinsectación, desratización, fumigación y termitas/carcoma.
+            - SMART_HOME (Domótica y Seguridad): Cerraduras inteligentes, cámaras, alarmas y ecosistemas domóticos.
+            - BEAUTY (Belleza): Servicios de belleza a domicilio (depilación, manicura, peluquería, maquillaje, facial).
+            - PETS (Mascotas): Paseo, cuidado a domicilio y peluquería canina.
+            - CARE (Cuidados): Cuidado de niños (canguro) y de personas mayores.
 
             TABLA MAESTRA DE PRECIOS QUIRA (slice por zona; precios en céntimos):
             $catalogCsv
@@ -308,8 +350,9 @@ class GeminiService
             LOGICA DE FALLBACK Y ANALOGÍA:
             - Si el servicio no es exacto: misma categoría y, si es posible, misma zona; aplica el rango de un servicio de similar dificultad.
             - Solo si no hay analogía razonable:
-              * Técnicos (PLUMBING, ELECTRICITY, HVAC, MASONRY): 4800-7200 cént/h.
-              * Soporte (PAINTING, GARDENING, CLEANING, DIY): 1800-3800 cént/h.
+              * Técnicos (PLUMBING, ELECTRICITY, HVAC, MASONRY, APPLIANCES, LOCKSMITH, GLAZING, SMART_HOME, POOL): 4800-7200 cént/h.
+              * Soporte (PAINTING, GARDENING, CLEANING, DIY, BLINDS, FURNITURE, SEWING, CLEAROUT, PEST_CONTROL, MOVING): 1800-3800 cént/h.
+              * Personales (BEAUTY, PETS, CARE): 1000-2500 cént/h.
               * Horas realistas domésticas (1-2h, 2-4h, 4-6h).
 
             REGLAS DE SEGURIDAD Y PRECISIÓN:
