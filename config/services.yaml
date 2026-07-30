@@ -70,6 +70,12 @@ services:
         arguments:
             $webhookSecret: '%env(STRIPE_WEBHOOK_SECRET)%'
 
+    # Eager-load AFTER CurrentUserExtension (default priority 0)
+    App\Doctrine\EagerRelationsExtension:
+        tags:
+            - { name: api_platform.doctrine.orm.query_extension.collection, priority: -16 }
+            - { name: api_platform.doctrine.orm.query_extension.item, priority: -16 }
+
     # Inyecta phoneNumber solo en request.assignedProfessional (no en bids)
     App\Serializer\RequestAssignedProfessionalNormalizer:
         decorates: api_platform.jsonld.normalizer.item
@@ -79,6 +85,20 @@ services:
     App\Serializer\RequestAssignedProfessionalNormalizerJson:
         class: App\Serializer\RequestAssignedProfessionalNormalizer
         decorates: api_platform.serializer.normalizer.item
+        arguments:
+            $inner: '@.inner'
+
+    # Reviews acotadas en pro:read (detalle); no hidratar reviewsReceived completo
+    App\Serializer\ProfessionalProfileNormalizer:
+        decorates: api_platform.jsonld.normalizer.item
+        decoration_priority: 8
+        arguments:
+            $inner: '@.inner'
+
+    App\Serializer\ProfessionalProfileNormalizerJson:
+        class: App\Serializer\ProfessionalProfileNormalizer
+        decorates: api_platform.serializer.normalizer.item
+        decoration_priority: 8
         arguments:
             $inner: '@.inner'
 

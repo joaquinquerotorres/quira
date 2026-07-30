@@ -38,10 +38,10 @@ php bin/phpunit --group database
 | `tests/Command/` | CalibratePricingCommandTest (`#[Group('database')]`) |
 | `tests/Repository/` | BidRepositoryTest |
 | `tests/Entity/` | UserTest, ProfessionalProfileTest, ReviewTest, RequestClientOriginalDescriptionValidationTest |
-| `tests/Doctrine/` | CurrentUserExtensionTest |
-| `tests/Security/` | LoginSuccessHandlerTest, RequestAddressVoterTest |
+| `tests/Doctrine/` | CurrentUserExtensionTest, EagerRelationsExtensionTest |
+| `tests/Security/` | LoginSuccessHandlerTest, RequestAddressVoterTest (visita en memoria sin findOneBy) |
 | `tests/Validator/` | CleanTextValidatorTest, NoContactInfoValidatorTest, CifValidatorTest |
-| `tests/Serializer/` | PointDenormalizerTest, RequestAssignedProfessionalNormalizerTest |
+| `tests/Serializer/` | PointDenormalizerTest, RequestAssignedProfessionalNormalizerTest, ProfessionalProfileNormalizerTest |
 | `tests/Dto/` | PredictInputTest, StripeCheckoutInputTest |
 | `tests/Enum/` | BidStatusTest, CategoryTest (22 casos + `label()` / `tryFromLabel`), RequestStatusTest, RiskLevelTest |
 

@@ -8,6 +8,7 @@ use App\Entity\ClientProfile;
 use App\Entity\ProfessionalProfile;
 use App\Entity\Request;
 use App\Entity\User;
+use App\Entity\VisitRequest;
 use App\Repository\VisitRequestRepository;
 use App\Security\Voter\RequestAddressVoter;
 use App\Serializer\RequestAssignedProfessionalNormalizer;
@@ -393,5 +394,64 @@ final class RequestAssignedProfessionalNormalizerTest extends TestCase
         $this->assertSame('https://example.com/avatar.jpg', $result['client']['avatar']);
         $this->assertSame(4.5, $result['client']['rating']);
         $this->assertSame(12, $result['client']['reviewCount']);
+    }
+
+    public function testNormalizeShowsClientPhoneUsingInMemoryAcceptedVisitWithoutFindOneBy(): void
+    {
+        $clientProfile = new ClientProfile();
+        $clientProfile->setFullName('Client');
+        $clientProfile->setPhoneNumber('+34600000000');
+        $clientProfile->setUser(new User());
+
+        $proUser = new User();
+        $proUser->setEmail('pro@test.com');
+        $proProfile = new ProfessionalProfile();
+        $proProfile->setFullName('Pro');
+        $this->setEntityId($proProfile, 42);
+        $proProfile->setUser($proUser);
+        $proUser->setProfessionalProfile($proProfile);
+
+        $request = new Request();
+        $request->setTitle('Test');
+        $request->setAddress('Calle');
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
+        $request->setClient($clientProfile);
+
+        $visit = new VisitRequest();
+        $visit->setRequest($request);
+        $visit->setProfessional($proProfile);
+        $visit->setStatus(VisitRequest::STATUS_ACCEPTED);
+        $request->getVisitRequests()->add($visit);
+
+        $innerResult = [
+            '@id' => '/api/requests/1',
+            'client' => [
+                'fullName' => 'Client',
+                'phoneNumber' => '+34600000000',
+            ],
+        ];
+        $this->inner->method('normalize')->willReturn($innerResult);
+        $this->inner->method('supportsNormalization')->willReturn(true);
+
+        $visitRepo = $this->createMock(VisitRequestRepository::class);
+        $visitRepo->expects($this->never())->method('findOneBy');
+
+        $security = $this->createMock(Security::class);
+        $security->method('getUser')->willReturn($proUser);
+        $security->method('isGranted')->willReturn(true);
+
+        $normalizer = new RequestAssignedProfessionalNormalizer($this->inner, $security, $visitRepo);
+        $result = $normalizer->normalize($request);
+
+        $this->assertIsArray($result);
+        $this->assertSame('+34600000000', $result['client']['phoneNumber']);
+    }
+
+    private function setEntityId(object $entity, int $id): void
+    {
+        $ref = new \ReflectionClass($entity);
+        $prop = $ref->getProperty('id');
+        $prop->setValue($entity, $id);
     }
 }

@@ -9,6 +9,7 @@ use App\Entity\User;
 use App\Entity\VisitRequest;
 use App\Enum\BidStatus;
 use App\Repository\VisitRequestRepository;
+use Doctrine\ORM\PersistentCollection;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\Voter;
 
@@ -77,13 +78,25 @@ final class RequestAddressVoter extends Voter
         // Profesional con visita aceptada puede ver preciseAddress.
         $proProfile = $user->getProfessionalProfile();
         if ($proProfile !== null) {
-            $visit = $this->visitRequestRepository->findOneBy([
-                'request' => $request,
-                'professional' => $proProfile,
-                'status' => VisitRequest::STATUS_ACCEPTED,
-            ]);
-            if ($visit instanceof VisitRequest) {
-                return true;
+            $visits = $request->getVisitRequests();
+            if ($visits instanceof PersistentCollection && !$visits->isInitialized()) {
+                $visit = $this->visitRequestRepository->findOneBy([
+                    'request' => $request,
+                    'professional' => $proProfile,
+                    'status' => VisitRequest::STATUS_ACCEPTED,
+                ]);
+                if ($visit instanceof VisitRequest) {
+                    return true;
+                }
+            } else {
+                foreach ($visits as $visit) {
+                    if (
+                        $visit->getStatus() === VisitRequest::STATUS_ACCEPTED
+                        && $visit->getProfessional()?->getId() === $proProfile->getId()
+                    ) {
+                        return true;
+                    }
+                }
             }
         }
 

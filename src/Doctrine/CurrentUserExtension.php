@@ -10,6 +10,7 @@ use ApiPlatform\Doctrine\Orm\Util\QueryNameGeneratorInterface;
 use ApiPlatform\Metadata\Operation;
 use App\Entity\Bid;
 use App\Entity\CalendarEvent;
+use App\Entity\Notification;
 use App\Entity\Request;
 use App\Entity\Review;
 use App\Entity\User;
@@ -112,31 +113,14 @@ final class CurrentUserExtension implements QueryCollectionExtensionInterface, Q
 
         if ($resourceClass === Request::class) {
             if (!$isCollection) {
-                $bidAlias = $queryNameGenerator->generateJoinAlias('bid');
-                $visitAlias = $queryNameGenerator->generateJoinAlias('visit');
                 $proProfile = $user->getProfessionalProfile();
                 $hasActivePaidSubscription = $proProfile !== null
                     && $this->subscriptionService->hasActivePaidSubscription($proProfile);
 
+                // EXISTS (no WITH sobre bids/visits) para no contaminar el eager-load de colecciones.
                 $queryBuilder
                     ->leftJoin(sprintf('%s.client', $rootAlias), 'req_client')
                     ->leftJoin(sprintf('%s.assignedProfessional', $rootAlias), 'req_pro')
-                    ->leftJoin(
-                        sprintf('%s.bids', $rootAlias),
-                        $bidAlias,
-                        'WITH',
-                        sprintf(
-                            '%s.professional = :current_user AND %s.status IN (:bid_item_active_statuses)',
-                            $bidAlias,
-                            $bidAlias
-                        )
-                    )
-                    ->leftJoin(
-                        sprintf('%s.visitRequests', $rootAlias),
-                        $visitAlias,
-                        'WITH',
-                        sprintf('%s.professional = :current_pro_profile AND %s.status = :visit_accepted', $visitAlias, $visitAlias)
-                    )
                     ->andWhere(
                         $queryBuilder->expr()->orX(
                             'req_client.user = :current_user',
@@ -146,8 +130,16 @@ final class CurrentUserExtension implements QueryCollectionExtensionInterface, Q
                                 $rootAlias,
                                 $rootAlias
                             ),
-                            sprintf('%s.id IS NOT NULL', $bidAlias),
-                            sprintf('%s.id IS NOT NULL', $visitAlias)
+                            sprintf(
+                                'EXISTS (SELECT 1 FROM %s bid_access WHERE bid_access.request = %s AND bid_access.professional = :current_user AND bid_access.status IN (:bid_item_active_statuses))',
+                                Bid::class,
+                                $rootAlias
+                            ),
+                            sprintf(
+                                'EXISTS (SELECT 1 FROM %s visit_access WHERE visit_access.request = %s AND visit_access.professional = :current_pro_profile AND visit_access.status = :visit_accepted)',
+                                VisitRequest::class,
+                                $rootAlias
+                            )
                         )
                     )
                     ->setParameter('current_user', $user)
@@ -157,6 +149,7 @@ final class CurrentUserExtension implements QueryCollectionExtensionInterface, Q
                     ->setParameter('risk_high_item', RiskLevel::HIGH)
                     ->setParameter('has_paid_subscription_item', $hasActivePaidSubscription)
                     ->setParameter('bid_item_active_statuses', [BidStatus::PENDING, BidStatus::ACCEPTED]);
+
                 return;
             }
 
@@ -291,6 +284,12 @@ final class CurrentUserExtension implements QueryCollectionExtensionInterface, Q
                     )
                 )
                 ->setParameter('review_current_user', $user);
+        }
+
+        if ($resourceClass === Notification::class) {
+            $queryBuilder
+                ->andWhere(sprintf('%s.user = :notification_current_user', $rootAlias))
+                ->setParameter('notification_current_user', $user);
         }
     }
 

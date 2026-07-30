@@ -29,7 +29,10 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ORM\UniqueConstraint(name: 'uniq_bid_request_professional', columns: ['request_id', 'professional_id'])]
 #[ApiResource(
     operations: [
-        new GetCollection(normalizationContext: ['groups' => ['bid:read']]),
+        new GetCollection(
+            normalizationContext: ['groups' => ['bid:read']],
+            order: ['createdAt' => 'DESC'],
+        ),
         new Get(normalizationContext: ['groups' => ['bid:read']]),
         new Post(
             processor: BidProfessionalProcessor::class,

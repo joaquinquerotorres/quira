@@ -169,6 +169,50 @@ final class RequestAddressVoterTest extends TestCase
         );
     }
 
+    public function testProfessionalWithAcceptedVisitInMemoryCanViewPreciseAddressWithoutFindOneBy(): void
+    {
+        $clientUser = new User();
+        $clientUser->setEmail('client@test.com');
+        $clientProfile = new ClientProfile();
+        $clientProfile->setFullName('Cliente');
+        $clientProfile->setUser($clientUser);
+        $clientUser->setClientProfile($clientProfile);
+        $this->setId($clientProfile, 1);
+
+        $proUser = new User();
+        $proUser->setEmail('pro@test.com');
+        $proProfile = new ProfessionalProfile();
+        $proProfile->setFullName('Pro Test');
+        $proProfile->setUser($proUser);
+        $proUser->setProfessionalProfile($proProfile);
+        $this->setId($proProfile, 7);
+
+        $request = new Request();
+        $request->setTitle('Test');
+        $request->setAddress('Calle Test');
+        $request->setEstimatedPriceMin(100);
+        $request->setEstimatedPriceMax(100);
+        $request->setClient($clientProfile);
+        $request->setPreciseAddress('Calle Test 1, Piso 2');
+
+        $visit = new \App\Entity\VisitRequest();
+        $visit->setRequest($request);
+        $visit->setProfessional($proProfile);
+        $visit->setStatus(\App\Entity\VisitRequest::STATUS_ACCEPTED);
+        $request->getVisitRequests()->add($visit);
+
+        $visitRepo = $this->createMock(VisitRequestRepository::class);
+        $visitRepo->expects($this->never())->method('findOneBy');
+        $voter = new RequestAddressVoter($visitRepo);
+
+        $token = new UsernamePasswordToken($proUser, 'main', ['ROLE_USER']);
+
+        $this->assertSame(
+            VoterInterface::ACCESS_GRANTED,
+            $voter->vote($token, $request, [RequestAddressVoter::VIEW_PRECISE_ADDRESS])
+        );
+    }
+
     private function setId(object $entity, int $id): void
     {
         $ref = new \ReflectionClass($entity);

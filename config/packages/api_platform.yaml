@@ -9,6 +9,8 @@ api_platform:
         force_eager: false
     defaults:
         stateless: true
+        pagination_client_items_per_page: true
+        pagination_maximum_items_per_page: 100
         cache_headers:
             vary: ['Content-Type', 'Authorization', 'Origin']
     swagger:
