@@ -34,7 +34,7 @@ php bin/phpunit --group database
 | `tests/Controller/` | StripeCheckoutControllerTest, StripeCancelSubscriptionControllerTest, SocialLoginControllerTest, PasswordResetControllerTest, VerificationControllerTest |
 | `tests/Api/` | Contratos E2E contra `/api/*` (ver sección siguiente) |
 | `tests/State/` | BidProfessional/Acceptance/Withdraw, RequestClient/Delete/Question, Review, UserRegistration, Professional/ClientProfileOwner, CalendarEventOwner |
-| `tests/Service/` | StripeCheckoutSessionHandler, GeminiService (+ CreateCache), PricingCatalogService, PricingClampService, PredictMediaFetcher, PredictMediaLimits, NotificationService, EmailVerificationService, PasswordResetService |
+| `tests/Service/` | StripeCheckoutSessionHandler, GeminiService (+ CreateCache), ContactInfoDetector, PricingCatalogService, PricingClampService, PredictMediaFetcher, PredictMediaLimits, NotificationService, EmailVerificationService, PasswordResetService |
 | `tests/Command/` | CalibratePricingCommandTest (`#[Group('database')]`) |
 | `tests/Repository/` | BidRepositoryTest |
 | `tests/Entity/` | UserTest, ProfessionalProfileTest, ReviewTest, RequestClientOriginalDescriptionValidationTest |

@@ -112,6 +112,10 @@ final class RequestClientProcessor implements ProcessorInterface
     }
 
     /**
+     * Solo `safe` / `is_safe` decide PENDING_APPROVAL.
+     * `in_scope=false` (fuera de catálogo Quira) NO marca la solicitud: la app debe
+     * mostrar UX de “no cubrimos esto” sin pasar por moderación humana.
+     *
      * @param array<string, mixed>|null $aiDiagnosis
      * @return array{0: bool, 1: ?string}
      */

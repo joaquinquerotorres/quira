@@ -74,7 +74,8 @@
 | StripeSubscriptionSyncService | Alinea `paidThroughAt` y `subscriptionCancelAtPeriodEnd` con objetos Subscription / Invoice de Stripe |
 | ProfessionalSubscriptionService | `hasActivePaidSubscription` / límites efectivos FREE según `paidThroughAt` |
 | NotificationService | WhatsApp, push FCM, email (canal según audiencia/roles/preferencias, con fallback escalonado) |
-| GeminiService | Diagnose/predict con `GEMINI_MODEL` + catálogo/cache; moderación (`safe`/`safety_reason`); `createCache` |
+| GeminiService | Diagnose/predict con `GEMINI_MODEL` + catálogo/cache; PASO 1A `safe`/`safety_reason` + PASO 1B `in_scope`/`out_of_scope_reason` (1 sola llamada); `createCache` |
+| ContactInfoDetector | Heurística texto (email/teléfono ES); refuerza `safe=false` post-diagnose y alimenta `NoContactInfo` |
 | GeminiCacheService | `cachedContents` Gemini: lookup por model+hash+zona, lock MySQL, degradación sin caché |
 | PricingCatalogService | Catálogo BD, resolución de zonas, slice CSV en memoria, content hash |
 | PricingClampService | Post-diagnose (híbrido A+C): acota `estimated_price_*` al rango `pricing_rate` |
@@ -105,7 +106,7 @@
 ## State Processors
 
 - UserRegistrationProcessor: hash contraseña, roles
-- RequestClientProcessor: asigna cliente; usa `aiDiagnosis.safe` para `PENDING_APPROVAL`
+- RequestClientProcessor: asigna cliente; usa solo `aiDiagnosis.safe` (no `in_scope`) para `PENDING_APPROVAL`
 - BidProfessionalProcessor: valida profesional, teléfono, límite mensual y HIGH según `paidThroughAt`; reglas vía `ValidationException` (422) con códigos `BID_*`
 - BidAcceptanceProcessor: acepta bid; rechaza (`REJECTED`) las pujas hermanas pendientes
 - BidWithdrawProcessor: retira bid (elimina la fila)

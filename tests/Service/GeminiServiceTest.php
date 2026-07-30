@@ -128,15 +128,17 @@ final class GeminiServiceTest extends TestCase
 
             $payload = self::requestPayloadFromMockOptions($options);
             self::assertNotSame([], $payload);
-            self::assertArrayHasKey('generationConfig', $payload);
-            $gc = $payload['generationConfig'];
-            self::assertSame('application/json', $gc['responseMimeType']);
+            $prompt = (string) ($payload['contents'][0]['parts'][0]['text'] ?? '');
+            self::assertStringContainsString('PASO 1A — SEGURIDAD', $prompt);
+            self::assertStringContainsString('PASO 1B — ALCANCE', $prompt);
+            self::assertStringContainsString('FRAUDE DE CONTACTO', $prompt);
+            self::assertStringContainsString("'in_scope'", $prompt);
 
             return new MockResponse(json_encode([
                 'candidates' => [[
                     'content' => [
                         'parts' => [[
-                            'text' => '{"safe":false,"safety_reason":"Contenido no relacionado con servicios del hogar","title":"Solicitud pendiente de revisión","description":"Contenido no válido","summary_text":"Contenido bloqueado por moderación","category":"DIY","sub_category":"General","risk_level":"LOW","estimated_price_min":0,"estimated_price_max":0,"urgency":"SCHEDULED","schedule_intent":null}',
+                            'text' => '{"safe":false,"safety_reason":"Usuario dicta teléfono en audio","in_scope":false,"out_of_scope_reason":null,"title":"Solicitud pendiente de revisión","description":"Contenido no válido","summary_text":"Contenido bloqueado por moderación","category":"DIY","sub_category":"General","risk_level":"LOW","estimated_price_min":0,"estimated_price_max":0,"urgency":"SCHEDULED","schedule_intent":null}',
                         ]],
                     ],
                 ]],
@@ -148,7 +150,71 @@ final class GeminiServiceTest extends TestCase
         $result = $service->diagnose('Título', null, null, null, null, null);
 
         self::assertFalse($result['safe']);
-        self::assertSame('Contenido no relacionado con servicios del hogar', $result['safety_reason']);
+        self::assertSame('Usuario dicta teléfono en audio', $result['safety_reason']);
+        self::assertFalse($result['in_scope']);
+    }
+
+    public function testDiagnoseNormalizesOutOfScopeWithoutMarkingUnsafe(): void
+    {
+        $mock = new MockHttpClient(static fn (): MockResponse => new MockResponse(json_encode([
+            'candidates' => [[
+                'content' => [
+                    'parts' => [[
+                        'text' => '{"safe":true,"safety_reason":null,"in_scope":false,"out_of_scope_reason":"Consulta médica","title":"Fuera de alcance","description":"No aplica","summary_text":"No es un servicio del hogar","category":"DIY","risk_level":"LOW","pricing_type":"FIXED","clarifying_questions":[],"estimated_price_min":5000,"estimated_price_max":9000,"urgency":"SCHEDULED","schedule_intent":null}',
+                    ]],
+                ],
+            ]],
+        ], JSON_THROW_ON_ERROR), ['http_code' => 200]));
+
+        $service = new GeminiService('test-key', 'gemini-2.5-flash', $mock, new NullLogger());
+        $result = $service->diagnose('Me duele la rodilla', null, null, null, null, null);
+
+        self::assertTrue($result['safe']);
+        self::assertFalse($result['in_scope']);
+        self::assertSame('Consulta médica', $result['out_of_scope_reason']);
+        self::assertSame(0, $result['estimated_price_min']);
+        self::assertSame(0, $result['estimated_price_max']);
+    }
+
+    public function testDiagnoseForcesUnsafeWhenDescriptionContainsPhone(): void
+    {
+        $mock = new MockHttpClient(static fn (): MockResponse => new MockResponse(json_encode([
+            'candidates' => [[
+                'content' => [
+                    'parts' => [[
+                        'text' => '{"safe":true,"safety_reason":null,"in_scope":true,"out_of_scope_reason":null,"title":"Fontanería","description":"ok","summary_text":"ok","category":"PLUMBING","risk_level":"MEDIUM","pricing_type":"RANGE","clarifying_questions":[],"estimated_price_min":4000,"estimated_price_max":8000,"urgency":"SCHEDULED","schedule_intent":null}',
+                    ]],
+                ],
+            ]],
+        ], JSON_THROW_ON_ERROR), ['http_code' => 200]));
+
+        $service = new GeminiService('test-key', 'gemini-2.5-flash', $mock, new NullLogger());
+        $result = $service->diagnose('Fuga en el baño, llámame al 612345678', null, null, null, null, null);
+
+        self::assertFalse($result['safe']);
+        self::assertSame('Se detectó un teléfono en el texto.', $result['safety_reason']);
+        self::assertSame(0, $result['estimated_price_min']);
+    }
+
+    public function testDiagnoseDefaultsInScopeWhenMissingFromModel(): void
+    {
+        $mock = new MockHttpClient(static fn (): MockResponse => new MockResponse(json_encode([
+            'candidates' => [[
+                'content' => [
+                    'parts' => [[
+                        'text' => '{"safe":true,"title":"Pintura","description":"ok","summary_text":"ok","category":"PAINTING","risk_level":"LOW","pricing_type":"FIXED","clarifying_questions":[],"estimated_price_min":3000,"estimated_price_max":5000,"urgency":"SCHEDULED","schedule_intent":null}',
+                    ]],
+                ],
+            ]],
+        ], JSON_THROW_ON_ERROR), ['http_code' => 200]));
+
+        $service = new GeminiService('test-key', 'gemini-2.5-flash', $mock, new NullLogger());
+        $result = $service->diagnose('Pintar salón', null, null, null, null, null);
+
+        self::assertTrue($result['safe']);
+        self::assertTrue($result['in_scope']);
+        self::assertNull($result['out_of_scope_reason']);
+        self::assertSame(3000, $result['estimated_price_min']);
     }
 }
 

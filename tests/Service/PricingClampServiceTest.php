@@ -86,6 +86,39 @@ final class PricingClampServiceTest extends TestCase
         self::assertArrayNotHasKey('pricing_clamped', $out);
     }
 
+    public function testSkipsClampWhenUnsafeOrOutOfScope(): void
+    {
+        $svc = $this->service([
+            $this->rate('Fontanería', 'Desatasco manual de sifón/desagüe', 'Córdoba', 4000, 8000),
+        ]);
+
+        $unsafe = $svc->clampDiagnosis([
+            'safe' => false,
+            'in_scope' => true,
+            'pricing_type' => 'RANGE',
+            'category' => 'PLUMBING',
+            'sub_category' => 'Desatasco manual de sifón/desagüe',
+            'estimated_price_min' => 1000,
+            'estimated_price_max' => 20000,
+            'urgency' => 'SCHEDULED',
+        ], 'Córdoba');
+        self::assertSame(0, $unsafe['estimated_price_min']);
+        self::assertSame(0, $unsafe['estimated_price_max']);
+
+        $oos = $svc->clampDiagnosis([
+            'safe' => true,
+            'in_scope' => false,
+            'pricing_type' => 'RANGE',
+            'category' => 'PLUMBING',
+            'sub_category' => 'Desatasco manual de sifón/desagüe',
+            'estimated_price_min' => 1000,
+            'estimated_price_max' => 20000,
+            'urgency' => 'SCHEDULED',
+        ], 'Córdoba');
+        self::assertSame(0, $oos['estimated_price_min']);
+        self::assertSame(0, $oos['estimated_price_max']);
+    }
+
     public function testClampsOutOfRangeToCatalog(): void
     {
         $svc = $this->service([

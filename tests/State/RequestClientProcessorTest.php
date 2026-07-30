@@ -86,6 +86,7 @@ final class RequestClientProcessorTest extends TestCase
         $request->setAiDiagnosis([
             'safe' => false,
             'safety_reason' => 'Contenido inapropiado',
+            'in_scope' => false,
         ]);
 
         $security = $this->createMock(Security::class);
@@ -106,6 +107,50 @@ final class RequestClientProcessorTest extends TestCase
         $this->assertSame(RequestStatus::PENDING_APPROVAL, $result->getStatus());
         $this->assertTrue($result->getIsFlagged());
         $this->assertSame('Contenido inapropiado', $result->getModerationReason());
+    }
+
+    public function testOutOfScopeDoesNotFlagForModeration(): void
+    {
+        $user = new User();
+        $user->setEmail('client@test.com');
+        $clientProfile = new ClientProfile();
+        $clientProfile->setFullName('Cliente');
+        $clientProfile->setPhoneNumber('+34600000000');
+        $clientProfile->setUser($user);
+        $user->setClientProfile($clientProfile);
+        $clientProfile->setVerifiedPhone(true);
+
+        $request = new Request();
+        $request->setTitle('Consulta médica');
+        $request->setDescription('Dolor de rodilla');
+        $request->setAddress('Calle Test');
+        $request->setEstimatedPriceMin(0);
+        $request->setEstimatedPriceMax(0);
+        $request->setAiDiagnosis([
+            'safe' => true,
+            'safety_reason' => null,
+            'in_scope' => false,
+            'out_of_scope_reason' => 'Consulta médica, no es un servicio del hogar',
+        ]);
+
+        $security = $this->createMock(Security::class);
+        $security->method('getUser')->willReturn($user);
+
+        $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
+        $persistProcessor->method('process')->willReturnCallback(fn($data) => $data);
+
+        $processor = new RequestClientProcessor(
+            $persistProcessor,
+            $this->logger,
+            $security,
+            $this->mediaService
+        );
+
+        $result = $processor->process($request, new \ApiPlatform\Metadata\Post());
+
+        $this->assertSame(RequestStatus::PENDING, $result->getStatus());
+        $this->assertFalse($result->getIsFlagged());
+        $this->assertNull($result->getModerationReason());
     }
 
     public function testUsesLegacySafetyKeysFromAiDiagnosisWhenPresent(): void
