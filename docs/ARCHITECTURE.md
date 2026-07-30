@@ -30,7 +30,7 @@
 |---------|-------------|
 | User | email, roles, FCM token, Firebase UID, Stripe customer ID, `isVerifiedPhone()` calculado a partir de los perfiles; en `user:read` el plan operativo va en el `professionalProfile` anidado (`paidThroughAt`, `subscriptionCancelAtPeriodEnd`) |
 | ClientProfile | Perfil cliente: nombre, teléfono, avatar, `rating`, `reviewCount`, `verifiedPhone`, preferencias `notify*` |
-| ProfessionalProfile | Perfil profesional: bio, skills, `paidThroughAt`, ubicación (`locationPoint` + `serviceRadiusKm`), `verifiedPhone`, `subscriptionCancelAtPeriodEnd`, `rating`, `reviewCount`, CIF/`verifiedTaxId`, preferencias `notify*` |
+| ProfessionalProfile | Perfil profesional: bio, skills, `paidThroughAt`, ubicación (`locationPoint` + `serviceRadiusKm`), `verifiedPhone`, `subscriptionCancelAtPeriodEnd`, `rating`, `reviewCount`, `createdAt` (alta en Quira), CIF/`verifiedTaxId`, preferencias `notify*` |
 | Request | Solicitud: título, `description`, opcional `clientOriginalDescription`, `estimatedPriceMin/Max` (céntimos), estado, categoría, `riskLevel`, `pricingType`, `aiDiagnosis`, media, `VisitRequest` asociadas |
 | Bid | Oferta de profesional: precio, comentario, estado (`PENDING`/`ACCEPTED`/`REJECTED`/`COMPLETED`). Sin `origin` ni FK a visita |
 | VisitRequest | Visita de valoración: `Request` + `ProfessionalProfile`, `status` (PENDING/ACCEPTED/REJECTED), `note`, timestamps |

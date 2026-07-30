@@ -19,6 +19,7 @@ Autenticación: Bearer JWT en header Authorization
 ### ProfessionalProfile
 - GET/POST /api/professional_profiles, PATCH/PUT /api/professional_profiles/{id}
 - Campos de valoración: `rating`, `reviewCount`; en lectura también `reviews[]` (array embebido con id, score, comment, authorName, createdAt).
+- `createdAt` (ISO 8601): alta del perfil profesional. La app lo muestra como “En Quira desde {mes} de {año}”.
 - `skills`: array de códigos `Category` (los 22 valores del enum; ver predict/`Category` más abajo). Usado para matching de mercado y directorio.
 - Preferencias de notificación (escritura en `pro:write`, lectura también en `user:read` cuando el perfil va embebido en `GET /api/users/{id}`):
   - `notifyRequestActivity`, `notifyBidActivity`, `notifyReviews` (boolean, default `true`).
@@ -81,6 +82,7 @@ Autenticación: Bearer JWT en header Authorization
   - `client`: objeto embebido `ClientProfile` del cliente. Incluye `fullName`, `avatar`, `rating`, `reviewCount`. **`phoneNumber`** solo se incluye si el usuario actual es el profesional asignado o tiene una visita de valoración aceptada para esa request; en caso contrario se omite.
   - `preciseAddress`: solo presente si el usuario tiene permiso (cliente dueño, profesional asignado, pro con bid aceptada o con visita aceptada). Se rellena típicamente al aceptar una bid.
   - `bids[]`: cada bid incluye `professional` (User) con `professionalProfile` embebido: `avatar`, `rating`, `reviewCount` (sin teléfono).
+  - `bidCount` (int, virtual): número de propuestas (`bids.length`); útil para chips en listados del cliente.
   - `visitRequests[]`: cada elemento expone `professionalPhone` **solo cuando** `status === ACCEPTED`; en otros estados el teléfono no se devuelve.
 
 ### CalendarEvent

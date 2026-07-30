@@ -52,6 +52,17 @@ final class ProfessionalProfileTest extends TestCase
         $this->assertSame(0, $pro->getCompletedJobs());
     }
 
+    public function testCreatedAtIsSetOnConstruct(): void
+    {
+        $before = new \DateTimeImmutable('-1 second');
+        $pro = new ProfessionalProfile();
+        $pro->setFullName('Pro Test');
+        $after = new \DateTimeImmutable('+1 second');
+
+        $this->assertGreaterThanOrEqual($before, $pro->getCreatedAt());
+        $this->assertLessThanOrEqual($after, $pro->getCreatedAt());
+    }
+
     public function testGetReviewsReturnsEmptyWhenNoUser(): void
     {
         $pro = new ProfessionalProfile();
