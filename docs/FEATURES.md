@@ -234,6 +234,6 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
 
 ## Calendario profesional
 - El profesional asignado puede crear un `CalendarEvent` por trabajo ganado (`ACCEPTED`/`COMPLETED`).
-- Un único evento por par request + professional; se guarda la fecha y hora de **comienzo** (`startsAt`), sin hora de fin (varios trabajos el mismo día).
+- Un único evento por par request + professional (UNIQUE en BD; POST hace upsert si ya existe). Se guarda la fecha y hora de **comienzo** (`startsAt`), sin hora de fin.
 - Se puede editar el comienzo o eliminar el evento.
 - La app móvil muestra vista mensual, FAB de alta y acceso desde perfil / detalle del trabajo.

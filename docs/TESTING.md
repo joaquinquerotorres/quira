@@ -70,6 +70,7 @@ Los tests en `tests/Api/` ejercitan endpoints reales y validan contratos crític
 - **CanBidTest** — `GET /api/professionals/me/can-bid`, límite mensual, `remainingBidsThisMonth`; `ROLE_PRO` con `paidThroughAt` caducado = FREE efectivo.
 - **VisitRequestContractTest** — `POST .../visit-request` exige `pricingType` / `aiDiagnosis.pricing_type = VISIT_REQUIRED` y request `PENDING`; HIGH requiere PRO + `paidThroughAt` futuro; flujo aceptar visita + `preciseAddress`; notificaciones `VISIT_REQUEST_*`.
 - **ReviewsContractTest** — `?target=` / `?author=` del perfil; privacidad (no listar ajenas); `?request=&author=` self-check; campos `targetName`, `requestTitle`, `authorIsProfessional`.
+- **CalendarEventsContractTest** — `request` embebido con `id`; POST upsert; filtro `startsAt[after]/[before]`; PATCH y listado coherentes en `startsAt`.
 - **PhoneVerificationApiTest** — send/confirm OTP; mismo número en ambos perfiles; `skipped: true`.
 - **StripeCancelSubscriptionApiTest** — `POST /api/stripe/cancel-subscription` (fake Stripe en test).
 - **ProfileNotificationPrefsApiTest** — PATCH preferencias `notify*` y lectura en `user:read`.

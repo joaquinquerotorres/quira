@@ -10,6 +10,7 @@ use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\State\ProcessorInterface;
 use App\Entity\CalendarEvent;
+use App\Entity\Request;
 use App\Entity\User;
 use App\Enum\RequestStatus;
 use App\Repository\CalendarEventRepository;
@@ -19,7 +20,6 @@ use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
-use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 final class CalendarEventOwnerProcessor implements ProcessorInterface
 {
@@ -74,14 +74,14 @@ final class CalendarEventOwnerProcessor implements ProcessorInterface
 
             // Releer la request desde BD por si llega como IRI parcial.
             if ($request->getId() !== null) {
-                $managed = $this->entityManager->find(\App\Entity\Request::class, $request->getId());
+                $managed = $this->entityManager->find(Request::class, $request->getId());
                 if ($managed !== null) {
                     $request = $managed;
                     $data->setRequest($request);
                 }
             }
 
-            if (!in_array($request->getStatus(), [RequestStatus::ACCEPTED, RequestStatus::COMPLETED], true)) {
+            if (!\in_array($request->getStatus(), [RequestStatus::ACCEPTED, RequestStatus::COMPLETED], true)) {
                 throw new BadRequestHttpException('Solo puedes agendar trabajos aceptados o completados.');
             }
 
@@ -89,12 +89,26 @@ final class CalendarEventOwnerProcessor implements ProcessorInterface
                 throw new AccessDeniedHttpException('Solo puedes agendar trabajos que te han asignado.');
             }
 
-            if ($this->calendarEventRepository->findOneByRequestAndProfessional($request, $proProfile) !== null) {
-                throw new ConflictHttpException('Este trabajo ya está en tu calendario.');
+            $this->assertValidStartsAt($data);
+
+            $existing = $this->calendarEventRepository->findOneByRequestAndProfessional($request, $proProfile);
+            if ($existing !== null) {
+                // Upsert: un solo evento por trabajo; POST con el mismo request actualiza startsAt/notes.
+                $existing->setStartsAt($data->getStartsAt());
+                $existing->setNotes($data->getNotes());
+                $this->assertValidStartsAt($existing);
+
+                $this->logger->info(sprintf(
+                    'Usuario %s actualiza calendar_event %d (upsert POST) para request %d',
+                    $user->getUserIdentifier(),
+                    $existing->getId() ?? 0,
+                    $request->getId() ?? 0
+                ));
+
+                return $this->persistProcessor->process($existing, $operation, $uriVariables, $context);
             }
 
             $data->setProfessional($proProfile);
-            $this->assertValidStartsAt($data);
 
             $this->logger->info(sprintf(
                 'Usuario %s crea calendar_event para request %d',
