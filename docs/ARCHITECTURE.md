@@ -114,7 +114,7 @@
 - ReviewProcessor: valida autor; recalcula `rating` y `reviewCount` en el perfil valorado
 - RequestQuestionProcessor: notifica
 - ProfessionalProfileOwnerProcessor / ClientProfileOwnerProcessor: dueño + autoverificación de teléfono / CIF
-- CalendarEventOwnerProcessor: asigna dueño del evento de agenda
+- CalendarEventOwnerProcessor: asigna dueño; POST hace upsert si ya existe evento para request+pro
 
 ## Event Listeners
 

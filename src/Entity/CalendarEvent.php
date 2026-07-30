@@ -7,6 +7,7 @@ namespace App\Entity;
 use ApiPlatform\Doctrine\Orm\Filter\DateFilter;
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
@@ -17,7 +18,9 @@ use App\Repository\CalendarEventRepository;
 use App\State\CalendarEventOwnerProcessor;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Context;
 use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: CalendarEventRepository::class)]
@@ -58,6 +61,7 @@ class CalendarEvent
 
     #[ORM\ManyToOne(targetEntity: Request::class)]
     #[ORM\JoinColumn(nullable: false)]
+    #[ApiProperty(readableLink: true)]
     #[Groups(['calendar:read', 'calendar:write'])]
     #[Assert\NotNull]
     private ?Request $request = null;
@@ -67,9 +71,10 @@ class CalendarEvent
     #[Groups(['calendar:read'])]
     private ?ProfessionalProfile $professional = null;
 
-    /** Fecha y hora de comienzo del trabajo (sin hora de fin). */
+    /** Fecha y hora de comienzo del trabajo (sin hora de fin). Campo canónico; no hay endsAt. */
     #[ORM\Column(name: 'starts_at', type: Types::DATETIME_IMMUTABLE)]
     #[Groups(['calendar:read', 'calendar:write'])]
+    #[Context(normalizationContext: [DateTimeNormalizer::FORMAT_KEY => \DateTimeInterface::ATOM])]
     #[Assert\NotNull]
     private ?\DateTimeImmutable $startsAt = null;
 

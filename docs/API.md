@@ -85,12 +85,13 @@ Autenticación: Bearer JWT en header Authorization
 
 ### CalendarEvent
 - GET/POST `/api/calendar_events`, GET/PATCH/DELETE `/api/calendar_events/{id}`
-- Calendario de trabajos del profesional asignado (un evento por `request` + `professional`).
-- Campo principal: `startsAt` (datetime): fecha y hora de **comienzo** del trabajo. No hay hora de fin.
-- POST: fuerza el `professional` del usuario autenticado; la request debe estar `ACCEPTED` o `COMPLETED` y tenerle asignado; requiere `startsAt`; 409 si ya existe evento para ese trabajo.
+- Calendario de trabajos del profesional asignado (**un único evento** por `request` + `professional`).
+- Campo canónico: `startsAt` (datetime ISO): fecha y hora de **comienzo** del trabajo. No hay `endsAt` / `scheduledAt` / periodo.
+- POST: fuerza el `professional` del usuario autenticado; la request debe estar `ACCEPTED` o `COMPLETED` y tenerle asignado; requiere `startsAt`. Si ya existe evento para ese trabajo → **upsert** (actualiza `startsAt`/`notes` del existente; no crea duplicado).
 - PATCH: `startsAt`, `notes`.
 - DELETE: elimina el evento del calendario.
-- Filtros: `startsAt` (DateFilter, rango de mes), `request` (exact IRI).
+- Colección: `request` viene **embebido** (`readableLink`) con al menos `id`, `title`, `status` (grupo `calendar:read`), más `@id` IRI.
+- Filtros: `startsAt` (DateFilter `after`/`before`, rango de mes), `request` (exact IRI `/api/requests/{id}`).
 - Visibilidad: `CurrentUserExtension` limita la colección/ítem al `ProfessionalProfile` del usuario.
 
 ### Bid

@@ -18,7 +18,6 @@ use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
-use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 final class CalendarEventOwnerProcessorTest extends TestCase
 {
@@ -89,26 +88,36 @@ final class CalendarEventOwnerProcessorTest extends TestCase
         $result = $processor->process($event, new \ApiPlatform\Metadata\Post());
 
         $this->assertSame($proProfile, $result->getProfessional());
+        $this->assertEquals(new \DateTimeImmutable('2026-08-01 09:30:00'), $result->getStartsAt());
     }
 
-    public function testThrowsConflictWhenDuplicate(): void
+    public function testPostUpsertsExistingEventInsteadOfConflict(): void
     {
         [$proUser, $proProfile, $request] = $this->makeAcceptedJob();
 
-        $event = new CalendarEvent();
-        $event->setRequest($request);
-        $event->setStartsAt(new \DateTimeImmutable('2026-08-01 09:30:00'));
+        $existing = new CalendarEvent();
+        $existing->setRequest($request);
+        $existing->setProfessional($proProfile);
+        $existing->setStartsAt(new \DateTimeImmutable('2026-07-01 08:00:00'));
+        $existing->setNotes('viejo');
+
+        $incoming = new CalendarEvent();
+        $incoming->setRequest($request);
+        $incoming->setStartsAt(new \DateTimeImmutable('2026-08-15 10:00:00'));
+        $incoming->setNotes('nuevo');
 
         $security = $this->createMock(Security::class);
         $security->method('getUser')->willReturn($proUser);
 
         $repo = $this->createMock(CalendarEventRepository::class);
-        $repo->method('findOneByRequestAndProfessional')->willReturn(new CalendarEvent());
+        $repo->method('findOneByRequestAndProfessional')->willReturn($existing);
 
         $processor = $this->buildProcessor($security, $repo);
+        $result = $processor->process($incoming, new \ApiPlatform\Metadata\Post());
 
-        $this->expectException(ConflictHttpException::class);
-        $processor->process($event, new \ApiPlatform\Metadata\Post());
+        $this->assertSame($existing, $result);
+        $this->assertEquals(new \DateTimeImmutable('2026-08-15 10:00:00'), $result->getStartsAt());
+        $this->assertSame('nuevo', $result->getNotes());
     }
 
     public function testThrowsWhenRequestNotAccepted(): void
@@ -176,5 +185,32 @@ final class CalendarEventOwnerProcessorTest extends TestCase
 
         $this->expectException(BadRequestHttpException::class);
         $processor->process($event, new \ApiPlatform\Metadata\Post());
+    }
+
+    public function testPatchUpdatesStartsAtWhenOwner(): void
+    {
+        [$proUser, $proProfile, $request] = $this->makeAcceptedJob();
+
+        $event = new CalendarEvent();
+        $event->setRequest($request);
+        $event->setProfessional($proProfile);
+        $event->setStartsAt(new \DateTimeImmutable('2026-08-01 09:30:00'));
+
+        $security = $this->createMock(Security::class);
+        $security->method('getUser')->willReturn($proUser);
+
+        $repo = $this->createMock(CalendarEventRepository::class);
+
+        // Reflection: professional id is null without DB — assertOwner compares getId().
+        // Set ids via reflection for ownership check.
+        $proIdProp = new \ReflectionProperty(ProfessionalProfile::class, 'id');
+        $proIdProp->setAccessible(true);
+        $proIdProp->setValue($proProfile, 42);
+
+        $processor = $this->buildProcessor($security, $repo);
+        $event->setStartsAt(new \DateTimeImmutable('2026-09-01 11:00:00'));
+        $result = $processor->process($event, new \ApiPlatform\Metadata\Patch());
+
+        $this->assertEquals(new \DateTimeImmutable('2026-09-01 11:00:00'), $result->getStartsAt());
     }
 }

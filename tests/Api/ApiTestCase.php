@@ -78,6 +78,7 @@ abstract class ApiTestCase extends WebTestCase
             'review',
             'request_question',
             'visit_request',
+            'calendar_event',
             'bid',
             '`request`',
             'professional_profile',

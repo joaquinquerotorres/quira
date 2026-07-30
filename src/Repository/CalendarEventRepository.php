@@ -20,11 +20,20 @@ class CalendarEventRepository extends ServiceEntityRepository
         parent::__construct($registry, CalendarEvent::class);
     }
 
+    /**
+     * Como máximo uno por par; si hubiera duplicados legacy, devuelve el más reciente.
+     */
     public function findOneByRequestAndProfessional(Request $request, ProfessionalProfile $professional): ?CalendarEvent
     {
-        return $this->findOneBy([
-            'request' => $request,
-            'professional' => $professional,
-        ]);
+        return $this->createQueryBuilder('ce')
+            ->andWhere('ce.request = :request')
+            ->andWhere('ce.professional = :professional')
+            ->setParameter('request', $request)
+            ->setParameter('professional', $professional)
+            ->orderBy('ce.updatedAt', 'DESC')
+            ->addOrderBy('ce.id', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 }
