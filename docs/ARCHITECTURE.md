@@ -135,6 +135,6 @@
 ## Rendimiento listados (API)
 
 - Paginación: `pagination_client_items_per_page` + tope `pagination_maximum_items_per_page: 100` (mobile envía `itemsPerPage=50`)
-- Índices: SPATIAL en `request.location_point` / `professional_profile.location_point`; compuesto `request (status, category, created_at)`; reviews `(target_id|author_id, created_at)`
+- Índices: compuesto `request (status, category, created_at)`; reviews `(target_id|author_id, created_at)`. **SPATIAL** en `location_point` omitido: MySQL exige NOT NULL (error 1252) y esos POINT son nullable a propósito
 - Orden por defecto colección Request/Bid: `createdAt DESC`
 - Fuera de alcance habitual: Redis/Varnish/HTTP cache JWT (feeds personales)

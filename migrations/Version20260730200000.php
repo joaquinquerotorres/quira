@@ -8,28 +8,28 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * Índices espaciales (market geo / findMatchingPros) y compuestos habituales.
- * Idempotente y reversible en MySQL 8.
+ * Índices compuestos para market/reviews.
+ *
+ * SPATIAL INDEX sobre location_point NO se crea: en MySQL/MariaDB actuales
+ * (error 1252) todas las partes de un índice espacial deben ser NOT NULL, y
+ * request.location_point / professional_profile.location_point son nullable
+ * a propósito (requests/perfiles sin geo). Forzar NOT NULL o un POINT(0,0)
+ * sentinela rompería el matching geo. Cuando el producto exija ubicación
+ * siempre, se podrá ALTER … NOT NULL + CREATE SPATIAL INDEX.
  */
 final class Version20260730200000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Spatial + composite indexes for request/professional_profile/review list & geo queries';
+        return 'Composite indexes for request market filters and review lookups (spatial skipped: nullable POINT → MySQL 1252)';
     }
 
     public function up(Schema $schema): void
     {
-        $this->createIndexIfMissing(
-            'request',
-            'idx_request_location_point',
-            'CREATE SPATIAL INDEX idx_request_location_point ON request (location_point)'
-        );
-        $this->createIndexIfMissing(
-            'professional_profile',
-            'idx_professional_profile_location_point',
-            'CREATE SPATIAL INDEX idx_professional_profile_location_point ON professional_profile (location_point)'
-        );
+        // Por si una ejecución previa dejó el migration a medias: no intentamos SPATIAL.
+        $this->dropIndexIfExists('request', 'idx_request_location_point');
+        $this->dropIndexIfExists('professional_profile', 'idx_professional_profile_location_point');
+
         $this->createIndexIfMissing(
             'request',
             'idx_request_status_category_created',
@@ -49,11 +49,11 @@ final class Version20260730200000 extends AbstractMigration
 
     public function down(Schema $schema): void
     {
-        $this->dropIndexIfExists('request', 'idx_request_location_point');
-        $this->dropIndexIfExists('professional_profile', 'idx_professional_profile_location_point');
         $this->dropIndexIfExists('request', 'idx_request_status_category_created');
         $this->dropIndexIfExists('review', 'idx_review_target_created');
         $this->dropIndexIfExists('review', 'idx_review_author_created');
+        $this->dropIndexIfExists('request', 'idx_request_location_point');
+        $this->dropIndexIfExists('professional_profile', 'idx_professional_profile_location_point');
     }
 
     private function createIndexIfMissing(string $table, string $indexName, string $sql): void
