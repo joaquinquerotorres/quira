@@ -58,7 +58,7 @@ Autenticación: Bearer JWT en header Authorization
 - Filtros: is_market, my_requests, my_jobs, my_bids, history
 - Campos relevantes:
   - `description`: texto refinado / mostrado como descripción del trabajo (puede venir del flujo con IA).
-  - `clientOriginalDescription` (opcional, nullable): texto libre que el cliente escribió **antes** de refinar con `/api/predict` u otra edición; se persiste para trazabilidad. Máximo **5000** caracteres (mismo límite que `description` en POST `/api/predict`). Lectura y escritura en los mismos grupos que `description`. Si no hay `description` pero sí `clientOriginalDescription` (y/o audio/vídeo), la validación “debe explicar el problema” sigue cumpliéndose. La moderación se determina desde `aiDiagnosis.safe` / `aiDiagnosis.safety_reason` generado por `diagnose`.
+  - `clientOriginalDescription` (opcional, nullable): texto libre que el cliente escribió **antes** de refinar con `/api/predict` u otra edición; se persiste para trazabilidad. Máximo **5000** caracteres (mismo límite que `description` en POST `/api/predict`). Lectura y escritura en los mismos grupos que `description`. Si no hay `description` pero sí `clientOriginalDescription` (y/o audio/vídeo), la validación “debe explicar el problema” sigue cumpliéndose. La moderación humana (`PENDING_APPROVAL`) se determina **solo** desde `aiDiagnosis.safe` / `aiDiagnosis.safety_reason`. El campo `in_scope` / `out_of_scope_reason` indica si Quira cubre el servicio (UX app); `in_scope=false` **no** marca la solicitud.
   - `estimatedPriceMin` (int, céntimos): mínimo estimado generado por IA (rango orientativo). La UI lo convierte a euros dividiendo entre 100.
   - `estimatedPriceMax` (int, céntimos): máximo estimado generado por IA (rango orientativo). La UI lo convierte a euros dividiendo entre 100.
   - `aiDiagnosis` (opcional): JSON del diagnóstico IA. Si llega como `{ "min": ..., "max": ... }` (céntimos), el backend lo normaliza a `estimated_price_min/estimated_price_max`.
@@ -158,7 +158,7 @@ Autenticación: Bearer JWT en header Authorization
     - vídeo: **40 MB**
   - Crea una `PredictTask` y despacha `AnalyzePredictMessage` al transporte Messenger **`async`** (siempre). Responde **`202`** `{ taskId, status }` mientras el worker procesa; el cliente consulta `GET /api/predict/tasks/{publicId}`.
   - GET `/api/predict/tasks/{publicId}` — estado (`pending` | `processing` | `completed` | `failed`) y `result` / `error`. Solo el dueño de la tarea.
-  - El handler descarga el media (`PredictMediaFetcher`, anti-SSRF), llama a Gemini (`GEMINI_MODEL`), aplica **`PricingClampService`** (híbrido A+C) y persiste el resultado. Moderación integrada (`safe`, `safety_reason`).
+  - El handler descarga el media (`PredictMediaFetcher`, anti-SSRF), llama a Gemini (`GEMINI_MODEL`) **una sola vez**, aplica **`PricingClampService`** (híbrido A+C; se omite si `safe=false` o `in_scope=false`) y persiste el resultado. Moderación + alcance en el mismo JSON (`safe`, `safety_reason`, `in_scope`, `out_of_scope_reason`).
   - Legacy (evitar): `image` / `audio` / `video` en base64 o Data URL → análisis **síncrono** sin tarea (mismo clamp; payload enorme; ver `docs/DEPLOY.md`).
   - Respuesta típica en `result` (o cuerpo plano legacy):
     - `title`, `description`, `summary_text`
@@ -170,7 +170,8 @@ Autenticación: Bearer JWT en header Authorization
     - `sub_category` (alineada con subcategoría de `pricing_rate` cuando es posible)
     - `risk_level` (LOW, MEDIUM, HIGH)
     - `pricing_type` (`FIXED` | `RANGE` | `VISIT_REQUIRED`)
-    - `safe`, `safety_reason`
+    - `safe`, `safety_reason` (abuso / fraude de contacto; si `safe=false` → `PENDING_APPROVAL` al crear Request)
+    - `in_scope`, `out_of_scope_reason` (¿cubre Quira este servicio?; si `in_scope=false` la app debe informar sin marcar moderación)
     - `estimated_price_min`, `estimated_price_max` (céntimos; pueden venir ya acotados al catálogo)
     - `urgency`, `schedule_intent`
     - Si hubo match de catálogo: `pricing_clamped` (bool), `catalog_price_min` / `catalog_price_max`, `catalog_zone`, `catalog_subcategory`

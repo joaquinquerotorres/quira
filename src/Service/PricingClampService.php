@@ -29,6 +29,17 @@ final class PricingClampService
      */
     public function clampDiagnosis(array $diagnosis, ?string $location): array
     {
+        $safeRaw = $diagnosis['safe'] ?? $diagnosis['is_safe'] ?? true;
+        $safe = filter_var($safeRaw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        $inScopeRaw = $diagnosis['in_scope'] ?? true;
+        $inScope = filter_var($inScopeRaw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        if ($safe === false || $inScope === false) {
+            $diagnosis['estimated_price_min'] = 0;
+            $diagnosis['estimated_price_max'] = 0;
+
+            return $diagnosis;
+        }
+
         $pricingType = strtoupper(trim((string) ($diagnosis['pricing_type'] ?? '')));
         if ($pricingType === 'VISIT_REQUIRED') {
             $diagnosis['estimated_price_min'] = 0;

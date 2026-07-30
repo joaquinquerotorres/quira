@@ -60,7 +60,10 @@ Periodo de prueba u ofertas: se configuran en el **dashboard de Stripe** (Produc
 
 ### Funcionalidad
 - Diagnóstico preliminar del problema descrito
-- Comprobación de seguridad (fraude de contacto, contenido ofensivo) integrada en `GeminiService::diagnose()` (Paso 1 de moderación). La respuesta incluye `safe` y `safety_reason`; si `safe=false`, el backend marca la request para revisión (`PENDING_APPROVAL`).
+- Comprobación de seguridad y alcance en **una sola** llamada `GeminiService::diagnose()`:
+  - **PASO 1A** `safe` / `safety_reason`: abuso, ilegal, prompt injection, **fraude de contacto** (texto/audio/imagen). Si `safe=false`, al crear la Request el backend marca `PENDING_APPROVAL`.
+  - **PASO 1B** `in_scope` / `out_of_scope_reason`: si es un servicio del hogar que Quira cubre. Si `in_scope=false` (y `safe=true`), **no** se marca moderación: la app muestra que no aplica.
+  - Refuerzo local: `ContactInfoDetector` (email/teléfono ES en la descripción) puede forzar `safe=false` tras la respuesta del modelo.
 - Caché de contexto (GeminiCache) para tablas de precios y reglas (si falla la creación, la predicción sigue funcionando)
 
 ### Tabla de precios (BD) y Córdoba
