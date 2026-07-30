@@ -92,8 +92,6 @@ final class ProfessionalProfileNormalizer implements NormalizerInterface, Denorm
 
     public function getSupportedTypes(?string $format): array
     {
-        $types = $this->inner->getSupportedTypes($format);
-
-        return [ProfessionalProfile::class => false] + (\is_array($types) ? $types : []);
+        return [ProfessionalProfile::class => false] + $this->inner->getSupportedTypes($format);
     }
 }
