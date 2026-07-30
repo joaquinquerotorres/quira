@@ -160,6 +160,13 @@ class ProfessionalProfile
     #[Groups(['pro:read'])]
     private ?User $user = null;
 
+    /**
+     * Alta del perfil profesional en Quira (“En Quira desde…”).
+     */
+    #[ORM\Column(name: 'created_at', type: Types::DATETIME_IMMUTABLE)]
+    #[Groups(['pro:read', 'user:read'])]
+    private \DateTimeImmutable $createdAt;
+
     /** @var Collection<int, Request> */
     #[ORM\OneToMany(mappedBy: 'assignedProfessional', targetEntity: Request::class)]
     #[Groups(['user:read', 'pro:read'])]
@@ -168,6 +175,7 @@ class ProfessionalProfile
     public function __construct()
     {
         $this->assignedRequests = new ArrayCollection();
+        $this->createdAt = new \DateTimeImmutable();
     }
 
     public function getId(): ?int
@@ -429,6 +437,18 @@ class ProfessionalProfile
     public function setUser(User $user): self
     {
         $this->user = $user;
+
+        return $this;
+    }
+
+    public function getCreatedAt(): \DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    public function setCreatedAt(\DateTimeImmutable $createdAt): self
+    {
+        $this->createdAt = $createdAt;
 
         return $this;
     }

@@ -578,6 +578,13 @@ class Request
         return $this->bids;
     }
 
+    /** Número de propuestas recibidas (chip en listados del cliente). */
+    #[Groups(['request:read'])]
+    public function getBidCount(): int
+    {
+        return $this->bids->count();
+    }
+
     /**
      * @return Collection<int, VisitRequest>
      */
