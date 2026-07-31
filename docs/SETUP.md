@@ -37,6 +37,15 @@ cp .env .env.local
 |----------|-------------|
 | `FRONTEND_URL` | URL del frontend para enlaces de verificación y recuperación de contraseña |
 
+Operador admin (panel `/api/admin/*`):
+
+```bash
+php bin/console app:create-admin admin@quira.app --password='***'
+# o promocionar: php bin/console app:create-admin existing@quira.app --promote-only
+```
+
+Ver `docs/ADMIN.md`.
+
 ### JWT
 
 Generar claves tras configurar `JWT_PASSPHRASE`:

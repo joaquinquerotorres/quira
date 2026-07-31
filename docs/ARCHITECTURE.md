@@ -103,6 +103,11 @@
   - Crea filas nuevas (zona Córdoba, complejidad según riesgo).
 - `app:test-mail`: envía un correo de prueba (diagnóstico de `MAILER_DSN`).
 
+## Admin
+
+- `AdminStatsController` + `AdminStatsService`: `GET /api/admin/stats/overview` (ROLE_ADMIN, JSON plano). Ver `docs/ADMIN.md`.
+- `app:create-admin` promociona/crea operador.
+
 ## State Processors
 
 - UserRegistrationProcessor: hash contraseña, roles

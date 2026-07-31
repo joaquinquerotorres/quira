@@ -218,6 +218,9 @@ class Request
     #[Groups(['request:read'])]
     private ?\DateTimeImmutable $createdAt = null;
 
+    #[ORM\Column]
+    private \DateTimeImmutable $updatedAt;
+
     /** @var Collection<int, Bid> */
     #[ORM\OneToMany(mappedBy: 'request', targetEntity: Bid::class, orphanRemoval: true)]
     #[Groups(['request:read'])]
@@ -234,7 +237,9 @@ class Request
 
     public function __construct()
     {
-        $this->createdAt = new \DateTimeImmutable();
+        $now = new \DateTimeImmutable();
+        $this->createdAt = $now;
+        $this->updatedAt = $now;
         $this->bids = new ArrayCollection();
         $this->visitRequests = new ArrayCollection();
         $this->questions = new ArrayCollection();
@@ -375,7 +380,22 @@ class Request
 
     public function setStatus(RequestStatus $status): self
     {
-        $this->status = $status;
+        if ($this->status !== $status) {
+            $this->status = $status;
+            $this->updatedAt = new \DateTimeImmutable();
+        }
+
+        return $this;
+    }
+
+    public function getUpdatedAt(): \DateTimeImmutable
+    {
+        return $this->updatedAt;
+    }
+
+    public function setUpdatedAt(\DateTimeImmutable $updatedAt): self
+    {
+        $this->updatedAt = $updatedAt;
 
         return $this;
     }
