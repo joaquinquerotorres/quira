@@ -79,7 +79,9 @@ final class CurrentUserExtensionTest extends KernelTestCase
         $extension->applyToItem($qb, $qng, Request::class, ['id' => 1]);
 
         $dql = $qb->getDQL();
-        $this->assertStringContainsString('bids', $dql);
+        $this->assertStringContainsString('EXISTS', strtoupper($dql));
+        $this->assertStringContainsString('App\\Entity\\Bid', $dql);
+        $this->assertStringContainsString('App\\Entity\\VisitRequest', $dql);
         $this->assertStringContainsString('req_client', $dql);
         $this->assertStringContainsString('req_pro', $dql);
         $this->assertStringContainsString('status_pending', $dql);
@@ -136,6 +138,28 @@ final class CurrentUserExtensionTest extends KernelTestCase
         $this->assertStringContainsString('target', $dql);
         $this->assertStringContainsString('OR', strtoupper($dql));
         $this->assertSame($user, $qb->getParameter('review_current_user')?->getValue());
+    }
+
+    public function testNotificationCollectionRestrictsToCurrentUser(): void
+    {
+        $user = $this->createProUser();
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $security = $this->createMock(Security::class);
+        $security->method('getUser')->willReturn($user);
+        $security->method('isGranted')->with('ROLE_ADMIN')->willReturn(false);
+
+        $extension = new CurrentUserExtension($security, new RequestStack(), new ProfessionalSubscriptionService());
+
+        $qb = $em->createQueryBuilder()
+            ->select('n')
+            ->from(\App\Entity\Notification::class, 'n');
+
+        $qng = new \ApiPlatform\Doctrine\Orm\Util\QueryNameGenerator();
+        $extension->applyToCollection($qb, $qng, \App\Entity\Notification::class);
+
+        $dql = $qb->getDQL();
+        $this->assertStringContainsString('n.user', $dql);
+        $this->assertSame($user, $qb->getParameter('notification_current_user')?->getValue());
     }
 
     private function createProUser(): User

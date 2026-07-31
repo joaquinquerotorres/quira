@@ -18,6 +18,7 @@ use App\Validator\CleanText;
 use App\Validator\NoContactInfo;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\Common\Collections\Criteria;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use LongitudeOne\Spatial\PHP\Types\Geometry\Point;
@@ -168,8 +169,7 @@ class ProfessionalProfile
     private \DateTimeImmutable $createdAt;
 
     /** @var Collection<int, Request> */
-    #[ORM\OneToMany(mappedBy: 'assignedProfessional', targetEntity: Request::class)]
-    #[Groups(['user:read', 'pro:read'])]
+    #[ORM\OneToMany(mappedBy: 'assignedProfessional', targetEntity: Request::class, fetch: 'EXTRA_LAZY')]
     private Collection $assignedRequests;
 
     public function __construct()
@@ -485,17 +485,19 @@ class ProfessionalProfile
     #[Groups(['pro:read'])]
     public function getCompletedJobs(): int
     {
-        $count = 0;
-        foreach ($this->assignedRequests as $request) {
-            if ($request->getStatus() === RequestStatus::COMPLETED) {
-                ++$count;
-            }
-        }
+        // EXTRA_LAZY + Criteria → COUNT SQL (no hidrata todas las requests).
+        $criteria = Criteria::create()
+            ->andWhere(Criteria::expr()->eq('status', RequestStatus::COMPLETED));
 
-        return $count;
+        return $this->assignedRequests->matching($criteria)->count();
     }
 
-    #[Groups(['pro:read'])]
+    /**
+     * Serializado vía ProfessionalProfileNormalizer (query acotada).
+     * Se mantiene el método para tests unitarios / compatibilidad interna.
+     *
+     * @return list<array{id: ?int, score: ?int, comment: ?string, authorName: ?string, createdAt: ?string}>
+     */
     public function getReviews(): array
     {
         if ($this->user === null) {
@@ -504,7 +506,6 @@ class ProfessionalProfile
 
         $result = [];
         foreach ($this->user->getReviewsReceived() as $review) {
-            // Solo reseñas de trabajos donde este perfil era el profesional asignado.
             $request = $review->getRequest();
             if ($request === null || $request->getAssignedProfessional() !== $this) {
                 continue;

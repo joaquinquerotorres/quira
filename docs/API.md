@@ -18,7 +18,8 @@ Autenticación: Bearer JWT en header Authorization
 
 ### ProfessionalProfile
 - GET/POST /api/professional_profiles, PATCH/PUT /api/professional_profiles/{id}
-- Campos de valoración: `rating`, `reviewCount`; en lectura también `reviews[]` (array embebido con id, score, comment, authorName, createdAt).
+- Campos de valoración: `rating`, `reviewCount`; en **detalle** (`GET /api/professional_profiles/{id}` y `user:read`) también `reviews[]` (últimas ~30: id, score, comment, authorName, createdAt). En **colección** del directorio no se inyecta el array completo (evita N+1); usar `rating`/`reviewCount` o `GET /api/reviews?target=`.
+- `completedJobs` (int, virtual): COUNT de requests asignadas en `COMPLETED` (EXTRA_LAZY; no hidrata el historial completo).
 - `createdAt` (ISO 8601): alta del perfil profesional. La app lo muestra como “En Quira desde {mes} de {año}”.
 - `skills`: array de códigos `Category` (los 22 valores del enum; ver predict/`Category` más abajo). Usado para matching de mercado y directorio.
 - Preferencias de notificación (escritura en `pro:write`, lectura también en `user:read` cuando el perfil va embebido en `GET /api/users/{id}`):
@@ -72,7 +73,8 @@ Autenticación: Bearer JWT en header Authorization
     - `"Esta semana"`
     - `"La próxima semana"`
     - `"A convenir al aceptar la oferta"`
-  - Ordenación en listados: `order[estimatedPriceMin]=asc|desc` (además de `createdAt` por defecto).
+  - Ordenación en listados: `order[estimatedPriceMin]=asc|desc` (además de `createdAt` **DESC por defecto**).
+  - Paginación: `itemsPerPage` (cliente) con tope de **100** (`pagination_maximum_items_per_page`).
 - **Serialización (GET /api/requests/{id})**:
   - **Visibilidad del ítem para profesionales (mercado):** una request `PENDING` se puede abrir en detalle si:
     - `riskLevel != HIGH`, o

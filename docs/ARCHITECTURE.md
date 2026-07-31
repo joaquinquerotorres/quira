@@ -125,6 +125,16 @@
 
 ## Seguridad
 
-- CurrentUserExtension: restringe Request/Bid por usuario; mercado `is_market` oculta HIGH a quien no tiene suscripción activa salvo puja PENDING/ACCEPTED, visita aceptada o asignación; ítem Request restringe acceso HIGH sin relación válida
+- CurrentUserExtension: restringe Request/Bid/Review/Notification/CalendarEvent/VisitRequest por usuario; mercado `is_market` filtra por skills + radio geo; ítem Request usa **EXISTS** (bids/visitas) para no contaminar eager-load; notificaciones siempre scoped al usuario actual
+- EagerRelationsExtension (priority -16): `leftJoin`+`addSelect` de relaciones ya serializadas en `request:read` / `bid:read` (client, assigned, bids+pro, visits, questions) con DISTINCT — reduce N+1 con `force_eager: false`
+- RequestAddressVoter / RequestAssignedProfessionalNormalizer: reutilizan `visitRequests` en memoria si ya están hidratadas (sin `findOneBy` por ítem)
+- ProfessionalProfileNormalizer: `reviews` vía query acotada en detalle `pro:read`; listados de directorio no disparan N queries de reviews; `completedJobs` = COUNT EXTRA_LAZY; `assignedRequests` fuera de grupos de serialización
 - RequestAddressVoter: visibilidad de `preciseAddress`
 - IsGranted en controladores
+
+## Rendimiento listados (API)
+
+- Paginación: `pagination_client_items_per_page` + tope `pagination_maximum_items_per_page: 100` (mobile envía `itemsPerPage=50`)
+- Índices: compuesto `request (status, category, created_at)`; reviews `(target_id|author_id, created_at)`. **SPATIAL** en `location_point` omitido: MySQL exige NOT NULL (error 1252) y esos POINT son nullable a propósito
+- Orden por defecto colección Request/Bid: `createdAt DESC`
+- Fuera de alcance habitual: Redis/Varnish/HTTP cache JWT (feeds personales)

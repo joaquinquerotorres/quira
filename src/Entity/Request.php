@@ -34,10 +34,14 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 #[ORM\Entity(repositoryClass: RequestRepository::class)]
+#[ORM\Index(name: 'idx_request_status_category_created', columns: ['status', 'category', 'created_at'])]
 #[ApiResource(
     operations: [
         new Get(normalizationContext: ['groups' => ['request:read']]),
-        new GetCollection(normalizationContext: ['groups' => ['request:read']]),
+        new GetCollection(
+            normalizationContext: ['groups' => ['request:read']],
+            order: ['createdAt' => 'DESC'],
+        ),
         new Patch(
             normalizationContext: ['groups' => ['request:read']], 
             denormalizationContext: ['groups' => ['request:write']]

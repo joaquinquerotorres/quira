@@ -9,6 +9,7 @@ use App\Entity\User;
 use App\Entity\VisitRequest;
 use App\Repository\VisitRequestRepository;
 use App\Security\Voter\RequestAddressVoter;
+use Doctrine\ORM\PersistentCollection;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
@@ -98,13 +99,29 @@ final class RequestAssignedProfessionalNormalizer implements NormalizerInterface
         if ($proProfile === null) {
             return false;
         }
-        $visit = $this->visitRequestRepository->findOneBy([
-            'request' => $request,
-            'professional' => $proProfile,
-            'status' => VisitRequest::STATUS_ACCEPTED,
-        ]);
 
-        return $visit !== null;
+        // Preferir colección ya hidratada (eager-load) frente a findOneBy por ítem.
+        $visits = $request->getVisitRequests();
+        if ($visits instanceof PersistentCollection && !$visits->isInitialized()) {
+            $visit = $this->visitRequestRepository->findOneBy([
+                'request' => $request,
+                'professional' => $proProfile,
+                'status' => VisitRequest::STATUS_ACCEPTED,
+            ]);
+
+            return $visit !== null;
+        }
+
+        foreach ($visits as $visit) {
+            if (
+                $visit->getStatus() === VisitRequest::STATUS_ACCEPTED
+                && $visit->getProfessional()?->getId() === $proProfile->getId()
+            ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function supportsNormalization(mixed $data, ?string $format = null, array $context = []): bool

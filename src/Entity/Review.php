@@ -21,6 +21,8 @@ use Symfony\Component\Serializer\Attribute\SerializedName;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: ReviewRepository::class)]
+#[ORM\Index(name: 'idx_review_target_created', columns: ['target_id', 'created_at'])]
+#[ORM\Index(name: 'idx_review_author_created', columns: ['author_id', 'created_at'])]
 #[ApiResource(
     operations: [
         new Get(security: "is_granted('ROLE_USER')"),
