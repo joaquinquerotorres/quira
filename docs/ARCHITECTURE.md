@@ -107,7 +107,7 @@
 
 - UserRegistrationProcessor: hash contraseña, roles
 - RequestClientProcessor: asigna cliente; usa solo `aiDiagnosis.safe` (no `in_scope`) para `PENDING_APPROVAL`
-- BidProfessionalProcessor: valida profesional, teléfono, límite mensual y HIGH según `paidThroughAt`; reglas vía `ValidationException` (422) con códigos `BID_*`
+- BidProfessionalProcessor: valida profesional, teléfono, límite mensual y HIGH según `paidThroughAt`; `pricingType` FIXED|RANGE libre (no acoplado a Request); `comment` obligatorio en RANGE (`BID_RANGE_COMMENT_REQUIRED`); reglas vía `ValidationException` (422) con códigos `BID_*`
 - BidAcceptanceProcessor: acepta bid; rechaza (`REJECTED`) las pujas hermanas pendientes
 - BidWithdrawProcessor: retira bid (elimina la fila)
 - RequestDeleteProcessor: cancela request borrando datos dependientes y media

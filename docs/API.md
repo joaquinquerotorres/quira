@@ -107,12 +107,14 @@ Autenticación: Bearer JWT en header Authorization
 - **POST /api/bids** puede responder **422** con `violations[]` y **`code`** estable para el cliente:
   - `BID_HIGH_REQUIRES_PAID_SUBSCRIPTION` — solicitud HIGH sin suscripción activa (`paidThroughAt`)
   - `BID_MONTHLY_LIMIT_EXCEEDED` — límite mensual del plan efectivo FREE alcanzado
+  - `BID_RANGE_COMMENT_REQUIRED` — `pricingType=RANGE` sin `comment` (trim no vacío)
+  - `BID_FIXED_PRICE_REQUIRED` / `BID_RANGE_PRICES_REQUIRED` / `BID_RANGE_INVALID` — reglas de importe
   - Otros errores de validación (teléfono no verificado, etc.) siguen el mismo formato de violaciones.
 - Campos principales:
-  - `pricingType` (`FIXED` o `RANGE`)
+  - `pricingType` (`FIXED` o `RANGE`): lo elige el **profesional** al crear la puja; **no** está acoplado a `Request.pricingType` (estimación IA FIXED/RANGE/VISIT_REQUIRED).
   - `priceQuote` (int, céntimos): obligatorio en `FIXED`; en `RANGE` se mantiene por compatibilidad (normalmente igual a `priceQuoteMin`).
   - `priceQuoteMin`, `priceQuoteMax` (int, céntimos): obligatorios en `RANGE`.
-  - `comment` (texto opcional)
+  - `comment`: **obligatorio** si `pricingType=RANGE` (explica la horquilla); opcional si `FIXED`.
   - `estimatedExecutionTime` (opcional): uno de:
     - `"Hoy mismo"`
     - `"Mañana"`

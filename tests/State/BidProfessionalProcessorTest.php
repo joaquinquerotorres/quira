@@ -374,7 +374,7 @@ final class BidProfessionalProcessorTest extends TestCase
         $processor->process($bid, $op);
     }
 
-    public function testRejectsFixedBidWhenRequestRequiresRange(): void
+    public function testAcceptsFixedBidWhenRequestIsRange(): void
     {
         $clientUser = new User();
         $clientUser->setEmail('client@test.com');
@@ -409,12 +409,171 @@ final class BidProfessionalProcessorTest extends TestCase
         $security = $this->createMock(Security::class);
         $security->method('getUser')->willReturn($proUser);
         $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
+        $persistProcessor->method('process')->willReturnCallback(fn ($data) => $data);
         $bidRepo = $this->createMock(BidRepository::class);
+        $bidRepo->method('canProfessionalBidThisMonth')->willReturn(true);
 
         $processor = $this->createBidProcessor($persistProcessor, $security, $bidRepo);
 
-        $this->expectException(ValidationException::class);
-        $processor->process($bid, $this->createPostOperation());
+        /** @var Bid $result */
+        $result = $processor->process($bid, $this->createPostOperation());
+
+        $this->assertSame(Bid::PRICING_TYPE_FIXED, $result->getPricingType());
+        $this->assertSame(80, $result->getPriceQuote());
+        $this->assertSame(Request::PRICING_TYPE_RANGE, $request->getPricingType());
+    }
+
+    public function testAcceptsRangeBidWhenRequestIsFixed(): void
+    {
+        $clientUser = new User();
+        $clientUser->setEmail('client@test.com');
+        $clientProfile = new ClientProfile();
+        $clientProfile->setFullName('Cliente');
+        $clientProfile->setUser($clientUser);
+        $clientUser->setClientProfile($clientProfile);
+
+        $proUser = new User();
+        $proUser->setEmail('pro@test.com');
+        $proProfile = new ProfessionalProfile();
+        $proProfile->setFullName('Pro');
+        $proProfile->setPhoneNumber('+34600000000');
+        $proProfile->setVerifiedPhone(true);
+        $proProfile->setUser($proUser);
+        $proUser->setProfessionalProfile($proProfile);
+
+        $request = new Request();
+        $request->setTitle('Test request title');
+        $request->setAddress('Calle Test');
+        $request->setEstimatedPriceMin(8000);
+        $request->setEstimatedPriceMax(12000);
+        $request->setClient($clientProfile);
+        $request->setStatus(RequestStatus::PENDING);
+        $request->setPricingType(Request::PRICING_TYPE_FIXED);
+
+        $bid = new Bid();
+        $bid->setRequest($request);
+        $bid->setPricingType(Bid::PRICING_TYPE_RANGE);
+        $bid->setPriceQuoteMin(100);
+        $bid->setPriceQuoteMax(150);
+        $bid->setComment('Depende de materiales');
+
+        $security = $this->createMock(Security::class);
+        $security->method('getUser')->willReturn($proUser);
+        $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
+        $persistProcessor->method('process')->willReturnCallback(fn ($data) => $data);
+        $bidRepo = $this->createMock(BidRepository::class);
+        $bidRepo->method('canProfessionalBidThisMonth')->willReturn(true);
+
+        $processor = $this->createBidProcessor($persistProcessor, $security, $bidRepo);
+
+        /** @var Bid $result */
+        $result = $processor->process($bid, $this->createPostOperation());
+
+        $this->assertSame(Bid::PRICING_TYPE_RANGE, $result->getPricingType());
+        $this->assertSame(100, $result->getPriceQuote());
+        $this->assertSame(Request::PRICING_TYPE_FIXED, $request->getPricingType());
+    }
+
+    public function testRejectsRangeBidWithoutComment(): void
+    {
+        $clientUser = new User();
+        $clientUser->setEmail('client@test.com');
+        $clientProfile = new ClientProfile();
+        $clientProfile->setFullName('Cliente');
+        $clientProfile->setUser($clientUser);
+        $clientUser->setClientProfile($clientProfile);
+
+        $proUser = new User();
+        $proUser->setEmail('pro@test.com');
+        $proProfile = new ProfessionalProfile();
+        $proProfile->setFullName('Pro');
+        $proProfile->setPhoneNumber('+34600000000');
+        $proProfile->setVerifiedPhone(true);
+        $proProfile->setUser($proUser);
+        $proUser->setProfessionalProfile($proProfile);
+
+        $request = new Request();
+        $request->setTitle('Test request title');
+        $request->setAddress('Calle Test');
+        $request->setEstimatedPriceMin(8000);
+        $request->setEstimatedPriceMax(12000);
+        $request->setClient($clientProfile);
+        $request->setStatus(RequestStatus::PENDING);
+        $request->setPricingType(Request::PRICING_TYPE_FIXED);
+
+        $bid = new Bid();
+        $bid->setRequest($request);
+        $bid->setPricingType(Bid::PRICING_TYPE_RANGE);
+        $bid->setPriceQuoteMin(100);
+        $bid->setPriceQuoteMax(150);
+        $bid->setComment('   ');
+
+        $security = $this->createMock(Security::class);
+        $security->method('getUser')->willReturn($proUser);
+        $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
+        $bidRepo = $this->createMock(BidRepository::class);
+        $bidRepo->method('canProfessionalBidThisMonth')->willReturn(true);
+
+        $processor = $this->createBidProcessor($persistProcessor, $security, $bidRepo);
+
+        try {
+            $processor->process($bid, $this->createPostOperation());
+            $this->fail('Expected ValidationException');
+        } catch (ValidationException $e) {
+            $violations = $e->getConstraintViolationList();
+            $this->assertCount(1, $violations);
+            $this->assertSame('comment', $violations[0]->getPropertyPath());
+            $this->assertSame('BID_RANGE_COMMENT_REQUIRED', $violations[0]->getCode());
+        }
+    }
+
+    public function testAcceptsFixedBidWithoutComment(): void
+    {
+        $clientUser = new User();
+        $clientUser->setEmail('client@test.com');
+        $clientProfile = new ClientProfile();
+        $clientProfile->setFullName('Cliente');
+        $clientProfile->setUser($clientUser);
+        $clientUser->setClientProfile($clientProfile);
+
+        $proUser = new User();
+        $proUser->setEmail('pro@test.com');
+        $proProfile = new ProfessionalProfile();
+        $proProfile->setFullName('Pro');
+        $proProfile->setPhoneNumber('+34600000000');
+        $proProfile->setVerifiedPhone(true);
+        $proProfile->setUser($proUser);
+        $proUser->setProfessionalProfile($proProfile);
+
+        $request = new Request();
+        $request->setTitle('Test request title');
+        $request->setAddress('Calle Test');
+        $request->setEstimatedPriceMin(8000);
+        $request->setEstimatedPriceMax(12000);
+        $request->setClient($clientProfile);
+        $request->setStatus(RequestStatus::PENDING);
+        $request->setPricingType(Request::PRICING_TYPE_RANGE);
+
+        $bid = new Bid();
+        $bid->setRequest($request);
+        $bid->setPricingType(Bid::PRICING_TYPE_FIXED);
+        $bid->setPriceQuote(90);
+        $bid->setComment(null);
+
+        $security = $this->createMock(Security::class);
+        $security->method('getUser')->willReturn($proUser);
+        $persistProcessor = $this->createMock(\ApiPlatform\State\ProcessorInterface::class);
+        $persistProcessor->method('process')->willReturnCallback(fn ($data) => $data);
+        $bidRepo = $this->createMock(BidRepository::class);
+        $bidRepo->method('canProfessionalBidThisMonth')->willReturn(true);
+
+        $processor = $this->createBidProcessor($persistProcessor, $security, $bidRepo);
+
+        /** @var Bid $result */
+        $result = $processor->process($bid, $this->createPostOperation());
+
+        $this->assertSame(Bid::PRICING_TYPE_FIXED, $result->getPricingType());
+        $this->assertNull($result->getComment());
     }
 
     public function testAcceptsRangeBidWhenRequestRequiresVisit(): void
@@ -449,6 +608,7 @@ final class BidProfessionalProcessorTest extends TestCase
         $bid->setPricingType(Bid::PRICING_TYPE_RANGE);
         $bid->setPriceQuoteMin(100);
         $bid->setPriceQuoteMax(150);
+        $bid->setComment('Tras valorar en visita');
 
         $security = $this->createMock(Security::class);
         $security->method('getUser')->willReturn($proUser);
