@@ -47,6 +47,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     public const ROLE_ADMIN = 'ROLE_ADMIN';
+    /** Faceta cliente del operador admin (junto con ClientProfile). */
+    public const ROLE_CLIENT = 'ROLE_CLIENT';
     public const ROLE_USER = 'ROLE_USER';
 
     #[ORM\Id]

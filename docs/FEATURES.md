@@ -19,6 +19,7 @@
 - ROLE_FREE - Marcador de faceta profesional gratuita (onboarding / marketing)
 - ROLE_SOLVER / ROLE_PRO - Marcadores de tier contratado (pueden persistir aunque el pago haya caducado)
 - ROLE_ADMIN — operador del panel (`/api/admin/*`); ver `docs/ADMIN.md`
+- ROLE_CLIENT — faceta cliente del operador admin (junto con `ClientProfile`)
 
 **Permisos operativos (pujas, HIGH, visitas por pricing_type, límite mensual):** el servidor usa **`professionalProfile.paidThroughAt`** (y la lógica en `ProfessionalSubscriptionService`), no solo el rol. Suscripción de pago **vigente** = `paidThroughAt` no nulo y **posterior a ahora**. `paidThroughAt === null` se trata como sin periodo de pago conocido (mismas restricciones que caducado para esas reglas).
 
