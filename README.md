@@ -62,12 +62,27 @@ La **fuente de verdad operativa** del plan de pago es `professionalProfile.paidT
 
 Tras Checkout, el webhook actualiza la BD; si el redirect llega antes que el webhook, se puede llamar `POST /api/stripe/sync-subscription` (JWT) y luego refrescar el usuario. Reconciliación batch: `php bin/console stripe:reconcile-subscriptions`.
 
+### Operador admin (panel `/api/admin/*`)
+
+One-off — **no** fixtures ni migraciones con passwords. Secrets solo en variables de entorno:
+
+```bash
+railway variables set ADMIN_EMAIL=admin@quira.app ADMIN_PASSWORD='***'
+railway run php bin/console app:admin:ensure
+
+# Rotar password del admin existente (lee ADMIN_PASSWORD):
+railway run php bin/console app:admin:ensure --reset-password
+```
+
+Detalle: [docs/ADMIN.md](docs/ADMIN.md).
+
 ## Documentación
 
 | Documento | Contenido |
 |-----------|-----------|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Entidades, relaciones, estructura del código |
 | [docs/API.md](docs/API.md) | Endpoints y recursos de la API |
+| [docs/ADMIN.md](docs/ADMIN.md) | Panel admin (`ROLE_ADMIN`), stats overview, `app:admin:ensure` |
 | [docs/SETUP.md](docs/SETUP.md) | Configuración completa y variables de entorno |
 | [docs/FEATURES.md](docs/FEATURES.md) | Funcionalidades (auth, Stripe, IA, notificaciones, etc.) |
 | [docs/TESTING.md](docs/TESTING.md) | Guía de tests |

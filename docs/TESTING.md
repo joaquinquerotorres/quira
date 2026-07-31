@@ -35,7 +35,7 @@ php bin/phpunit --group database
 | `tests/Api/` | Contratos E2E contra `/api/*` (ver sección siguiente) |
 | `tests/State/` | BidProfessional/Acceptance/Withdraw, RequestClient/Delete/Question, Review, UserRegistration, Professional/ClientProfileOwner, CalendarEventOwner |
 | `tests/Service/` | Admin/AdminStatsServiceTest, StripeCheckoutSessionHandler, GeminiService (+ CreateCache), ContactInfoDetector, PricingCatalogService, PricingClampService, PredictMediaFetcher, PredictMediaLimits, NotificationService, EmailVerificationService, PasswordResetService |
-| `tests/Command/` | CalibratePricingCommandTest (`#[Group('database')]`) |
+| `tests/Command/` | EnsureAdminCommandTest, CalibratePricingCommandTest (`#[Group('database')]`) |
 | `tests/Repository/` | BidRepositoryTest |
 | `tests/Entity/` | UserTest, ProfessionalProfileTest, ReviewTest, RequestClientOriginalDescriptionValidationTest |
 | `tests/Doctrine/` | CurrentUserExtensionTest |

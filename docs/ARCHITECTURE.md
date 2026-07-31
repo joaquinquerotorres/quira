@@ -106,7 +106,7 @@
 ## Admin
 
 - `AdminStatsController` + `AdminStatsService`: `GET /api/admin/stats/overview` (ROLE_ADMIN, JSON plano). Ver `docs/ADMIN.md`.
-- `app:create-admin` promociona/crea operador.
+- `app:admin:ensure` (one-off): crea/asegura operador desde `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
 
 ## State Processors
 

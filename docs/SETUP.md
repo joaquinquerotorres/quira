@@ -37,11 +37,16 @@ cp .env .env.local
 |----------|-------------|
 | `FRONTEND_URL` | URL del frontend para enlaces de verificación y recuperación de contraseña |
 
-Operador admin (panel `/api/admin/*`):
+Operador admin (panel `/api/admin/*`) — one-off, secrets en env:
 
 ```bash
-php bin/console app:create-admin admin@quira.app --password='***'
-# o promocionar: php bin/console app:create-admin existing@quira.app --promote-only
+# Railway
+railway variables set ADMIN_EMAIL=admin@quira.app ADMIN_PASSWORD='***'
+railway run php bin/console app:admin:ensure
+
+# Local (.env.local, gitignored): ADMIN_EMAIL / ADMIN_PASSWORD
+php bin/console app:admin:ensure
+# Rotar password: php bin/console app:admin:ensure --reset-password
 ```
 
 Ver `docs/ADMIN.md`.

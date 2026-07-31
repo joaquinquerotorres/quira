@@ -5,21 +5,40 @@ Todas las rutas `/api/admin/*` exigen `ROLE_ADMIN` (JWT).
 
 ## Rol
 
-- Constante: `App\Entity\User::ROLE_ADMIN` (`ROLE_ADMIN`).
+- Constantes: `User::ROLE_ADMIN`, `User::ROLE_CLIENT` (faceta cliente del operador).
 - Hierarchy (`security.yaml`): `ROLE_ADMIN` → `ROLE_USER`.
-- Puede coexistir con perfil cliente (`ROLE_USER` / client profile).
+- El operador lleva `ClientProfile` + `ROLE_CLIENT` (y `ROLE_USER` vía `getRoles()`).
 
-### Crear operador
+### Provisionar operador (one-off)
+
+**No** uses fixtures ni migraciones con passwords. Secrets solo en variables de entorno:
 
 ```bash
-# Crear usuario nuevo con ROLE_ADMIN
-php bin/console app:create-admin admin@quira.app --password='***'
+railway variables set ADMIN_EMAIL=admin@quira.app ADMIN_PASSWORD='***'
+railway run php bin/console app:admin:ensure
 
-# Promocionar usuario existente
-php bin/console app:create-admin existing@quira.app --promote-only
+# Si ya existe y quieres rotar la password desde ADMIN_PASSWORD:
+railway run php bin/console app:admin:ensure --reset-password
 ```
 
-Login igual que el resto: `POST /api/login_check` → JWT. El payload de user debe incluir `ROLE_ADMIN` en `roles`.
+Local:
+
+```bash
+# en .env.local (gitignored), nunca en el repo:
+# ADMIN_EMAIL=admin@example.com
+# ADMIN_PASSWORD=...
+php bin/console app:admin:ensure
+```
+
+Comportamiento de `app:admin:ensure` (idempotente):
+
+1. Exige `ADMIN_EMAIL` y `ADMIN_PASSWORD` (si faltan → error, exit ≠ 0).
+2. Si no existe el user → lo crea con el mismo `UserPasswordHasher` que `/api/login_check`, roles `ROLE_ADMIN` + `ROLE_CLIENT` (+ `ROLE_USER`), `ClientProfile`, `verifiedEmail=true`. **No** setea teléfono ni `verifiedPhone` (el login email/password no lo exige; crear solicitudes sí).
+3. Si ya existe → asegura `ROLE_ADMIN` + `ROLE_CLIENT` (+ ClientProfile si faltaba). La password **solo** se actualiza con `--reset-password`.
+
+No ejecutar este comando en el boot HTTP ni en cada request.
+
+Login: `POST /api/login_check` → JWT. El user debe incluir `ROLE_ADMIN` en `roles`.
 
 ## Fase 1 — Dashboard
 

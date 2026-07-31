@@ -79,6 +79,7 @@ Variables útiles para Railway:
 | `CONTAINER_ROLE` | `web` (default) o `worker` (consume Messenger) |
 | `DB_WAIT_RETRIES` | Número de intentos de espera a MySQL (default 20) |
 | `DB_WAIT_SECONDS` | Segundos entre intentos (default 2) |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Solo para one-off `railway run php bin/console app:admin:ensure` (no en boot HTTP) |
 
 ### 5. JWT y despliegues
 

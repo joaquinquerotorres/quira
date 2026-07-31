@@ -146,7 +146,7 @@ Autenticación: Bearer JWT en header Authorization
 ## Admin (ROLE_ADMIN)
 
 - `GET /api/admin/stats/overview?from=YYYY-MM-DD&to=YYYY-MM-DD` — KPIs / funnel / colas / timeseries del dashboard (JSON plano). Ver `docs/ADMIN.md`.
-- Crear operador: `php bin/console app:create-admin email --password=...`
+- Operador: `railway run php bin/console app:admin:ensure` (env `ADMIN_EMAIL` / `ADMIN_PASSWORD`). Ver `docs/ADMIN.md`.
 
 ## Controladores custom
 
