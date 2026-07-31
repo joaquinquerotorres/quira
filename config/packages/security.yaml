@@ -2,6 +2,9 @@ security:
     password_hashers:
         Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
 
+    role_hierarchy:
+        ROLE_ADMIN: [ROLE_USER]
+
     providers:
         app_user_provider:
             entity:
@@ -36,4 +39,5 @@ security:
         - { path: ^/api/users/forgot-password, roles: PUBLIC_ACCESS }
         - { path: ^/api/users/reset-password, roles: PUBLIC_ACCESS }
         - { path: ^/api/verify/email, roles: PUBLIC_ACCESS }
+        - { path: ^/api/admin, roles: ROLE_ADMIN }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }

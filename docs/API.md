@@ -143,6 +143,11 @@ Autenticación: Bearer JWT en header Authorization
 - GET /api/requests/{id}/questions
   - Las respuestas (`answerText`) pueden incluir hasta **3** elementos de media (imagen o vídeo) en el campo `answerMediaUrls[]` (array de URLs). El backend valida que no se envíen más de 3 elementos.
 
+## Admin (ROLE_ADMIN)
+
+- `GET /api/admin/stats/overview?from=YYYY-MM-DD&to=YYYY-MM-DD` — KPIs / funnel / colas / timeseries del dashboard (JSON plano). Ver `docs/ADMIN.md`.
+- Crear operador: `php bin/console app:create-admin email --password=...`
+
 ## Controladores custom
 
 ### Stripe

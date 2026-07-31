@@ -118,6 +118,9 @@ class Bid
     #[Groups(['bid:read', 'request:read'])]
     private \DateTimeImmutable $createdAt;
 
+    #[ORM\Column]
+    private \DateTimeImmutable $updatedAt;
+
     #[ORM\Column(length: 50, nullable: true)]
     #[Groups(['bid:read', 'bid:write', 'request:read'])]
     #[ExecutionTimeOption(
@@ -135,7 +138,9 @@ class Bid
 
     public function __construct()
     {
-        $this->createdAt = new \DateTimeImmutable();
+        $now = new \DateTimeImmutable();
+        $this->createdAt = $now;
+        $this->updatedAt = $now;
     }
 
     public function getId(): ?int
@@ -198,7 +203,10 @@ class Bid
 
     public function setStatus(BidStatus $status): self
     {
-        $this->status = $status;
+        if ($this->status !== $status) {
+            $this->status = $status;
+            $this->updatedAt = new \DateTimeImmutable();
+        }
 
         return $this;
     }
@@ -206,6 +214,18 @@ class Bid
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function getUpdatedAt(): \DateTimeImmutable
+    {
+        return $this->updatedAt;
+    }
+
+    public function setUpdatedAt(\DateTimeImmutable $updatedAt): self
+    {
+        $this->updatedAt = $updatedAt;
+
+        return $this;
     }
 
     public function getEstimatedExecutionTime(): ?string
