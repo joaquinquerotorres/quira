@@ -19,6 +19,7 @@ use App\State\BidAcceptanceProcessor;
 use App\State\BidProfessionalProcessor;
 use App\State\BidWithdrawProcessor;
 use App\Validator\CleanText;
+use App\Validator\ExecutionTimeOption;
 use App\Validator\NoContactInfo;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -119,14 +120,17 @@ class Bid
 
     #[ORM\Column(length: 50, nullable: true)]
     #[Groups(['bid:read', 'bid:write', 'request:read'])]
-    #[Assert\Choice(choices: [
-        'Hoy mismo',
-        'Mañana',
-        'Esta semana',
-        'La próxima semana',
-        'En dos semanas o más',
-        'A convenir al aceptar la oferta',
-    ], message: 'La fecha estimada de realización no es válida.')]
+    #[ExecutionTimeOption(
+        presets: [
+            'Hoy mismo',
+            'Mañana',
+            'Esta semana',
+            'La próxima semana',
+            'En dos semanas o más',
+            'A convenir al aceptar la oferta',
+        ],
+        message: 'La fecha estimada de realización no es válida.',
+    )]
     private ?string $estimatedExecutionTime = null;
 
     public function __construct()

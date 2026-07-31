@@ -67,11 +67,12 @@ Autenticación: Bearer JWT en header Authorization
   - `category`: enum `Category` (22 códigos; mismos que predict / `skills` del profesional).
   - `photoUrl`, `audioUrl`, `videoUrl`: media principal de la solicitud.
   - `extraPhotoUrls[]`, `extraAudioUrls[]`, `extraVideoUrls[]`: arrays opcionales de URLs de media adicional (**sin tope en backend**; el frontend puede limitar a 3). En preguntas, `answerMediaUrls` sí tiene `Assert\Count` máx. 3.
-  - `desiredExecutionTime`: disponibilidad preferida para realizar el trabajo (sin fecha exacta). Valores permitidos:
+  - `desiredExecutionTime`: disponibilidad preferida. Valores permitidos:
     - `"Lo antes posible"`
     - `"Esta semana"`
     - `"La próxima semana"`
     - `"A convenir al aceptar la oferta"`
+    - `"Fecha concreta: DD/MM/YYYY"` (ej. `"Fecha concreta: 15/08/2026"`)
   - Ordenación en listados: `order[estimatedPriceMin]=asc|desc` (además de `createdAt` por defecto).
 - **Serialización (GET /api/requests/{id})**:
   - **Visibilidad del ítem para profesionales (mercado):** una request `PENDING` se puede abrir en detalle si:
@@ -115,13 +116,14 @@ Autenticación: Bearer JWT en header Authorization
   - `priceQuote` (int, céntimos): obligatorio en `FIXED`; en `RANGE` se mantiene por compatibilidad (normalmente igual a `priceQuoteMin`).
   - `priceQuoteMin`, `priceQuoteMax` (int, céntimos): obligatorios en `RANGE`.
   - `comment`: **obligatorio** si `pricingType=RANGE` (explica la horquilla); opcional si `FIXED`.
-  - `estimatedExecutionTime` (opcional): uno de:
+  - `estimatedExecutionTime` (opcional): preset o fecha concreta:
     - `"Hoy mismo"`
     - `"Mañana"`
     - `"Esta semana"`
     - `"La próxima semana"`
     - `"En dos semanas o más"`
     - `"A convenir al aceptar la oferta"`
+    - `"Fecha concreta: DD/MM/YYYY"` (ej. `"Fecha concreta: 20/09/2026"`)
 
 ### Review
 - GET/POST `/api/reviews`, GET `/api/reviews/{id}` (JWT `ROLE_USER`)

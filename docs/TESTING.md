@@ -76,7 +76,7 @@ Los tests en `tests/Api/` ejercitan endpoints reales y validan contratos crític
 - **StripeCancelSubscriptionApiTest** — `POST /api/stripe/cancel-subscription` (fake Stripe en test).
 - **ProfileNotificationPrefsApiTest** — PATCH preferencias `notify*` y lectura en `user:read`.
 - **PasswordResetFlowTest** — forgot/reset password end-to-end.
-- **RequestAndBidChoiceValidationTest** — validación de choices (p. ej. `desiredExecutionTime`).
+- **RequestAndBidChoiceValidationTest** — `desiredExecutionTime` / `estimatedExecutionTime`: presets + `Fecha concreta: DD/MM/YYYY`; inventados → 422.
 - **RequestQuestionAnswerMediaUrlsTest** — tope de `answerMediaUrls` (máx. 3).
 
 ## Tests de comandos
