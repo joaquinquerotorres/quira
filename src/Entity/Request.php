@@ -28,6 +28,7 @@ use ApiPlatform\Doctrine\Orm\Filter\OrderFilter;
 use ApiPlatform\Metadata\ApiProperty;
 use App\Enum\RiskLevel;
 use App\Validator\CleanText;
+use App\Validator\ExecutionTimeOption;
 use App\Validator\NoContactInfo;
 use Symfony\Component\Serializer\Attribute\Context;
 use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
@@ -184,12 +185,15 @@ class Request
 
     #[ORM\Column(length: 50, nullable: true)]
     #[Groups(['request:read', 'request:write'])]
-    #[Assert\Choice(choices: [
-        'Lo antes posible',
-        'Esta semana',
-        'La próxima semana',
-        'A convenir al aceptar la oferta',
-    ], message: 'La disponibilidad deseada no es válida.')]
+    #[ExecutionTimeOption(
+        presets: [
+            'Lo antes posible',
+            'Esta semana',
+            'La próxima semana',
+            'A convenir al aceptar la oferta',
+        ],
+        message: 'La disponibilidad deseada no es válida.',
+    )]
     private ?string $desiredExecutionTime = null;
 
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
