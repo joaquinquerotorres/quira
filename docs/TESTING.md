@@ -67,6 +67,7 @@ Los tests en `tests/Api/` ejercitan endpoints reales y validan contratos crític
 
 - **Base**: `tests/Api/ApiTestCase.php` — TRUNCATE entre tests; helpers de dominio; JWT Bearer.
 - **RequestsContractTest** — privacidad/serialización en `GET /api/requests/{id}` (teléfonos, `preciseAddress`, `clientOriginalDescription`). Profesional ajeno sin relación puede recibir 404 (`CurrentUserExtension`).
+- **BidPricingTypeContractTest** — `POST /api/bids`: FIXED|RANGE libre vs `Request.pricingType`; `comment` obligatorio solo en RANGE (`BID_RANGE_COMMENT_REQUIRED`).
 - **CanBidTest** — `GET /api/professionals/me/can-bid`, límite mensual, `remainingBidsThisMonth`; `ROLE_PRO` con `paidThroughAt` caducado = FREE efectivo.
 - **VisitRequestContractTest** — `POST .../visit-request` exige `pricingType` / `aiDiagnosis.pricing_type = VISIT_REQUIRED` y request `PENDING`; HIGH requiere PRO + `paidThroughAt` futuro; flujo aceptar visita + `preciseAddress`; notificaciones `VISIT_REQUEST_*`.
 - **ReviewsContractTest** — `?target=` / `?author=` del perfil; privacidad (no listar ajenas); `?request=&author=` self-check; campos `targetName`, `requestTitle`, `authorIsProfessional`.

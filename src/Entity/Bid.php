@@ -39,7 +39,10 @@ use Symfony\Component\Validator\Constraints as Assert;
                 summary: 'Crear puja',
                 description: '422: violations[] + hydra:description (JSON-LD) o Problem+JSON. Códigos estables: '
                     . 'BID_HIGH_REQUIRES_PAID_SUBSCRIPTION (propertyPath riskLevel, HIGH sin paidThroughAt vigente); '
-                    . 'BID_MONTHLY_LIMIT_EXCEEDED (propertyPath monthlyBidLimit). El cliente puede mostrar message tal cual.',
+                    . 'BID_MONTHLY_LIMIT_EXCEEDED (propertyPath monthlyBidLimit); '
+                    . 'BID_RANGE_COMMENT_REQUIRED (propertyPath comment, RANGE sin comentario); '
+                    . 'BID_FIXED_PRICE_REQUIRED / BID_RANGE_PRICES_REQUIRED / BID_RANGE_INVALID. '
+                    . 'pricingType FIXED|RANGE lo elige el profesional (independiente de Request.pricingType). El cliente puede mostrar message tal cual.',
             ),
         ),
         new Patch(

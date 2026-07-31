@@ -9,7 +9,6 @@ use ApiPlatform\Metadata\Post;
 use ApiPlatform\State\ProcessorInterface;
 use ApiPlatform\Validator\Exception\ValidationException;
 use App\Entity\Bid;
-use App\Entity\Request;
 use App\Entity\User;
 use App\Enum\BidStatus;
 use App\Enum\RequestStatus;
@@ -137,21 +136,25 @@ final class BidProfessionalProcessor implements ProcessorInterface
                 }
             }
 
-            $requestPricingType = $request->getPricingType();
+            // El profesional elige FIXED|RANGE libremente; Request.pricingType es solo estimación IA.
             $bidPricingType = strtoupper($bid->getPricingType());
-            $allowedByRequest = match ($requestPricingType) {
-                Request::PRICING_TYPE_FIXED => [Bid::PRICING_TYPE_FIXED],
-                Request::PRICING_TYPE_RANGE => [Bid::PRICING_TYPE_RANGE],
-                Request::PRICING_TYPE_VISIT_REQUIRED => [Bid::PRICING_TYPE_FIXED, Bid::PRICING_TYPE_RANGE],
-                default => [Bid::PRICING_TYPE_FIXED, Bid::PRICING_TYPE_RANGE],
-            };
-
-            if (!in_array($bidPricingType, $allowedByRequest, true)) {
+            if (!\in_array($bidPricingType, [Bid::PRICING_TYPE_FIXED, Bid::PRICING_TYPE_RANGE], true)) {
                 $this->throwBidValidation(
                     'pricingType',
-                    sprintf('Esta solicitud solo admite propuestas de tipo: %s.', implode(' o ', $allowedByRequest)),
-                    'BID_PRICING_TYPE_NOT_ALLOWED'
+                    'El tipo de precio de la propuesta debe ser FIXED o RANGE.',
+                    'BID_PRICING_TYPE_INVALID'
                 );
+            }
+
+            if ($bidPricingType === Bid::PRICING_TYPE_RANGE) {
+                $comment = $bid->getComment();
+                if ($comment === null || trim($comment) === '') {
+                    $this->throwBidValidation(
+                        'comment',
+                        'En una propuesta por rango debes explicar la horquilla de precio en el comentario.',
+                        'BID_RANGE_COMMENT_REQUIRED'
+                    );
+                }
             }
 
             if ($bidPricingType === Bid::PRICING_TYPE_FIXED) {
