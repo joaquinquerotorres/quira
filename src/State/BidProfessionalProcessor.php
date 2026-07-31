@@ -9,7 +9,6 @@ use ApiPlatform\Metadata\Post;
 use ApiPlatform\State\ProcessorInterface;
 use ApiPlatform\Validator\Exception\ValidationException;
 use App\Entity\Bid;
-use App\Entity\Request;
 use App\Entity\User;
 use App\Enum\BidStatus;
 use App\Enum\RequestStatus;
